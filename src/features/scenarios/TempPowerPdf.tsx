@@ -45,11 +45,17 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
           rows={[
             ['Generator Size', fi(results.generatorKva), 'kVA', 'Yes (1.25x)'],
             ['Generator Size', fi(results.generatorKw), 'kW', 'Yes (1.25x)'],
+            ['Amps per Phase (3Φ 480V)', fi(results.ampsPerPhase), 'A', results.parallelRunsNeeded ? 'PARALLEL RUNS NEEDED' : '—'],
             ['Cooling Tonnage', fv(results.coolingTons), 'tons', 'Yes (1.15x)'],
             ['Fuel Rate', fv(results.fuelGallonsPerHour), 'gal/hr', 'No'],
             ['Total Fuel', fi(results.totalFuelGallons), 'gallons', 'Yes (1.10x contingency)'],
           ]}
         />
+        {results.parallelRunsNeeded && (
+          <PdfWarning>
+            {`${fi(results.ampsPerPhase)}A per phase exceeds single-conductor capacity. Plan for parallel conductor runs (two hots per phase). Verify cable sizing per NEC tables for run distance and conditions.`}
+          </PdfWarning>
+        )}
         {results.altitudeDerating > 1 && (
           <PdfWarning>
             {`Altitude derating applied: ${fv((results.altitudeDerating - 1) * 100)}% increase in fuel consumption at ${fi(inputs.altitude)} ft`}

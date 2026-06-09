@@ -211,7 +211,16 @@ export default function HybridEnergyWizard() {
               <ResultItem label="Generator Units" value={`${results.genUnits} × ${results.genUnitSizeKw} kW`} />
               <ResultItem label="Total System Capacity" value={fmtInt(results.totalCapacityKw)} unit="kW" highlight />
               <ResultItem label="Redundancy Factor" value={`${results.redundancyFactor}x`} />
+              <ResultItem label={`Peak Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.peakAmpsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
+              <ResultItem label={`Base Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.baseAmpsPerPhase, 0)} unit="A" />
             </ResultGrid>
+
+            {results.parallelRunsNeeded && (
+              <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span><strong>{fmt(results.peakAmpsPerPhase, 0)}A per phase exceeds single-conductor capacity.</strong> Plan for parallel conductor runs (two hots per phase). Verify cable sizing per NEC tables for your run distance and conditions.</span>
+              </div>
+            )}
 
             <div className="mt-4" style={{ height: 80 }}>
               <ResponsiveContainer width="100%" height="100%">

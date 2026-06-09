@@ -41,8 +41,15 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName }:
             ['Redundancy Factor', `${results.redundancyFactor}x`],
             ['BESS Energy Needed', `${fi(results.bessEnergyKwh)} kWh`],
             ['Generator Capacity', `${fi(results.genCapacityKw)} kW`],
+            [`Peak Amps/Phase (3Φ ${inputs.siteVoltage}V)`, `${fi(results.peakAmpsPerPhase)} A${results.parallelRunsNeeded ? ' — PARALLEL RUNS NEEDED' : ''}`],
+            [`Base Amps/Phase (3Φ ${inputs.siteVoltage}V)`, `${fi(results.baseAmpsPerPhase)} A`],
           ]}
         />
+        {results.parallelRunsNeeded && (
+          <PdfWarning>
+            {`${fi(results.peakAmpsPerPhase)}A per phase exceeds single-conductor capacity. Plan for parallel conductor runs (two hots per phase). Verify cable sizing per NEC tables for run distance and conditions.`}
+          </PdfWarning>
+        )}
       </PdfSection>
 
       {/* Motor Inrush Analysis */}

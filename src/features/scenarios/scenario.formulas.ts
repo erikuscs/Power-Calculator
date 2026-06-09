@@ -1,4 +1,4 @@
-import { SAFETY_MARGINS, BESS_UNIT_SIZES, type BessUnitSize } from '../../lib/constants'
+import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, type BessUnitSize } from '../../lib/constants'
 export type { BessUnitSize }
 
 export function interpolateBSFC(loadFactor: number): number {
@@ -57,6 +57,8 @@ export interface TempPowerResults {
   totalFuelGallons: number
   altitudeDerating: number
   tempDerating: number
+  ampsPerPhase: number
+  parallelRunsNeeded: boolean
   facilityBreakdown: { label: string; kw: number }[]
   hybrid: HybridComparison | null
 }
@@ -122,6 +124,9 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
 
   const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, inputs.durationHours, altitudeDerating, tempDerating)
 
+  const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * 480)
+  const parallelRunsNeeded = ampsPerPhase > 400
+
   return {
     totalLoadKw,
     coolingTons,
@@ -135,6 +140,8 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
     totalFuelGallons,
     altitudeDerating,
     tempDerating,
+    ampsPerPhase,
+    parallelRunsNeeded,
     facilityBreakdown,
     hybrid,
   }
@@ -254,6 +261,9 @@ export interface HybridWizardResults {
   allGenCost30Day: number
   hybridCost30Day: number
   costSavings30Day: number
+  peakAmpsPerPhase: number
+  baseAmpsPerPhase: number
+  parallelRunsNeeded: boolean
   motorAssignments: { id: string; hp: number; method: string; lra: number; assignment: 'bess' | 'generator'; reason: string }[]
   dailyFuelData: { day: number; date: string; allGenGal: number; hybridGal: number; savingsGal: number; cumulativeSavingsGal: number }[]
 }
@@ -328,6 +338,11 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     }
   })
 
+  const siteVoltage3ph = inputs.siteVoltage
+  const peakAmpsPerPhase = (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
+  const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
+  const parallelRunsNeeded = peakAmpsPerPhase > 400
+
   return {
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,
     genCapacityKw, genUnits, genUnitSizeKw, totalCapacityKw, redundancyFactor,
@@ -335,6 +350,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     hybridFuelPerDay, hybridFuelTotal: hybridFuelPerDay * projectDurationDays,
     dailyFuelReduction, totalFuelSavingsGal, totalFuelSavingsDollars,
     allGenCost30Day, hybridCost30Day, costSavings30Day,
+    peakAmpsPerPhase, baseAmpsPerPhase, parallelRunsNeeded,
     motorAssignments, dailyFuelData,
   }
 }

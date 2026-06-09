@@ -37,6 +37,38 @@ describe('calculateTempPower', () => {
     expect(result.coolingTons).toBeGreaterThan(0)
     expect(result.generatorKva).toBeGreaterThan(result.totalWithCoolingKw)
     expect(result.totalFuelGallons).toBeGreaterThan(0)
+    expect(result.ampsPerPhase).toBeGreaterThan(0)
+  })
+
+  it('flags parallel runs when amps exceed 400A per phase', () => {
+    const result = calculateTempPower({
+      mode: 'single',
+      loadKw: 500,
+      sqFt: 5000,
+      ambientTemp: 100,
+      targetTemp: 72,
+      durationHours: 720,
+      altitude: 0,
+      powerFactor: 0.8,
+      facilities: [],
+    })
+    expect(result.ampsPerPhase).toBeGreaterThan(400)
+    expect(result.parallelRunsNeeded).toBe(true)
+  })
+
+  it('does not flag parallel runs for small loads', () => {
+    const result = calculateTempPower({
+      mode: 'single',
+      loadKw: 50,
+      sqFt: 500,
+      ambientTemp: 85,
+      targetTemp: 72,
+      durationHours: 24,
+      altitude: 0,
+      powerFactor: 0.8,
+      facilities: [],
+    })
+    expect(result.parallelRunsNeeded).toBe(false)
   })
 
   it('sums base camp facility loads', () => {

@@ -201,11 +201,19 @@ export default function TempPowerWizard() {
               <ResultItem label="Total Load (with cooling)" value={fmt(results.totalWithCoolingKw, 1)} unit="kW" />
               <ResultItem label="Generator Size" value={fmt(results.generatorKva, 0)} unit="kVA" highlight beforeMargin={fmt(results.generatorKva / 1.25, 0) + ' kVA'} />
               <ResultItem label="Generator Size" value={fmt(results.generatorKw, 0)} unit="kW" highlight beforeMargin={fmt(results.generatorKw / 1.25, 0) + ' kW'} />
+              <ResultItem label="Amps per Phase (3Φ 480V)" value={fmt(results.ampsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
               <ResultItem label="Load Factor" value={fmtPercent(results.loadFactor)} />
               <ResultItem label="BSFC" value={fmt(results.bsfcGalPerKwh, 3)} unit="gal/kWh" />
               <ResultItem label="Fuel Rate" value={fmt(results.fuelGallonsPerHour, 1)} unit="gal/hr" />
               <ResultItem label="Total Fuel" value={fmtInt(results.totalFuelGallons)} unit="gallons" highlight beforeMargin={fmtInt(results.totalFuelGallons / 1.1) + ' gal'} />
             </ResultGrid>
+
+            {results.parallelRunsNeeded && (
+              <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span><strong>{fmt(results.ampsPerPhase, 0)}A per phase exceeds single-conductor capacity.</strong> Plan for parallel conductor runs (two hots per phase). Verify cable sizing per NEC tables for your run distance and conditions.</span>
+              </div>
+            )}
 
             {results.altitudeDerating > 1 && (
               <div className="mt-3 flex items-center gap-2 text-sm text-warning">
