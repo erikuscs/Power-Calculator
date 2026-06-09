@@ -75,15 +75,33 @@ export function calculateCooling(inputs: CoolingInputs): CoolingResults | null {
   const occupantBtu = occupants * 450
   const sensibleBtu = equipmentBtu + envelopeBtu + occupantBtu
 
-  // Latent load from humidity — only applied when RH > 60% (below that, effect is <5%)
+  // Latent load using Sensible Heat Ratio (SHR) — the industry-standard approach
+  // SHR = sensible / total. Lower SHR = more latent load from humidity.
+  // Below 60% RH: SHR ≈ 1.0 (negligible latent). At 80% RH, 90°F: SHR ≈ 0.65.
   const rh = relativeHumidity ?? 0
-  const latentBtu = rh > 60 ? sensibleBtu * ((rh - 60) / 100) * 0.6 : 0
+  let latentBtu = 0
+  if (rh > 60) {
+    const shr = estimateSHR(ambientTemp, rh)
+    latentBtu = (sensibleBtu / shr) - sensibleBtu
+  }
 
   const totalBtu = sensibleBtu + latentBtu
   const tons = totalBtu / 12000
   const tonsWithMargin = tons * 1.15
 
   return { equipmentBtu, envelopeBtu, latentBtu, occupantBtu, totalBtu, tons, tonsWithMargin }
+}
+
+function estimateSHR(tempF: number, rh: number): number {
+  // SHR decreases as temperature and humidity rise
+  // Based on ASHRAE data for outdoor air conditions:
+  //   70°F/50%RH → 0.95,  80°F/60%RH → 0.82,  85°F/65%RH → 0.75
+  //   90°F/70%RH → 0.67,  90°F/75%RH → 0.62,  95°F/80%RH → 0.55
+  //   100°F/85%RH → 0.48
+  const tempFactor = Math.max(0, (tempF - 70) / 30)
+  const rhFactor = Math.max(0, (rh - 50) / 40)
+  const shr = Math.max(0.45, Math.min(0.95, 0.95 - (tempFactor * 0.2 + rhFactor * 0.3)))
+  return shr
 }
 
 export function describeCooling(inputs: CoolingInputs, results: CoolingResults) {
@@ -114,11 +132,13 @@ export function describeCooling(inputs: CoolingInputs, results: CoolingResults) 
   }
   if (results.latentBtu > 0) {
     const rh = inputs.relativeHumidity ?? 0
+    const shr = estimateSHR(inputs.ambientTemp, rh)
+    const sensible = results.equipmentBtu + results.envelopeBtu + results.occupantBtu
     steps.push({
       label: 'Latent Load from Humidity (BTU/hr)',
-      formula: 'Latent BTU = Sensible × ((RH% - 60) / 100) × 0.6',
-      substituted: `${(results.equipmentBtu + results.envelopeBtu + results.occupantBtu).toLocaleString()} × ((${rh} - 60) / 100) × 0.6`,
-      result: `${results.latentBtu.toLocaleString()} BTU/hr`,
+      formula: `SHR = ${shr.toFixed(2)} at ${inputs.ambientTemp}°F / ${rh}% RH → Latent = (Sensible / SHR) - Sensible`,
+      substituted: `(${sensible.toLocaleString()} / ${shr.toFixed(2)}) - ${sensible.toLocaleString()}`,
+      result: `${results.latentBtu.toLocaleString()} BTU/hr (${((results.latentBtu / sensible) * 100).toFixed(0)}% of sensible)`,
     })
   }
   steps.push(

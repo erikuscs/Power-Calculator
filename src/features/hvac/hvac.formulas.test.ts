@@ -93,6 +93,19 @@ describe('calculateCooling', () => {
     expect(humid!.tonsWithMargin).toBeGreaterThan(dry!.tonsWithMargin)
   })
 
+  it('produces realistic latent load at coastal conditions (90°F/75%RH)', () => {
+    const result = calculateCooling({
+      loadKw: 100, sqFt: 2000, ambientTemp: 90, targetTemp: 72,
+      occupants: 20, structureType: 'canvas', structureMultiplier: 1.8,
+      relativeHumidity: 75,
+    })
+    const sensible = result!.equipmentBtu + result!.envelopeBtu + result!.occupantBtu
+    const latentPercent = (result!.latentBtu / sensible) * 100
+    // At 90°F/75%RH, latent should be 30-60% of sensible (SHR ~0.62)
+    expect(latentPercent).toBeGreaterThan(25)
+    expect(latentPercent).toBeLessThan(70)
+  })
+
   it('ignores humidity below 60% RH', () => {
     const result = calculateCooling({
       loadKw: 100, sqFt: 0, ambientTemp: 95, targetTemp: 72,
