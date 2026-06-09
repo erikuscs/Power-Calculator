@@ -40,28 +40,28 @@ describe('calculateTempPower', () => {
     expect(result.ampsPerPhase).toBeGreaterThan(0)
   })
 
-  it('flags parallel runs when amps exceed 400A per phase', () => {
+  it('flags parallel runs when amps exceed 200A per phase (banded 5 threshold)', () => {
     const result = calculateTempPower({
       mode: 'single',
-      loadKw: 500,
-      sqFt: 5000,
-      ambientTemp: 100,
+      loadKw: 200,
+      sqFt: 2000,
+      ambientTemp: 95,
       targetTemp: 72,
       durationHours: 720,
       altitude: 0,
       powerFactor: 0.8,
       facilities: [],
     })
-    expect(result.ampsPerPhase).toBeGreaterThan(400)
+    expect(result.ampsPerPhase).toBeGreaterThan(200)
     expect(result.parallelRunsNeeded).toBe(true)
   })
 
   it('does not flag parallel runs for small loads', () => {
     const result = calculateTempPower({
       mode: 'single',
-      loadKw: 50,
-      sqFt: 500,
-      ambientTemp: 85,
+      loadKw: 20,
+      sqFt: 200,
+      ambientTemp: 80,
       targetTemp: 72,
       durationHours: 24,
       altitude: 0,

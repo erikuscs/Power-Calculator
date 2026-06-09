@@ -53,7 +53,7 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
         />
         {results.parallelRunsNeeded && (
           <PdfWarning>
-            {`${fi(results.ampsPerPhase)}A per phase exceeds single-conductor capacity. Plan for parallel conductor runs (two hots per phase). Verify cable sizing per NEC tables for run distance and conditions.`}
+            {`${fi(results.ampsPerPhase)}A per phase — Gen power cable (cam-lock, 50'): 400A/run = ${Math.ceil(results.ampsPerPhase / 400)} parallel run(s). Banded 5-wire: 200A/run = ${Math.ceil(results.ampsPerPhase / 200)} parallel run(s). Verify per NEC tables for distance and site conditions.`}
           </PdfWarning>
         )}
         {results.altitudeDerating > 1 && (
