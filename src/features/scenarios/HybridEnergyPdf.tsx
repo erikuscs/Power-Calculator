@@ -47,7 +47,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName }:
         />
         {results.parallelRunsNeeded && (
           <PdfWarning>
-            {`${fi(results.peakAmpsPerPhase)}A per phase — Gen power cable (cam-lock, 50'): 400A/run = ${Math.ceil(results.peakAmpsPerPhase / 400)} parallel run(s). Banded 5-wire: 200A/run = ${Math.ceil(results.peakAmpsPerPhase / 200)} parallel run(s). Verify per NEC tables for distance and site conditions.`}
+            {`${fi(results.peakAmpsPerPhase)}A per phase — ${Math.ceil(results.peakAmpsPerPhase / 400)} legs per phase required (generator power cable rated 400A per leg).`}
           </PdfWarning>
         )}
       </PdfSection>

@@ -125,7 +125,7 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, inputs.durationHours, altitudeDerating, tempDerating)
 
   const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * 480)
-  const parallelRunsNeeded = ampsPerPhase > 200
+  const parallelRunsNeeded = ampsPerPhase > 400
 
   return {
     totalLoadKw,
@@ -341,7 +341,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const siteVoltage3ph = inputs.siteVoltage
   const peakAmpsPerPhase = (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
   const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
-  const parallelRunsNeeded = peakAmpsPerPhase > 200
+  const parallelRunsNeeded = peakAmpsPerPhase > 400
 
   return {
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,

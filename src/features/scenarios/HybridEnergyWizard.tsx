@@ -218,7 +218,7 @@ export default function HybridEnergyWizard() {
             {results.parallelRunsNeeded && (
               <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                <span><strong>{fmt(results.peakAmpsPerPhase, 0)}A per phase</strong> — Generator power cable (cam-lock, 50&apos;): 400A/run → {Math.ceil(results.peakAmpsPerPhase / 400)} parallel run{Math.ceil(results.peakAmpsPerPhase / 400) > 1 ? 's' : ''}. Banded 5-wire: 200A/run → {Math.ceil(results.peakAmpsPerPhase / 200)} parallel run{Math.ceil(results.peakAmpsPerPhase / 200) > 1 ? 's' : ''}. Verify cable sizing per NEC tables for your distance and site conditions.</span>
+                <span><strong>{fmt(results.peakAmpsPerPhase, 0)}A per phase — {Math.ceil(results.peakAmpsPerPhase / 400)} legs per phase required</strong> (generator power cable rated 400A per leg).</span>
               </div>
             )}
 
