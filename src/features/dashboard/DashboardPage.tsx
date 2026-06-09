@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel } from 'lucide-react'
+import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3 } from 'lucide-react'
 
 const scenarios = [
   { to: '/scenarios/temp-power', icon: Zap, title: 'Temp Power & Cooling', desc: 'Emergency sizing — enter your load, get an equipment list', accent: true },
   { to: '/scenarios/hybrid-energy', icon: Workflow, title: 'Hybrid Energy (BESS + Gen)', desc: 'Design BESS + generator systems up to 2 MW with redundancy', accent: true },
+  { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Evaluation', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
+  { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'HVAC Load Assessment', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
 ]
 
 const bessCalcs = [

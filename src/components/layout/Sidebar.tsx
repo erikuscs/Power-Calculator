@@ -13,6 +13,8 @@ const navGroups = [
     items: [
       { to: '/scenarios/temp-power', label: 'Temp Power & Cooling' },
       { to: '/scenarios/hybrid-energy', label: 'Hybrid Energy (BESS + Gen)' },
+      { to: '/scenarios/bess-project', label: 'BESS Project Evaluation' },
+      { to: '/scenarios/hvac-assessment', label: 'HVAC Load Assessment' },
     ],
   },
   {

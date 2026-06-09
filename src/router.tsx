@@ -21,6 +21,8 @@ const ChillerPage = lazy(() => import('./features/hvac/ChillerPage'))
 const PsychrometricsPage = lazy(() => import('./features/hvac/PsychrometricsPage'))
 const TempPowerWizard = lazy(() => import('./features/scenarios/TempPowerWizard'))
 const HybridEnergyWizard = lazy(() => import('./features/scenarios/HybridEnergyWizard'))
+const BessProjectWizard = lazy(() => import('./features/scenarios/BessProjectWizard'))
+const HvacAssessmentWizard = lazy(() => import('./features/scenarios/HvacAssessmentWizard'))
 
 interface AppRoute {
   path: string
@@ -51,4 +53,6 @@ export const routes: AppRoute[] = [
   { path: '/hvac/psychrometrics', element: <PsychrometricsPage />, label: 'Psychrometrics', group: 'HVAC' },
   { path: '/scenarios/temp-power', element: <TempPowerWizard />, label: 'Temp Power & Cooling', group: 'Scenarios' },
   { path: '/scenarios/hybrid-energy', element: <HybridEnergyWizard />, label: 'Hybrid Energy (BESS + Gen)', group: 'Scenarios' },
+  { path: '/scenarios/bess-project', element: <BessProjectWizard />, label: 'BESS Project Evaluation', group: 'Scenarios' },
+  { path: '/scenarios/hvac-assessment', element: <HvacAssessmentWizard />, label: 'HVAC Load Assessment', group: 'Scenarios' },
 ]

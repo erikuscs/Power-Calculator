@@ -4,6 +4,8 @@ import { InputField } from '../../components/ui/InputField'
 import { TabGroup } from '../../components/ui/TabGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { fmt } from '../../lib/formatters'
 import {
@@ -99,6 +101,31 @@ export default function GeneratorPowerPage() {
               />
             </ResultGrid>
             <FormulaBreakdown steps={steps} />
+
+            <div className="mt-4 flex justify-center">
+              <PdfExportButton
+                document={
+                  <GenericCalculatorPdf
+                    title="Generator Power Sizing Report"
+                    inputs={[
+                      { label: 'Phase', value: phase === 'single' ? 'Single-Phase' : 'Three-Phase' },
+                      { label: 'Voltage', value: `${voltage} V` },
+                      { label: 'Amperes', value: `${amperes} A` },
+                      { label: 'Power Factor', value: powerFactor },
+                    ]}
+                    results={[
+                      { label: 'Generator kW (with 125% margin)', value: fmt(results.kwMargin, 2), unit: 'kW' },
+                      { label: 'Generator kVA (with 125% margin)', value: fmt(results.kvaMargin, 2), unit: 'kVA' },
+                      { label: 'Before margin kW', value: fmt(results.kwRaw, 2), unit: 'kW' },
+                      { label: 'Before margin kVA', value: fmt(results.kvaRaw, 2), unit: 'kVA' },
+                    ]}
+                    formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
+                    warnings={['Never run a generator above 80% continuous load. Size to 125% minimum.']}
+                  />
+                }
+                filename="generator-sizing-report.pdf"
+              />
+            </div>
           </>
         )}
       </Card>

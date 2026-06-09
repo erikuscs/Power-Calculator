@@ -1,10 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
+import { usePersistedState } from '../../hooks/usePersistedState'
 import { fmt, fmtPercent } from '../../lib/formatters'
 import {
   calcFuelConsumption,
@@ -13,18 +16,20 @@ import {
   type FuelConsumptionResults,
 } from './power.formulas'
 
+const ROUTE_KEY = '/power/fuel-consumption'
+
 const FUEL_OPTIONS = [
   { value: 'diesel', label: 'Diesel' },
   { value: 'naturalGas', label: 'Natural Gas' },
 ]
 
 export default function FuelConsumptionPage() {
-  const [actualKw, setActualKw] = useState('375')
-  const [ratedKw, setRatedKw] = useState('500')
-  const [hours, setHours] = useState('24')
-  const [altitude, setAltitude] = useState('0')
-  const [ambientF, setAmbientF] = useState('77')
-  const [fuelType, setFuelType] = useState<'diesel' | 'naturalGas'>('diesel')
+  const [actualKw, setActualKw] = usePersistedState(ROUTE_KEY, 'actualKw', '375')
+  const [ratedKw, setRatedKw] = usePersistedState(ROUTE_KEY, 'ratedKw', '500')
+  const [hours, setHours] = usePersistedState(ROUTE_KEY, 'hours', '24')
+  const [altitude, setAltitude] = usePersistedState(ROUTE_KEY, 'altitude', '0')
+  const [ambientF, setAmbientF] = usePersistedState(ROUTE_KEY, 'ambientF', '77')
+  const [fuelType, setFuelType] = usePersistedState<'diesel' | 'naturalGas'>(ROUTE_KEY, 'fuelType', 'diesel')
 
   const inputs: FuelConsumptionInputs = {
     actualKw: parseFloat(actualKw) || 0,
@@ -168,6 +173,35 @@ export default function FuelConsumptionPage() {
             </ResultGrid>
 
             <FormulaBreakdown steps={steps} />
+
+            <div className="mt-4 flex justify-center">
+              <PdfExportButton
+                document={
+                  <GenericCalculatorPdf
+                    title="Fuel Consumption Report"
+                    inputs={[
+                      { label: 'Actual Load', value: `${actualKw} kW` },
+                      { label: 'Generator Rated Capacity', value: `${ratedKw} kW` },
+                      { label: 'Runtime', value: `${hours} hours` },
+                      { label: 'Altitude', value: `${altitude} ft ASL` },
+                      { label: 'Ambient Temperature', value: `${ambientF} °F` },
+                      { label: 'Fuel Type', value: fuelType === 'diesel' ? 'Diesel' : 'Natural Gas' },
+                    ]}
+                    results={[
+                      { label: 'Load Factor', value: fmtPercent(results.loadFactor, 1) },
+                      { label: 'BSFC', value: fmt(results.bsfc, 4), unit: 'gal/kWh' },
+                      { label: rateLabel, value: fmt(results.gallonsPerHour, 2), unit: rateUnit },
+                      { label: totalLabel, value: fmt(results.totalFuel, 1), unit: totalUnit },
+                      { label: 'Altitude Derating', value: fmt(results.altitudeDerating, 4) },
+                      { label: 'Temperature Derating', value: fmt(results.tempDerating, 4) },
+                    ]}
+                    formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
+                    warnings={!isEfficient ? ['Generator not running at optimal load factor (70-80%). Consider right-sizing.'] : undefined}
+                  />
+                }
+                filename="fuel-consumption-report.pdf"
+              />
+            </div>
           </>
         )}
       </Card>

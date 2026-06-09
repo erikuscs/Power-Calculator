@@ -14,8 +14,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-      <footer className="border-t border-sg-600 px-4 py-3 text-center text-xs text-text-dim">
-        Calculations are estimates for reference only. Always verify with a licensed professional engineer before making design decisions.
+      <footer className="border-t border-sg-600 bg-sg-900 px-4 py-3 text-center text-xs text-text-dim">
+        <span className="text-warning/70">⚠</span>{' '}Calculations are estimates for reference only. Always verify with a licensed professional engineer before making design decisions.{' '}
+        <span className="text-text-dim">© {new Date().getFullYear()} Sustainable Gaps</span>
       </footer>
     </div>
   )

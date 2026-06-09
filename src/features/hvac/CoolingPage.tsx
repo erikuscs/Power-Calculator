@@ -1,22 +1,27 @@
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
+import { usePersistedState } from '../../hooks/usePersistedState'
 import { calculateCooling, describeCooling, type CoolingInputs } from './hvac.formulas'
 import { STRUCTURE_COOLING_MULTIPLIERS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import { AlertTriangle } from 'lucide-react'
 
+const ROUTE_KEY = '/hvac/cooling'
+
 export default function CoolingPage() {
-  const [loadKw, setLoadKw] = useState('100')
-  const [sqFt, setSqFt] = useState('2000')
-  const [ambientTemp, setAmbientTemp] = useState('95')
-  const [targetTemp, setTargetTemp] = useState('72')
-  const [occupants, setOccupants] = useState('0')
-  const [structureType, setStructureType] = useState('container')
+  const [loadKw, setLoadKw] = usePersistedState(ROUTE_KEY, 'loadKw', '100')
+  const [sqFt, setSqFt] = usePersistedState(ROUTE_KEY, 'sqFt', '2000')
+  const [ambientTemp, setAmbientTemp] = usePersistedState(ROUTE_KEY, 'ambientTemp', '95')
+  const [targetTemp, setTargetTemp] = usePersistedState(ROUTE_KEY, 'targetTemp', '72')
+  const [occupants, setOccupants] = usePersistedState(ROUTE_KEY, 'occupants', '0')
+  const [structureType, setStructureType] = usePersistedState(ROUTE_KEY, 'structureType', 'container')
 
   const mult = STRUCTURE_COOLING_MULTIPLIERS[structureType]?.multiplier ?? 1.0
 
@@ -72,6 +77,35 @@ export default function CoolingPage() {
             <ResultItem label="Recommended (with 15% margin)" value={fmt(results.tonsWithMargin, 1)} unit="tons" highlight />
           </ResultGrid>
           <FormulaBreakdown steps={describeCooling(inputs, results)} />
+
+          <div className="mt-4 flex justify-center">
+            <PdfExportButton
+              document={
+                <GenericCalculatorPdf
+                  title="Cooling Load Report"
+                  inputs={[
+                    { label: 'Equipment Load', value: `${loadKw} kW` },
+                    { label: 'Facility Size', value: `${sqFt} sq ft` },
+                    { label: 'Ambient Temperature', value: `${ambientTemp} °F` },
+                    { label: 'Target Temperature', value: `${targetTemp} °F` },
+                    { label: 'Structure Type', value: `${STRUCTURE_COOLING_MULTIPLIERS[structureType]?.label ?? structureType} (${mult}x)` },
+                    { label: 'Occupants', value: occupants },
+                  ]}
+                  results={[
+                    { label: 'Equipment Heat', value: fmt(results.equipmentBtu, 0), unit: 'BTU/hr' },
+                    { label: 'Envelope Heat Gain', value: fmt(results.envelopeBtu, 0), unit: 'BTU/hr' },
+                    { label: 'Occupant Heat', value: fmt(results.occupantBtu, 0), unit: 'BTU/hr' },
+                    { label: 'Total Heat Gain', value: fmt(results.totalBtu, 0), unit: 'BTU/hr' },
+                    { label: 'Cooling Tonnage (before margin)', value: fmt(results.tons, 1), unit: 'tons' },
+                    { label: 'Recommended (with 15% margin)', value: fmt(results.tonsWithMargin, 1), unit: 'tons' },
+                  ]}
+                  formulaSteps={describeCooling(inputs, results).map((s) => ({ label: s.label, result: s.result }))}
+                  warnings={parseInt(occupants) === 0 ? ['Occupant heat not included — each person adds ~450 BTU/hr.'] : undefined}
+                />
+              }
+              filename="cooling-load-report.pdf"
+            />
+          </div>
         </Card>
       )}
     </div>
