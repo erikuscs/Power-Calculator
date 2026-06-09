@@ -4,6 +4,8 @@ import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
 import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS } from '../../lib/constants'
@@ -302,6 +304,13 @@ export default function TempPowerWizard() {
               </div>
             </Card>
           )}
+
+          <div className="flex justify-center py-4">
+            <PdfExportButton
+              document={<TempPowerPdfDoc inputs={inputs} results={results} />}
+              filename="temp-power-report.pdf"
+            />
+          </div>
 
           <div className="text-center text-xs text-text-dim py-2">
             These are emergency estimates. Final sizing must be verified by a licensed engineer.

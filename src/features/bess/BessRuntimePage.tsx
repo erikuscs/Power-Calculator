@@ -5,6 +5,8 @@ import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { BessRuntimePdfDoc } from './BessRuntimePdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { fmt } from '../../lib/formatters'
 import {
@@ -112,6 +114,13 @@ export default function BessRuntimePage() {
             </ResultGrid>
 
             <FormulaBreakdown steps={steps} />
+
+            <div className="mt-4 flex justify-end">
+              <PdfExportButton
+                document={<BessRuntimePdfDoc inputs={inputs} results={results} />}
+                filename="bess-runtime-report.pdf"
+              />
+            </div>
           </>
         )}
       </Card>

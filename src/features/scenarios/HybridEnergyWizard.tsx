@@ -5,6 +5,8 @@ import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { Button } from '../../components/ui/Button'
+import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
 import { BESS_UNIT_SIZES } from '../../lib/constants'
@@ -347,6 +349,13 @@ export default function HybridEnergyWizard() {
               </div>
             </div>
           </Card>
+
+          <div className="flex justify-center py-4">
+            <PdfExportButton
+              document={<HybridEnergyPdfDoc inputs={inputs} results={results} />}
+              filename="hybrid-energy-report.pdf"
+            />
+          </div>
 
           <div className="text-center text-xs text-text-dim py-2">
             These are estimates for reference only. Final system design must be verified by a licensed professional engineer.
