@@ -52,11 +52,13 @@ export interface CoolingInputs {
   occupants: number
   structureType: string
   structureMultiplier: number
+  relativeHumidity?: number
 }
 
 export interface CoolingResults {
   equipmentBtu: number
   envelopeBtu: number
+  latentBtu: number
   occupantBtu: number
   totalBtu: number
   tons: number
@@ -64,18 +66,24 @@ export interface CoolingResults {
 }
 
 export function calculateCooling(inputs: CoolingInputs): CoolingResults | null {
-  const { loadKw, sqFt, ambientTemp, targetTemp, occupants, structureMultiplier } = inputs
+  const { loadKw, sqFt, ambientTemp, targetTemp, occupants, structureMultiplier, relativeHumidity } = inputs
   if (loadKw <= 0) return null
 
   const equipmentBtu = loadKw * 3412.14
   const deltaT = Math.max(0, ambientTemp - targetTemp)
   const envelopeBtu = sqFt > 0 ? sqFt * deltaT * 0.5 * structureMultiplier : 0
   const occupantBtu = occupants * 450
-  const totalBtu = equipmentBtu + envelopeBtu + occupantBtu
+  const sensibleBtu = equipmentBtu + envelopeBtu + occupantBtu
+
+  // Latent load from humidity — only applied when RH > 60% (below that, effect is <5%)
+  const rh = relativeHumidity ?? 0
+  const latentBtu = rh > 60 ? sensibleBtu * ((rh - 60) / 100) * 0.6 : 0
+
+  const totalBtu = sensibleBtu + latentBtu
   const tons = totalBtu / 12000
   const tonsWithMargin = tons * 1.15
 
-  return { equipmentBtu, envelopeBtu, occupantBtu, totalBtu, tons, tonsWithMargin }
+  return { equipmentBtu, envelopeBtu, latentBtu, occupantBtu, totalBtu, tons, tonsWithMargin }
 }
 
 export function describeCooling(inputs: CoolingInputs, results: CoolingResults) {
@@ -104,11 +112,22 @@ export function describeCooling(inputs: CoolingInputs, results: CoolingResults) 
       result: `${results.occupantBtu.toLocaleString()} BTU/hr`,
     })
   }
+  if (results.latentBtu > 0) {
+    const rh = inputs.relativeHumidity ?? 0
+    steps.push({
+      label: 'Latent Load from Humidity (BTU/hr)',
+      formula: 'Latent BTU = Sensible × ((RH% - 60) / 100) × 0.6',
+      substituted: `${(results.equipmentBtu + results.envelopeBtu + results.occupantBtu).toLocaleString()} × ((${rh} - 60) / 100) × 0.6`,
+      result: `${results.latentBtu.toLocaleString()} BTU/hr`,
+    })
+  }
   steps.push(
     {
       label: 'Total Heat Gain',
-      formula: 'Total = Equipment + Envelope + Occupant',
-      substituted: `${results.equipmentBtu.toLocaleString()} + ${results.envelopeBtu.toLocaleString()} + ${results.occupantBtu.toLocaleString()}`,
+      formula: results.latentBtu > 0 ? 'Total = Sensible + Latent' : 'Total = Equipment + Envelope + Occupant',
+      substituted: results.latentBtu > 0
+        ? `${(results.equipmentBtu + results.envelopeBtu + results.occupantBtu).toLocaleString()} + ${results.latentBtu.toLocaleString()}`
+        : `${results.equipmentBtu.toLocaleString()} + ${results.envelopeBtu.toLocaleString()} + ${results.occupantBtu.toLocaleString()}`,
       result: `${results.totalBtu.toLocaleString()} BTU/hr`,
     },
     {

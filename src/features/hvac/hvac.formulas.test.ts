@@ -77,6 +77,31 @@ describe('calculateCooling', () => {
     expect(canvas!.envelopeBtu).toBeCloseTo(container!.envelopeBtu * 1.8, 0)
   })
 
+  it('adds latent load when RH > 60%', () => {
+    const dry = calculateCooling({
+      loadKw: 100, sqFt: 1000, ambientTemp: 95, targetTemp: 72,
+      occupants: 10, structureType: 'container', structureMultiplier: 1.0,
+    })
+    const humid = calculateCooling({
+      loadKw: 100, sqFt: 1000, ambientTemp: 95, targetTemp: 72,
+      occupants: 10, structureType: 'container', structureMultiplier: 1.0,
+      relativeHumidity: 80,
+    })
+    expect(dry!.latentBtu).toBe(0)
+    expect(humid!.latentBtu).toBeGreaterThan(0)
+    expect(humid!.totalBtu).toBeGreaterThan(dry!.totalBtu)
+    expect(humid!.tonsWithMargin).toBeGreaterThan(dry!.tonsWithMargin)
+  })
+
+  it('ignores humidity below 60% RH', () => {
+    const result = calculateCooling({
+      loadKw: 100, sqFt: 0, ambientTemp: 95, targetTemp: 72,
+      occupants: 0, structureType: 'container', structureMultiplier: 1.0,
+      relativeHumidity: 50,
+    })
+    expect(result!.latentBtu).toBe(0)
+  })
+
   it('applies 15% safety margin to tonnage', () => {
     const result = calculateCooling({
       loadKw: 100, sqFt: 0, ambientTemp: 95, targetTemp: 72,

@@ -9,13 +9,13 @@ import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
-import { BESS_UNIT_SIZES } from '../../lib/constants'
+import { BESS_UNIT_SIZES, SQRT3 } from '../../lib/constants'
 import { fmt, fmtInt, fmtCurrency } from '../../lib/formatters'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, AreaChart, Area,
 } from 'recharts'
-import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Shield, Fuel, DollarSign } from 'lucide-react'
+import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Shield, Fuel, DollarSign, Leaf, ChevronDown, ChevronRight } from 'lucide-react'
 
 let nextMotorId = 1
 
@@ -36,6 +36,20 @@ export default function HybridEnergyWizard() {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
   const [motors, setMotors] = useState<MotorEntry[]>([])
+  const [zones, setZones] = useState<{id: string, name: string, kw: number}[]>([])
+  const [zonesExpanded, setZonesExpanded] = useState(false)
+
+  let nextZoneId = 1
+
+  const addZone = () => {
+    setZones((prev) => [...prev, { id: `zone-${Date.now()}-${nextZoneId++}`, name: `Zone ${prev.length + 1}`, kw: 0 }])
+  }
+
+  const updateZone = (id: string, field: 'name' | 'kw', value: string | number) => {
+    setZones((prev) => prev.map((z) => z.id === id ? { ...z, [field]: field === 'kw' ? (parseFloat(value as string) || 0) : value } : z))
+  }
+
+  const removeZone = (id: string) => setZones((prev) => prev.filter((z) => z.id !== id))
 
   const addMotor = () => {
     setMotors((prev) => [...prev, { id: `motor-${nextMotorId++}`, hp: 50, startMethod: 'dol', fla: 65 }])
@@ -199,6 +213,53 @@ export default function HybridEnergyWizard() {
         </div>
       </Card>
 
+      {/* Power Zones — only when peak > 500 kW */}
+      {inputs.peakLoadKw > 500 && (
+        <Card>
+          <button
+            className="w-full flex items-center justify-between text-left"
+            onClick={() => setZonesExpanded((p) => !p)}
+          >
+            <CardHeader title="Split into Power Zones (Optional)" subtitle="For multi-stage events or distributed sites" />
+            {zonesExpanded ? <ChevronDown size={18} className="text-text-muted mr-2 shrink-0" /> : <ChevronRight size={18} className="text-text-muted mr-2 shrink-0" />}
+          </button>
+
+          {zonesExpanded && (
+            <div className="mt-3 space-y-3">
+              <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-sm text-info">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                For multi-stage events or distributed sites, split the total load into independent zones for per-zone sizing.
+              </div>
+
+              {zones.map((z) => (
+                <div key={z.id} className="bg-sg-800 rounded-lg p-3">
+                  <div className="grid grid-cols-3 gap-3 items-end">
+                    <InputField label="Zone Name" value={z.name} onChange={(v) => updateZone(z.id, 'name', v)} />
+                    <InputField label="Load" unit="kW" value={z.kw} onChange={(v) => updateZone(z.id, 'kw', v)} />
+                    <button onClick={() => removeZone(z.id)} className="text-text-dim hover:text-error mb-2">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <Button size="sm" variant="secondary" onClick={addZone}><Plus size={14} /> Add Zone</Button>
+
+              {zones.length > 0 && (() => {
+                const zonesTotal = zones.reduce((s, z) => s + z.kw, 0)
+                const diff = Math.abs(zonesTotal - inputs.peakLoadKw)
+                return (
+                  <div className={`text-sm px-3 py-2 rounded-lg border ${diff > 1 ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-success/10 border-success/30 text-success'}`}>
+                    Zones total: {fmtInt(zonesTotal)} kW vs Peak Load: {fmtInt(inputs.peakLoadKw)} kW
+                    {diff > 1 && <span className="ml-2 font-medium">(difference: {fmtInt(diff)} kW)</span>}
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+        </Card>
+      )}
+
       {results && inputs.peakLoadKw > 0 && (
         <>
           {/* Step 2: System Configuration */}
@@ -299,11 +360,23 @@ export default function HybridEnergyWizard() {
                     <td className="text-right text-accent-300">{fmtCurrency(results.hybridCost30Day)}</td>
                     <td className="text-right text-success font-semibold">{fmtCurrency(results.costSavings30Day)}</td>
                   </tr>
-                  <tr>
+                  <tr className="border-b border-sg-700">
                     <td className="py-2 text-text font-semibold">Project Fuel Savings</td>
                     <td className="text-right">—</td>
                     <td className="text-right text-accent-300">{fmtInt(results.totalFuelSavingsGal)} gal</td>
                     <td className="text-right text-success font-semibold">{fmtCurrency(results.totalFuelSavingsDollars)}</td>
+                  </tr>
+                  <tr className="border-b border-sg-700">
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-success" />CO2 Avoided</td>
+                    <td className="text-right">—</td>
+                    <td className="text-right text-success">{fmtInt(results.co2AvoidedLbs)} lbs</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-success" />CO2 Avoided</td>
+                    <td className="text-right">—</td>
+                    <td className="text-right text-success font-semibold">{fmt(results.co2AvoidedTons, 1)} tons</td>
+                    <td></td>
                   </tr>
                 </tbody>
               </table>
@@ -359,9 +432,42 @@ export default function HybridEnergyWizard() {
             </div>
           </Card>
 
+          {/* Per-Zone Breakdown */}
+          {zones.length > 0 && (
+            <Card>
+              <CardHeader title="Power Zone Breakdown" subtitle="Per-zone distribution planning (480V 3-phase)" />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-sg-600">
+                      <th className="text-left py-2 text-text-muted">Zone Name</th>
+                      <th className="text-right py-2 text-text-muted">kW</th>
+                      <th className="text-right py-2 text-text-muted">Amps/Phase (480V)</th>
+                      <th className="text-right py-2 text-text-muted">Legs/Phase</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {zones.map((z) => {
+                      const ampsPerPhase = (z.kw * 1000) / (SQRT3 * 480 * 0.8)
+                      const legs = Math.ceil(ampsPerPhase / 400)
+                      return (
+                        <tr key={z.id} className="border-b border-sg-700">
+                          <td className="py-2 text-text">{z.name}</td>
+                          <td className="text-right text-text">{fmtInt(z.kw)}</td>
+                          <td className="text-right text-text">{fmt(ampsPerPhase, 0)}</td>
+                          <td className="text-right text-text">{legs}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={<HybridEnergyPdfDoc inputs={inputs} results={results} />}
+              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} />}
               filename="hybrid-energy-report.pdf"
             />
           </div>

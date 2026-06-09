@@ -1,4 +1,4 @@
-import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, type BessUnitSize } from '../../lib/constants'
+import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize } from '../../lib/constants'
 export type { BessUnitSize }
 
 export function interpolateBSFC(loadFactor: number): number {
@@ -61,6 +61,8 @@ export interface TempPowerResults {
   parallelRunsNeeded: boolean
   facilityBreakdown: { label: string; kw: number }[]
   hybrid: HybridComparison | null
+  co2AvoidedLbs: number
+  co2AvoidedTons: number
 }
 
 export interface HybridComparison {
@@ -127,6 +129,12 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * 480)
   const parallelRunsNeeded = ampsPerPhase > 400
 
+  const hybridFuelSavingsGal = hybrid
+    ? (hybrid.allGen.fuel30Day - hybrid.hybrid.fuel30Day)
+    : 0
+  const co2AvoidedLbs = hybridFuelSavingsGal * CO2_LBS_PER_GALLON_DIESEL
+  const co2AvoidedTons = co2AvoidedLbs / 2000
+
   return {
     totalLoadKw,
     coolingTons,
@@ -144,6 +152,8 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
     parallelRunsNeeded,
     facilityBreakdown,
     hybrid,
+    co2AvoidedLbs,
+    co2AvoidedTons,
   }
 }
 
@@ -264,6 +274,8 @@ export interface HybridWizardResults {
   peakAmpsPerPhase: number
   baseAmpsPerPhase: number
   parallelRunsNeeded: boolean
+  co2AvoidedLbs: number
+  co2AvoidedTons: number
   motorAssignments: { id: string; hp: number; method: string; lra: number; assignment: 'bess' | 'generator'; reason: string }[]
   dailyFuelData: { day: number; date: string; allGenGal: number; hybridGal: number; savingsGal: number; cumulativeSavingsGal: number }[]
 }
@@ -343,6 +355,9 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
   const parallelRunsNeeded = peakAmpsPerPhase > 400
 
+  const co2AvoidedLbs = totalFuelSavingsGal * CO2_LBS_PER_GALLON_DIESEL
+  const co2AvoidedTons = co2AvoidedLbs / 2000
+
   return {
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,
     genCapacityKw, genUnits, genUnitSizeKw, totalCapacityKw, redundancyFactor,
@@ -351,6 +366,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     dailyFuelReduction, totalFuelSavingsGal, totalFuelSavingsDollars,
     allGenCost30Day, hybridCost30Day, costSavings30Day,
     peakAmpsPerPhase, baseAmpsPerPhase, parallelRunsNeeded,
+    co2AvoidedLbs, co2AvoidedTons,
     motorAssignments, dailyFuelData,
   }
 }

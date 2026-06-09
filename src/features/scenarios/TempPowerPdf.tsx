@@ -77,6 +77,7 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
               ['Daily Fuel', `${fi(results.hybrid.allGen.fuelPerDay)} gal`, `${fi(results.hybrid.hybrid.fuelPerDay)} gal`],
               ['30-Day Fuel', `${fi(results.hybrid.allGen.fuel30Day)} gal`, `${fi(results.hybrid.hybrid.fuel30Day)} gal`],
               ['Fuel Savings', '--', `${fv(results.hybrid.hybrid.fuelSavingsPercent, 0)}%`],
+              ['CO2 Avoided', '--', `${fi(results.co2AvoidedLbs)} lbs (${fv(results.co2AvoidedTons)} tons)`],
             ]}
           />
         </PdfSection>

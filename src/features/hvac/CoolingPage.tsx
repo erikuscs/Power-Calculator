@@ -22,8 +22,10 @@ export default function CoolingPage() {
   const [targetTemp, setTargetTemp] = usePersistedState(ROUTE_KEY, 'targetTemp', '72')
   const [occupants, setOccupants] = usePersistedState(ROUTE_KEY, 'occupants', '0')
   const [structureType, setStructureType] = usePersistedState(ROUTE_KEY, 'structureType', 'container')
+  const [rh, setRh] = usePersistedState(ROUTE_KEY, 'rh', '')
 
   const mult = STRUCTURE_COOLING_MULTIPLIERS[structureType]?.multiplier ?? 1.0
+  const rhValue = parseFloat(rh) || 0
 
   const inputs: CoolingInputs = {
     loadKw: parseFloat(loadKw) || 0,
@@ -33,6 +35,7 @@ export default function CoolingPage() {
     occupants: parseInt(occupants) || 0,
     structureType,
     structureMultiplier: mult,
+    relativeHumidity: rhValue > 0 ? rhValue : undefined,
   }
 
   const calculate = useCallback((inp: CoolingInputs) => calculateCooling(inp), [])
@@ -55,6 +58,7 @@ export default function CoolingPage() {
           <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />
           <SelectField label="Structure Type" value={structureType} onChange={setStructureType} options={structureOptions} required tooltip="Affects envelope heat gain multiplier" />
           <InputField label="Occupants" value={occupants} onChange={setOccupants} required tooltip="Each person adds ~250 BTU/hr sensible + ~200 BTU/hr latent" />
+          <InputField label="Relative Humidity" unit="% RH" value={rh} onChange={setRh} placeholder="Optional" tooltip="Leave blank for standard conditions. Above 60% RH, latent load is added automatically." />
         </div>
 
         {parseInt(occupants) === 0 && (
@@ -72,6 +76,7 @@ export default function CoolingPage() {
             <ResultItem label="Equipment Heat" value={fmt(results.equipmentBtu, 0)} unit="BTU/hr" />
             <ResultItem label="Envelope Heat Gain" value={fmt(results.envelopeBtu, 0)} unit="BTU/hr" />
             <ResultItem label="Occupant Heat" value={fmt(results.occupantBtu, 0)} unit="BTU/hr" />
+            {results.latentBtu > 0 && <ResultItem label="Latent Load (Humidity)" value={fmt(results.latentBtu, 0)} unit="BTU/hr" />}
             <ResultItem label="Total Heat Gain" value={fmt(results.totalBtu, 0)} unit="BTU/hr" />
             <ResultItem label="Cooling Tonnage" value={fmt(results.tons, 1)} unit="tons" beforeMargin={`${fmt(results.tons, 1)} tons`} />
             <ResultItem label="Recommended (with 15% margin)" value={fmt(results.tonsWithMargin, 1)} unit="tons" highlight />

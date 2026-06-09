@@ -1,5 +1,6 @@
 import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
 import { Text } from '@react-pdf/renderer'
+import { SQRT3 } from '../../lib/constants'
 import type { HybridWizardInputs, HybridWizardResults } from './scenario.formulas'
 
 export interface HybridEnergyPdfDocProps {
@@ -7,9 +8,10 @@ export interface HybridEnergyPdfDocProps {
   results: HybridWizardResults
   clientName?: string
   projectName?: string
+  zones?: {id: string, name: string, kw: number}[]
 }
 
-export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName }: HybridEnergyPdfDocProps) {
+export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, zones }: HybridEnergyPdfDocProps) {
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -77,6 +79,8 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName }:
             ['30-Day Fuel', `${fi(results.allGenFuel30Day)} gal`, `${fi(results.hybridFuelPerDay * 30)} gal`, `${fi(results.dailyFuelReduction * 30)} gal`],
             ['30-Day Total Cost', fc(results.allGenCost30Day), fc(results.hybridCost30Day), fc(results.costSavings30Day)],
             ['Project Fuel Savings', '--', `${fi(results.totalFuelSavingsGal)} gal`, fc(results.totalFuelSavingsDollars)],
+            ['CO2 Avoided', '--', `${fi(results.co2AvoidedLbs)} lbs`, '--'],
+            ['CO2 Avoided', '--', `${(results.co2AvoidedTons).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tons`, '--'],
           ]}
         />
       </PdfSection>
@@ -97,6 +101,20 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName }:
           ])}
         />
       </PdfSection>
+
+      {/* Power Zone Breakdown */}
+      {zones && zones.length > 0 && (
+        <PdfSection title="Power Zone Breakdown">
+          <PdfTable
+            headers={['Zone Name', 'kW', 'Amps/Phase (480V)', 'Legs/Phase']}
+            rows={zones.map((z) => {
+              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * 480 * 0.8)
+              const legs = Math.ceil(ampsPerPhase / 400)
+              return [z.name, fi(z.kw), fi(ampsPerPhase), `${legs}`]
+            })}
+          />
+        </PdfSection>
+      )}
 
       {/* Distribution Notes */}
       <PdfSection title="Distribution Notes">

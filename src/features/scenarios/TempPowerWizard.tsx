@@ -279,10 +279,15 @@ export default function TempPowerWizard() {
                       <td className="text-right font-medium">{fmtInt(results.hybrid.allGen.fuel30Day)} gal</td>
                       <td className="text-right font-medium text-success">{fmtInt(results.hybrid.hybrid.fuel30Day)} gal</td>
                     </tr>
-                    <tr>
+                    <tr className="border-b border-sg-700">
                       <td className="py-2 font-semibold">Fuel Savings</td>
                       <td className="text-right">—</td>
                       <td className="text-right font-semibold text-success">{fmt(results.hybrid.hybrid.fuelSavingsPercent, 0)}%</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2">CO2 Avoided</td>
+                      <td className="text-right">—</td>
+                      <td className="text-right text-success">{fmtInt(results.co2AvoidedLbs)} lbs ({fmt(results.co2AvoidedTons, 1)} tons)</td>
                     </tr>
                   </tbody>
                 </table>
