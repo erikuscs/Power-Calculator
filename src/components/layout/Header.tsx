@@ -34,7 +34,7 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         </div>
         <div>
           <h1 className="text-base font-bold text-text leading-tight tracking-tight">{APP_BRAND.productName}</h1>
-          <p className="text-[11px] text-accent-400 leading-tight mt-0.5">{APP_BRAND.descriptor}</p>
+          <p className="text-[11px] text-accent-400 uppercase tracking-widest leading-tight mt-0.5">{APP_BRAND.descriptor}</p>
         </div>
       </Link>
       {!isOnline && (

@@ -12,7 +12,7 @@ export function DisclaimerModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-sg-800 border border-sg-600/40 rounded-lg shadow-2xl max-w-md w-full mx-4 p-8">
+      <div className="bg-sg-800 border border-sg-600/40 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8">
         <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-3">{APP_BRAND.productName}</p>
         <h2 className="text-xl font-bold text-text mb-4 tracking-tight leading-tight">
           Energy Management as a Service planning,<br />not engineering design.
