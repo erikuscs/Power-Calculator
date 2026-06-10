@@ -1,12 +1,18 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/*.svg"]
+    "exclude": ["/assets/*", "/*.svg", "/*.ico"]
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-DNS-Prefetch-Control": "off",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "X-Robots-Tag": "noindex, nofollow, noarchive"
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".svg": "image/svg+xml"
   }
 }
