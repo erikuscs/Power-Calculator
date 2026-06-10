@@ -6,6 +6,8 @@ import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { Button } from '../../components/ui/Button'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { ReportContextFields } from '../../components/ui/ReportContextFields'
+import { ChartFrame } from '../../components/ui/ChartFrame'
 import { BessProjectPdfDoc } from './BessProjectPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import {
@@ -24,12 +26,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
 
 export default function BessProjectWizard() {
   const [step, setStep] = useState(1)
+  const [clientName, setClientName] = useState('')
+  const [projectName, setProjectName] = useState('')
 
   // Step 1 — System Requirements
   const [loadKW, setLoadKW] = useState('500')
@@ -116,6 +119,16 @@ export default function BessProjectWizard() {
           </button>
         ))}
       </div>
+
+      <Card>
+        <CardHeader title="Report Context" subtitle="Shown on the exported EMaaS economics package" />
+        <ReportContextFields
+          clientName={clientName}
+          projectName={projectName}
+          onClientNameChange={setClientName}
+          onProjectNameChange={setProjectName}
+        />
+      </Card>
 
       {/* Step 1 — System Requirements */}
       {step === 1 && (
@@ -205,9 +218,8 @@ export default function BessProjectWizard() {
           {/* Cumulative Cash Flow Chart */}
           <Card>
             <CardHeader title="Cumulative Cash Flow" subtitle="Break-even visualization over analysis period" />
-            <div style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
+            <ChartFrame height={300}>
+              <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
                   <XAxis
                     dataKey="year"
@@ -223,7 +235,7 @@ export default function BessProjectWizard() {
                     formatter={(value: unknown) => [fmtCurrency(Number(value)), 'Cumulative']}
                     labelFormatter={(label: unknown) => `Year ${label}`}
                   />
-                  <ReferenceLine y={0} stroke="#22c55e" strokeDasharray="3 3" />
+                  <ReferenceLine y={0} stroke="#38bdf8" strokeDasharray="3 3" />
                   <Line
                     type="monotone"
                     dataKey="cumulative"
@@ -233,8 +245,7 @@ export default function BessProjectWizard() {
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+            </ChartFrame>
           </Card>
 
           {/* Year-by-Year Table */}
@@ -275,9 +286,11 @@ export default function BessProjectWizard() {
                   sizingResults={sizingResults}
                   roiInputs={roiInputs}
                   roiResults={roiResults}
+                  clientName={clientName}
+                  projectName={projectName}
                 />
               }
-              filename="bess-project-report.pdf"
+              filename="emaas-bess-project-report.pdf"
             />
           </div>
 

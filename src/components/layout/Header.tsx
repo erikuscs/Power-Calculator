@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Menu, Zap } from 'lucide-react'
+import { Menu, ShieldCheck, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { APP_BRAND } from '../../lib/brand'
 
 export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const [isOnline, setIsOnline] = useState(
@@ -32,8 +33,8 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
           <Zap size={18} className="text-sg-900" />
         </div>
         <div>
-          <h1 className="text-base font-bold text-text leading-tight tracking-tight">Power Calculator</h1>
-          <p className="text-[11px] text-accent-400 uppercase tracking-widest leading-tight mt-0.5">Sustainable Gaps</p>
+          <h1 className="text-base font-bold text-text leading-tight tracking-tight">{APP_BRAND.productName}</h1>
+          <p className="text-[11px] text-accent-400 leading-tight mt-0.5">{APP_BRAND.descriptor}</p>
         </div>
       </Link>
       {!isOnline && (
@@ -41,6 +42,10 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
           Offline
         </span>
       )}
+      <div className="ml-auto hidden items-center gap-2 rounded-lg border border-sg-600/50 bg-sg-800/70 px-3 py-2 text-xs text-text-muted md:flex">
+        <ShieldCheck size={14} className="text-signal-blue" />
+        <span>Planning-grade console</span>
+      </div>
     </header>
   )
 }

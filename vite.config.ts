@@ -12,10 +12,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Power Calculator — Sustainable Gaps',
-        short_name: 'PowerCalc',
+        name: 'EMaaS.pro Power Console - Sustainable Gaps',
+        short_name: 'EMaaS.pro',
         description:
-          'BESS, generator, cooling, and hybrid energy sizing tools',
+          'Energy Management as a Service tools for BESS, generator, cooling, and hybrid energy planning',
         theme_color: '#1a1f2e',
         background_color: '#1a1f2e',
         display: 'standalone',
@@ -33,7 +33,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
       },
     }),
   ],

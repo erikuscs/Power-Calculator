@@ -72,9 +72,9 @@ export default function PowerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text">Power Calculators</h1>
+        <h1 className="text-2xl font-bold text-text">EMaaS Electrical Tools</h1>
         <p className="text-sm text-text-muted mt-1">
-          Electrical power conversion and sizing tools
+          Power conversion and sizing tools for Energy Management as a Service planning.
         </p>
       </div>
 

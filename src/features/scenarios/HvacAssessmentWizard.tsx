@@ -6,6 +6,7 @@ import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { Button } from '../../components/ui/Button'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { HvacAssessmentPdfDoc } from './HvacAssessmentPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import {
@@ -24,6 +25,8 @@ import { fmt, fmtInt } from '../../lib/formatters'
 
 export default function HvacAssessmentWizard() {
   const [step, setStep] = useState(1)
+  const [clientName, setClientName] = useState('')
+  const [projectName, setProjectName] = useState('')
 
   // Step 1 — Building Parameters
   const [equipmentLoad, setEquipmentLoad] = useState('200')
@@ -146,6 +149,16 @@ export default function HvacAssessmentWizard() {
           </button>
         ))}
       </div>
+
+      <Card>
+        <CardHeader title="Report Context" subtitle="Shown on the exported EMaaS cooling package" />
+        <ReportContextFields
+          clientName={clientName}
+          projectName={projectName}
+          onClientNameChange={setClientName}
+          onProjectNameChange={setProjectName}
+        />
+      </Card>
 
       {/* Step 1 — Building Parameters */}
       {step === 1 && (
@@ -510,9 +523,11 @@ export default function HvacAssessmentWizard() {
                   chillerResults={chillerResults}
                   airsideInputs={airsideInputs}
                   airsideResults={airsideResults}
+                  clientName={clientName}
+                  projectName={projectName}
                 />
               }
-              filename="hvac-assessment-report.pdf"
+              filename="emaas-hvac-assessment-report.pdf"
             />
           </div>
 

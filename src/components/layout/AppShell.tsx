@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { APP_BRAND } from '../../lib/brand'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -15,9 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <footer className="border-t border-sg-600/50 bg-sg-900 px-6 py-4 text-center text-xs text-text-dim leading-relaxed">
-        Calculations are estimates for reference only. Always verify with a licensed professional engineer before making design decisions.
+        {APP_BRAND.productName} outputs are planning estimates for reference only. Always verify with a licensed professional engineer before making design decisions.
         <br className="sm:hidden" />
-        <span className="sm:ml-2">© {new Date().getFullYear()} Sustainable Gaps</span>
+        <span className="sm:ml-2">© {new Date().getFullYear()} {APP_BRAND.reportBrand}</span>
       </footer>
     </div>
   )

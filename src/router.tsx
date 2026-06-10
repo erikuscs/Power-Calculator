@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { lazy, type ReactNode } from 'react'
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'))
@@ -36,7 +37,7 @@ export const routes: AppRoute[] = [
   { path: '/bess/runtime', element: <BessRuntimePage />, label: 'BESS Runtime', group: 'BESS' },
   { path: '/bess/sizing', element: <BessSizingPage />, label: 'Multi-Unit Sizing', group: 'BESS' },
   { path: '/bess/roi', element: <BessRoiPage />, label: 'Revenue / ROI', group: 'BESS' },
-  { path: '/power', element: <PowerDashboard />, label: 'Power Calculators', group: 'Power' },
+  { path: '/power', element: <PowerDashboard />, label: 'EMaaS Electrical Tools', group: 'Power' },
   { path: '/power/general', element: <GeneralPowerPage />, label: 'General Power', group: 'Power' },
   { path: '/power/amperes', element: <AmperesPage />, label: 'Amperes', group: 'Power' },
   { path: '/power/kw-kva', element: <KwKvaPage />, label: 'kW ↔ kVA', group: 'Power' },
@@ -51,8 +52,8 @@ export const routes: AppRoute[] = [
   { path: '/hvac/cooling', element: <CoolingPage />, label: 'Cooling Load', group: 'HVAC' },
   { path: '/hvac/chiller', element: <ChillerPage />, label: 'Chiller Sizing', group: 'HVAC' },
   { path: '/hvac/psychrometrics', element: <PsychrometricsPage />, label: 'Psychrometrics', group: 'HVAC' },
-  { path: '/scenarios/temp-power', element: <TempPowerWizard />, label: 'Temp Power & Cooling', group: 'Scenarios' },
-  { path: '/scenarios/hybrid-energy', element: <HybridEnergyWizard />, label: 'Hybrid Energy (BESS + Gen)', group: 'Scenarios' },
-  { path: '/scenarios/bess-project', element: <BessProjectWizard />, label: 'BESS Project Evaluation', group: 'Scenarios' },
-  { path: '/scenarios/hvac-assessment', element: <HvacAssessmentWizard />, label: 'HVAC Load Assessment', group: 'Scenarios' },
+  { path: '/scenarios/temp-power', element: <TempPowerWizard />, label: 'Temp Power & Cooling', group: 'EMaaS Workflows' },
+  { path: '/scenarios/hybrid-energy', element: <HybridEnergyWizard />, label: 'Hybrid EMaaS Strategy', group: 'EMaaS Workflows' },
+  { path: '/scenarios/bess-project', element: <BessProjectWizard />, label: 'BESS Project Economics', group: 'EMaaS Workflows' },
+  { path: '/scenarios/hvac-assessment', element: <HvacAssessmentWizard />, label: 'Cooling Load Strategy', group: 'EMaaS Workflows' },
 ]

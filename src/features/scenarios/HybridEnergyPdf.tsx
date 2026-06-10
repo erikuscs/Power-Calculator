@@ -2,6 +2,7 @@ import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../.
 import { Text } from '@react-pdf/renderer'
 import { SQRT3 } from '../../lib/constants'
 import type { HybridWizardInputs, HybridWizardResults } from './scenario.formulas'
+import { buildHybridOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
 
 export interface HybridEnergyPdfDocProps {
   inputs: HybridWizardInputs
@@ -16,9 +17,10 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   const redundancyLabel = inputs.redundancy === '2n' ? '2N (Full Redundancy)' : inputs.redundancy === 'n1' ? 'N+1' : 'N (No Redundancy)'
+  const diagram = buildHybridOneLineDiagram(inputs, results, zones ?? [])
 
   return (
-    <PdfDocument title="Hybrid Energy Management Report" clientName={clientName} projectName={projectName}>
+    <PdfDocument title="EMaaS Hybrid Energy Report" clientName={clientName} projectName={projectName}>
       {/* Project Overview */}
       <PdfSection title="Project Overview">
         {clientName && <PdfKeyValue label="Client" value={clientName} />}
@@ -52,6 +54,19 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
             {`${fi(results.peakAmpsPerPhase)}A per phase — ${Math.ceil(results.peakAmpsPerPhase / 400)} legs per phase required (generator power cable rated 400A per leg).`}
           </PdfWarning>
         )}
+      </PdfSection>
+
+      <PdfSection title="One-Line Diagram">
+        <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6 }}>
+          {diagram.caption}
+        </Text>
+        <PdfTable
+          headers={['Stage', 'Element', 'Detail']}
+          rows={flattenDiagramRows(diagram)}
+        />
+        <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 6, fontFamily: 'Courier' }}>
+          {diagram.mermaid}
+        </Text>
       </PdfSection>
 
       {/* Motor Inrush Analysis */}

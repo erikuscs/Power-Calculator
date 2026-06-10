@@ -6,13 +6,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { ChartFrame } from '../../components/ui/ChartFrame'
 import { useCalculator } from '../../hooks/useCalculator'
 import { fmt, fmtCurrency } from '../../lib/formatters'
 import {
@@ -24,7 +24,7 @@ import {
 
 const CHART_COLORS = {
   gold: '#c89a3c',
-  green: '#22c55e',
+  signalBlue: '#38bdf8',
   grid: '#2d3548',
   background: '#242a38',
 } as const
@@ -216,7 +216,7 @@ export default function BessRoiPage() {
                 Cumulative Cash Flow
               </h3>
               <div className="rounded-lg border border-sg-600 p-4" style={{ backgroundColor: CHART_COLORS.background }}>
-                <ResponsiveContainer width="100%" height={300}>
+                <ChartFrame height={300}>
                   <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                     <XAxis
@@ -245,7 +245,7 @@ export default function BessRoiPage() {
                       formatter={(value: unknown) => [fmtCurrency(Number(value)), 'Cumulative']}
                       labelFormatter={(label: unknown) => `Year ${label}`}
                     />
-                    <ReferenceLine y={0} stroke={CHART_COLORS.green} strokeDasharray="4 4" strokeWidth={1.5} />
+                    <ReferenceLine y={0} stroke={CHART_COLORS.signalBlue} strokeDasharray="4 4" strokeWidth={1.5} />
                     <Line
                       type="monotone"
                       dataKey="cumulative"
@@ -255,7 +255,7 @@ export default function BessRoiPage() {
                       activeDot={{ r: 5, fill: CHART_COLORS.gold }}
                     />
                   </LineChart>
-                </ResponsiveContainer>
+                </ChartFrame>
               </div>
             </div>
 
@@ -286,14 +286,14 @@ export default function BessRoiPage() {
                         </td>
                         <td
                           className={`px-4 py-2 text-right font-medium ${
-                            row.cumulative >= 0 ? 'text-green-400' : 'text-red-400'
+                            row.cumulative >= 0 ? 'text-signal-blue' : 'text-coral-400'
                           }`}
                         >
                           {fmtCurrency(row.cumulative)}
                         </td>
                         <td
                           className={`px-4 py-2 text-right ${
-                            row.npv >= 0 ? 'text-green-400' : 'text-red-400'
+                            row.npv >= 0 ? 'text-signal-blue' : 'text-coral-400'
                           }`}
                         >
                           {fmtCurrency(row.npv)}

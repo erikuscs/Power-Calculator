@@ -41,6 +41,10 @@ export interface TempPowerInputs {
   durationHours: number
   altitude: number
   powerFactor: number
+  serviceIntervalDays?: number
+  technicianCoverage?: 'none' | 'business_hours' | '24_7'
+  containmentRequired?: boolean
+  noiseFinePerDay?: number
   facilities: FacilityEntry[]
 }
 
@@ -55,6 +59,9 @@ export interface TempPowerResults {
   bsfcGalPerKwh: number
   fuelGallonsPerHour: number
   totalFuelGallons: number
+  operatingDays: number
+  serviceEvents: number
+  noiseFineExposure: number
   altitudeDerating: number
   tempDerating: number
   ampsPerPhase: number
@@ -123,6 +130,12 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const bsfcGalPerKwh = interpolateBSFC(loadFactor)
   const fuelGallonsPerHour = totalWithCoolingKw * bsfcGalPerKwh * altitudeDerating * tempDerating
   const totalFuelGallons = fuelGallonsPerHour * inputs.durationHours * 1.1
+  const operatingDays = inputs.durationHours / 24
+  const serviceIntervalDays = Math.max(0, inputs.serviceIntervalDays ?? 10)
+  const serviceEvents = serviceIntervalDays > 0
+    ? Math.ceil(operatingDays / serviceIntervalDays)
+    : 0
+  const noiseFineExposure = Math.max(0, inputs.noiseFinePerDay ?? 0) * Math.ceil(operatingDays)
 
   const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, inputs.durationHours, altitudeDerating, tempDerating)
 
@@ -146,6 +159,9 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
     bsfcGalPerKwh,
     fuelGallonsPerHour,
     totalFuelGallons,
+    operatingDays,
+    serviceEvents,
+    noiseFineExposure,
     altitudeDerating,
     tempDerating,
     ampsPerPhase,
@@ -171,10 +187,11 @@ export function evaluateHybrid(
 
   if (!shouldRecommend && peakKw < 100) return null
 
-  let reason = ''
-  if (peakBaseRatio > 1.5) reason = `Peak-to-base ratio is ${peakBaseRatio.toFixed(1)}:1 — BESS handles peaks while generators run at optimal load`
-  else if (durationDays > 7) reason = `${durationDays.toFixed(0)}-day duration — fuel savings compound over time`
-  else reason = 'Hybrid configuration available for comparison'
+  const reason = peakBaseRatio > 1.5
+    ? `Peak-to-base ratio is ${peakBaseRatio.toFixed(1)}:1 — BESS handles peaks while generators run at optimal load`
+    : durationDays > 7
+      ? `${durationDays.toFixed(0)}-day duration — fuel savings compound over time`
+      : 'Hybrid configuration available for comparison'
 
   const genSizeAllGen = peakKw * SAFETY_MARGINS.generator
   const allGenLoadFactor = peakKw / genSizeAllGen

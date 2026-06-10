@@ -35,7 +35,7 @@ export function HvacAssessmentPdfDoc({
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
 
   return (
-    <PdfDocument title="HVAC Load Assessment Report" clientName={clientName} projectName={projectName}>
+    <PdfDocument title="EMaaS Cooling Load Assessment Report" clientName={clientName} projectName={projectName}>
       {/* Building Parameters */}
       <PdfSection title="Building Parameters">
         <PdfKeyValue label="Equipment Load" value={`${fv(coolingInputs.loadKw)} kW`} />

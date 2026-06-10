@@ -1,20 +1,31 @@
 import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
 import { Text } from '@react-pdf/renderer'
 import type { TempPowerInputs, TempPowerResults } from './scenario.formulas'
+import { buildTempPowerOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
+import type { FieldRiskReview } from './fieldRiskReview'
 
 export interface TempPowerPdfDocProps {
   inputs: TempPowerInputs
   results: TempPowerResults
+  riskReview?: FieldRiskReview
   clientName?: string
   projectName?: string
 }
 
-export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: TempPowerPdfDocProps) {
+export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, projectName }: TempPowerPdfDocProps) {
   const fv = (v: number, d = 1) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
+  const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const technicianCoverage =
+    inputs.technicianCoverage === '24_7'
+      ? '24/7 field technician'
+      : inputs.technicianCoverage === 'none'
+        ? 'None / customer managed'
+        : 'Business hours'
+  const diagram = buildTempPowerOneLineDiagram(inputs, results)
 
   return (
-    <PdfDocument title="Temporary Power & Cooling Report" clientName={clientName} projectName={projectName}>
+    <PdfDocument title="EMaaS Temporary Power & Cooling Report" clientName={clientName} projectName={projectName}>
       {/* Project Overview */}
       <PdfSection title="Project Overview">
         <PdfKeyValue label="Sizing Mode" value={inputs.mode === 'single' ? 'Single Load' : 'Base Camp / Multi-Facility'} />
@@ -23,6 +34,10 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
         <PdfKeyValue label="Duration" value={`${fi(inputs.durationHours)} hours (${fv(inputs.durationHours / 24, 0)} days)`} />
         <PdfKeyValue label="Altitude" value={`${fi(inputs.altitude)} ft ASL`} />
         <PdfKeyValue label="Power Factor" value={`${inputs.powerFactor}`} />
+        <PdfKeyValue label="PM Service Interval" value={`${fv(inputs.serviceIntervalDays ?? 10, 0)} days`} />
+        <PdfKeyValue label="Technician Coverage" value={technicianCoverage} />
+        <PdfKeyValue label="Containment Required" value={inputs.containmentRequired === false ? 'No - confirm site spec' : 'Yes - 110% contained'} />
+        <PdfKeyValue label="Noise Fine Exposure" value={fc(results.noiseFineExposure)} />
       </PdfSection>
 
       {/* Facility Breakdown */}
@@ -49,6 +64,8 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
             ['Cooling Tonnage', fv(results.coolingTons), 'tons', 'Yes (1.15x)'],
             ['Fuel Rate', fv(results.fuelGallonsPerHour), 'gal/hr', 'No'],
             ['Total Fuel', fi(results.totalFuelGallons), 'gallons', 'Yes (1.10x contingency)'],
+            ['Operating Duration', fv(results.operatingDays, 1), 'days', 'No'],
+            ['PM Service Events', fi(results.serviceEvents), 'events', 'No'],
           ]}
         />
         {results.parallelRunsNeeded && (
@@ -61,6 +78,42 @@ export function TempPowerPdfDoc({ inputs, results, clientName, projectName }: Te
             {`Altitude derating applied: ${fv((results.altitudeDerating - 1) * 100)}% increase in fuel consumption at ${fi(inputs.altitude)} ft`}
           </PdfWarning>
         )}
+      </PdfSection>
+
+      {riskReview && (
+        <PdfSection title="Field Risk Review">
+          <PdfTable
+            headers={['Metric', 'Value']}
+            rows={[
+              ['Confidence', `${riskReview.confidenceBand.toUpperCase()} (${riskReview.confidenceScore}/100)`],
+              ['Adjusted Planning Load', `${fv(riskReview.adjustedPlanningKw)} kW`],
+              ['Risk-Adjusted Generator', `${fv(riskReview.adjustedGeneratorKva, 0)} kVA / ${fv(riskReview.adjustedGeneratorKw, 0)} kW`],
+              ['Field Risk Contingency', `${fv(riskReview.contingencyKw)} kW`],
+              ['Load Contingency', `${fv(riskReview.loadContingencyPct * 100)}%`],
+              ['Cooling Contingency', `${fv(riskReview.coolingContingencyPct * 100)}%`],
+            ]}
+          />
+          <PdfTable
+            headers={['Risk', 'Status', 'Impact']}
+            rows={riskReview.items.map((item) => [item.label, item.status, item.impact])}
+          />
+          {riskReview.rfis.map((rfi) => (
+            <PdfWarning key={rfi}>{rfi}</PdfWarning>
+          ))}
+        </PdfSection>
+      )}
+
+      <PdfSection title="One-Line Diagram">
+        <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6 }}>
+          {diagram.caption}
+        </Text>
+        <PdfTable
+          headers={['Stage', 'Element', 'Detail']}
+          rows={flattenDiagramRows(diagram)}
+        />
+        <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 6, fontFamily: 'Courier' }}>
+          {diagram.mermaid}
+        </Text>
       </PdfSection>
 
       {/* Hybrid Recommendation */}

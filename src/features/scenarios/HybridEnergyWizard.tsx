@@ -6,14 +6,18 @@ import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { Button } from '../../components/ui/Button'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { ReportContextFields } from '../../components/ui/ReportContextFields'
+import { ChartFrame } from '../../components/ui/ChartFrame'
+import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
 import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
+import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { BESS_UNIT_SIZES, SQRT3 } from '../../lib/constants'
 import { fmt, fmtInt, fmtCurrency } from '../../lib/formatters'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, AreaChart, Area,
+  Tooltip, Legend, AreaChart, Area,
 } from 'recharts'
 import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Shield, Fuel, DollarSign, Leaf, ChevronDown, ChevronRight } from 'lucide-react'
 
@@ -38,6 +42,8 @@ export default function HybridEnergyWizard() {
   const [motors, setMotors] = useState<MotorEntry[]>([])
   const [zones, setZones] = useState<{id: string, name: string, kw: number}[]>([])
   const [zonesExpanded, setZonesExpanded] = useState(false)
+  const [clientName, setClientName] = useState('')
+  const [projectName, setProjectName] = useState('')
 
   let nextZoneId = 1
 
@@ -82,6 +88,7 @@ export default function HybridEnergyWizard() {
 
   const calculate = useCallback((inp: HybridWizardInputs) => calculateHybridWizard(inp), [])
   const results = useCalculator(inputs, calculate)
+  const oneLineDiagram = results ? buildHybridOneLineDiagram(inputs, results, zones) : null
 
   const fuelComparisonData = useMemo(() => {
     if (!results) return []
@@ -107,11 +114,18 @@ export default function HybridEnergyWizard() {
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Step 1: Requirements */}
       <Card>
-        <CardHeader title="Hybrid Energy Management — BESS + Generator" subtitle="Design a redundant power system up to 2 MW" />
+        <CardHeader title="Hybrid EMaaS Strategy - BESS + Generator" subtitle="Design redundant systems for construction, commissioning, and mission-critical loads" />
+
+        <ReportContextFields
+          clientName={clientName}
+          projectName={projectName}
+          onClientNameChange={setClientName}
+          onProjectNameChange={setProjectName}
+        />
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField label="Peak Load Demand" unit="kW" value={peakLoadKw} onChange={setPeakLoadKw} required tooltip="Maximum load the system must handle" max={2000} />
+            <InputField label="Peak Load Demand" unit="kW" value={peakLoadKw} onChange={setPeakLoadKw} required tooltip="Maximum load the system must handle" max={25000} />
             <InputField label="Base/Continuous Load" unit="kW" value={baseLoadKw} onChange={setBaseLoadKw} required tooltip="Average continuous load — generators sized for this" />
           </div>
 
@@ -283,20 +297,20 @@ export default function HybridEnergyWizard() {
               </div>
             )}
 
-            <div className="mt-4" style={{ height: 80 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={capacityBarData} layout="vertical" barSize={30}>
+            <ChartFrame className="mt-4" height={80}>
+              <BarChart data={capacityBarData} layout="vertical" barSize={30}>
                   <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: '#9ca3af', fontSize: 11 }} width={60} />
                   <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
                   <Legend />
-                  <Bar dataKey="base" name="Gen (Base)" stackId="a" fill="#22c55e" />
+                  <Bar dataKey="base" name="Gen (Base)" stackId="a" fill="#38bdf8" />
                   <Bar dataKey="peak" name="BESS (Peak)" stackId="a" fill="#c89a3c" />
                   <Bar dataKey="reserve" name="Redundancy" stackId="a" fill="#6b7280" />
                 </BarChart>
-              </ResponsiveContainer>
-            </div>
+            </ChartFrame>
           </Card>
+
+          {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
 
           {/* Motor Assignments */}
           {results.motorAssignments.length > 0 && (
@@ -383,24 +397,24 @@ export default function HybridEnergyWizard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-              <div style={{ height: 250 }}>
+              <div>
                 <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Fuel Comparison</h4>
-                <ResponsiveContainer width="100%" height="100%">
+                <ChartFrame height={250}>
                   <BarChart data={fuelComparisonData} barGap={8}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
                     <XAxis dataKey="metric" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                     <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
                     <Legend />
-                    <Bar dataKey="allGen" name="All Generator" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="hybrid" name="Hybrid" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="allGen" name="All Generator" fill="#e07460" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="hybrid" name="Hybrid" fill="#38bdf8" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartFrame>
               </div>
 
-              <div style={{ height: 250 }}>
+              <div>
                 <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Savings</h4>
-                <ResponsiveContainer width="100%" height="100%">
+                <ChartFrame height={250}>
                   <AreaChart data={cumulativeSavingsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
                     <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" />
@@ -408,7 +422,7 @@ export default function HybridEnergyWizard() {
                     <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
                     <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Savings (gal)" stroke="#c89a3c" fill="#c89a3c" fillOpacity={0.2} />
                   </AreaChart>
-                </ResponsiveContainer>
+                </ChartFrame>
               </div>
             </div>
           </Card>
@@ -467,8 +481,8 @@ export default function HybridEnergyWizard() {
 
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} />}
-              filename="hybrid-energy-report.pdf"
+              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} clientName={clientName} projectName={projectName} />}
+              filename="emaas-hybrid-energy-report.pdf"
             />
           </div>
 

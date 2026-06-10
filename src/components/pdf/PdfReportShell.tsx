@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { ReactNode } from 'react'
+import { APP_BRAND } from '../../lib/brand'
 
 // ── Brand Tokens ───────────────────────────────────────────────────
 const BRAND = {
@@ -166,10 +167,10 @@ export function PdfDocument({ title, clientName, projectName, date, children }: 
       <Page size="LETTER" style={s.page}>
         {/* Header */}
         <View style={s.header}>
-          <Text style={s.headerCompany}>Sustainable Gaps</Text>
+          <Text style={s.headerCompany}>{APP_BRAND.reportBrand}</Text>
           <Text style={s.headerTitle}>{title}</Text>
           <Text style={s.headerMeta}>
-            {displayDate}
+            {APP_BRAND.descriptor}  |  {APP_BRAND.domain}  |  {displayDate}
             {clientName ? `  |  Client: ${clientName}` : ''}
             {projectName ? `  |  Project: ${projectName}` : ''}
           </Text>
@@ -181,7 +182,7 @@ export function PdfDocument({ title, clientName, projectName, date, children }: 
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerDisclaimer}>
-            Calculations are estimates for reference only. Always verify with a licensed professional engineer.
+            EMaaS.pro calculations are estimates for reference only. Always verify with a licensed professional engineer.
           </Text>
           <Text style={s.footerPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>

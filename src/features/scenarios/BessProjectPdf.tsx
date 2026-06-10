@@ -26,7 +26,7 @@ export function BessProjectPdfDoc({
     v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d })
 
   return (
-    <PdfDocument title="BESS Project Evaluation Report" clientName={clientName} projectName={projectName}>
+    <PdfDocument title="EMaaS BESS Project Economics Report" clientName={clientName} projectName={projectName}>
       {/* Project Parameters */}
       <PdfSection title="Project Parameters">
         <PdfKeyValue label="Load" value={`${fv(sizingInputs.loadKW)} kW`} />

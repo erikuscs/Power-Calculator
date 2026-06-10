@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Vault26 Playbook palette — near-black base, gold accent, coral warnings */
+  /* Sustainable Gaps EMaaS palette - near-black base, SG gold, signal blue, and coral risk states */
   --color-sg-900: #0b0e14;
   --color-sg-800: #111827;
   --color-sg-700: #1a1f2e;
@@ -13,6 +13,10 @@
   --color-accent-400: #d4ad52;
   --color-accent-300: #e8c66a;
 
+  --color-signal-blue: #38bdf8;
+  --color-signal-blue-muted: #164e63;
+  --color-steel-400: #94a3b8;
+
   --color-coral-500: #e07460;
   --color-coral-400: #e8897a;
 
@@ -20,10 +24,10 @@
   --color-text-muted: #9ca3af;
   --color-text-dim: #6b7280;
 
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: #38bdf8;
+  --color-warning: #d4ad52;
+  --color-error: #e07460;
+  --color-info: #38bdf8;
 
   --color-surface: #1a1f2e;
   --color-surface-alt: #111827;

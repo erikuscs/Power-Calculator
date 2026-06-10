@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { interpolateBSFC, calculateTempPower, evaluateHybrid, calculateHybridWizard } from './scenario.formulas'
+import { calcGeneralPower } from '../power/power.formulas'
 
 describe('interpolateBSFC', () => {
   it('returns exact values at data points', () => {
@@ -101,6 +102,29 @@ describe('calculateTempPower', () => {
 
     expect(highAlt.altitudeDerating).toBeGreaterThan(seaLevel.altitudeDerating)
     expect(highAlt.totalFuelGallons).toBeGreaterThan(seaLevel.totalFuelGallons)
+  })
+
+  it('tracks service cadence and noise fine exposure for mission-critical temporary power', () => {
+    const result = calculateTempPower({
+      mode: 'single',
+      loadKw: 4500,
+      sqFt: 10000,
+      ambientTemp: 90,
+      targetTemp: 72,
+      durationHours: 24 * 32,
+      altitude: 0,
+      powerFactor: 0.8,
+      serviceIntervalDays: 10,
+      technicianCoverage: '24_7',
+      containmentRequired: true,
+      noiseFinePerDay: 500,
+      facilities: [],
+    })
+
+    expect(result.operatingDays).toBe(32)
+    expect(result.serviceEvents).toBe(4)
+    expect(result.noiseFineExposure).toBe(16000)
+    expect(result.parallelRunsNeeded).toBe(true)
   })
 })
 
@@ -205,5 +229,51 @@ describe('calculateHybridWizard', () => {
     expect(result.allGenCost30Day).toBeGreaterThan(0)
     expect(result.hybridCost30Day).toBeGreaterThan(0)
     expect(result.totalFuelSavingsDollars).toBeGreaterThan(0)
+  })
+
+  it('handles commissioning-scale hybrid blocks without capping at small event loads', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 4500,
+      baseLoadKw: 50,
+      loadSource: 'measured',
+      bessUnitSize: 600,
+      peakHoursPerDay: 12,
+      projectDurationDays: 5,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 4.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-01-01',
+      endDate: '2026-01-06',
+      motors: [],
+    })
+
+    expect(result.bessUnits).toBeGreaterThan(0)
+    expect(result.totalCapacityKw).toBeGreaterThanOrEqual(4500)
+    expect(result.totalFuelSavingsGal).toBeGreaterThan(0)
+    expect(result.parallelRunsNeeded).toBe(true)
+  })
+})
+
+describe('data-center source-load power smoke checks', () => {
+  it('converts temporary construction power amperage into kW/kVA planning values', () => {
+    const dayLoad = calcGeneralPower({ voltage: 208, amperes: 250, powerFactor: 0.8, phase: 'three' })
+    const nightLoad = calcGeneralPower({ voltage: 208, amperes: 75, powerFactor: 0.8, phase: 'three' })
+    const weekendLoad = calcGeneralPower({ voltage: 208, amperes: 60, powerFactor: 0.8, phase: 'three' })
+
+    expect(dayLoad.kw).toBeCloseTo(72.1, 1)
+    expect(dayLoad.kva).toBeCloseTo(90.1, 1)
+    expect(nightLoad.kw).toBeCloseTo(21.6, 1)
+    expect(weekendLoad.kw).toBeCloseTo(17.3, 1)
+  })
+
+  it('converts a 6000A commissioning block at 480V three-phase into MW-scale planning load', () => {
+    const commissioningBlock = calcGeneralPower({ voltage: 480, amperes: 6000, powerFactor: 0.8, phase: 'three' })
+
+    expect(commissioningBlock.kw).toBeCloseTo(3991, 0)
+    expect(commissioningBlock.kva).toBeCloseTo(4988, 0)
   })
 })

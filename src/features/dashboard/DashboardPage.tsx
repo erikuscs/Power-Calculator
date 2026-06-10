@@ -1,12 +1,21 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3 } from 'lucide-react'
+import { APP_BRAND } from '../../lib/brand'
+import {
+  EMAAS_FIELD_MODES,
+  EMAAS_OPERATING_VARIABLES,
+  EMAAS_OUTCOME_METRICS,
+  EMAAS_POSITIONING,
+  type EmaasOperatingVariable,
+  type EmaasOutcomeMetric,
+} from '../../lib/emaas'
 
 const scenarios = [
-  { to: '/scenarios/temp-power', icon: Zap, title: 'Temp Power & Cooling', desc: 'Emergency sizing — enter your load, get an equipment list', accent: true },
-  { to: '/scenarios/hybrid-energy', icon: Workflow, title: 'Hybrid Energy (BESS + Gen)', desc: 'Design BESS + generator systems up to 2 MW with redundancy', accent: true },
-  { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Evaluation', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
-  { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'HVAC Load Assessment', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
+  { to: '/scenarios/temp-power', icon: Zap, title: 'Temp Power & Cooling', desc: 'Emergency EMaaS sizing with load capture and equipment planning', accent: true },
+  { to: '/scenarios/hybrid-energy', icon: Workflow, title: 'Hybrid EMaaS Strategy', desc: 'Design BESS + generator systems for commissioning blocks and redundant sites', accent: true },
+  { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Economics', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
+  { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'Cooling Load Strategy', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
 ]
 
 const bessCalcs = [
@@ -57,14 +66,94 @@ function CalcGrid({ title, items }: { title: string; items: CalcItem[] }) {
   )
 }
 
+const metricTone: Record<EmaasOutcomeMetric['tone'], string> = {
+  gold: 'border-accent-500/35 bg-accent-500/10 text-accent-300',
+  blue: 'border-signal-blue/35 bg-signal-blue/10 text-signal-blue',
+  coral: 'border-coral-500/35 bg-coral-500/10 text-coral-400',
+  slate: 'border-steel-400/30 bg-steel-400/10 text-steel-400',
+}
+
+function OutcomeMetric({ metric }: { metric: EmaasOutcomeMetric }) {
+  return (
+    <div className={`rounded-lg border px-4 py-4 ${metricTone[metric.tone]}`}>
+      <div className="flex items-center justify-between gap-3">
+        <metric.icon size={18} />
+        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-dim">{metric.label}</span>
+      </div>
+      <div className="mt-4 text-2xl font-bold text-text">{metric.value}</div>
+      <p className="mt-1 text-xs leading-relaxed text-text-muted">{metric.context}</p>
+    </div>
+  )
+}
+
+function OperatingVariable({ item }: { item: EmaasOperatingVariable }) {
+  return (
+    <div className="flex gap-3 rounded-lg border border-sg-600/40 bg-sg-800/65 p-4">
+      <item.icon size={17} className="mt-0.5 shrink-0 text-accent-400" />
+      <div>
+        <h3 className="text-sm font-bold text-text">{item.label}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">{item.detail}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold text-text tracking-tight">Power Calculator</h1>
-        <p className="text-text-muted mt-2 text-base leading-relaxed">Sizing tools for BESS, generators, cooling, and hybrid energy systems</p>
-      </div>
-      <CalcGrid title="Quick Start — What are you sizing today?" items={scenarios} />
+    <div className="max-w-6xl mx-auto space-y-10">
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
+        <div className="flex flex-col justify-between rounded-lg border border-sg-600/40 bg-sg-800/70 p-6 md:p-7">
+          <div>
+            <p className="text-[10px] font-bold text-accent-400 uppercase tracking-[0.15em] mb-3">{APP_BRAND.descriptor}</p>
+            <h1 className="text-3xl font-bold text-text tracking-tight md:text-4xl">{APP_BRAND.suiteName}</h1>
+            <p className="mt-3 max-w-3xl text-base leading-relaxed text-text-muted">
+              {EMAAS_POSITIONING}
+            </p>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-2 text-xs text-text-muted sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            <span className="rounded-lg border border-sg-600/50 px-3 py-2">{APP_BRAND.domain}</span>
+            <span className="rounded-lg border border-sg-600/50 px-3 py-2">Data center centric</span>
+            <span className="rounded-lg border border-sg-600/50 px-3 py-2">Report ready</span>
+            <span className="rounded-lg border border-sg-600/50 px-3 py-2">Engineer review</span>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-sg-600/40 bg-sg-800">
+          <img
+            src="/media/emaas-data-center-ops.webp"
+            alt="Data center energy operations model with BESS, generators, cooling, switchgear, and telemetry"
+            className="h-full min-h-72 w-full object-cover"
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {EMAAS_OUTCOME_METRICS.map((metric) => (
+          <OutcomeMetric key={metric.label} metric={metric} />
+        ))}
+      </section>
+
+      <CalcGrid title="EMaaS Workflows - What are you managing today?" items={scenarios} />
+
+      <section>
+        <h2 className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em] mb-4">Operating Variables Covered</h2>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {EMAAS_OPERATING_VARIABLES.map((item) => (
+            <OperatingVariable key={item.label} item={item} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em] mb-4">Commercial Use Cases</h2>
+        <div className="flex flex-wrap gap-2">
+          {EMAAS_FIELD_MODES.map((mode) => (
+            <span key={mode} className="rounded-lg border border-sg-600/50 bg-sg-800/55 px-3 py-2 text-xs text-text-muted">
+              {mode}
+            </span>
+          ))}
+        </div>
+      </section>
+
       <CalcGrid title="BESS (Battery Energy Storage)" items={bessCalcs} />
       <CalcGrid title="Electrical Power" items={powerCalcs} />
       <CalcGrid title="HVAC / Cooling" items={hvacCalcs} />

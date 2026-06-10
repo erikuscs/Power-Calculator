@@ -5,13 +5,20 @@ import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
+import { ReportContextFields } from '../../components/ui/ReportContextFields'
+import { ChartFrame } from '../../components/ui/ChartFrame'
+import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
+import { FieldRiskReviewPanel } from '../../components/ui/FieldRiskReviewPanel'
+import { Button } from '../../components/ui/Button'
 import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
+import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
+import { buildFieldRiskReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
 import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS } from '../../lib/constants'
 import { fmt, fmtInt, fmtPercent } from '../../lib/formatters'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { Trash2, AlertTriangle, Info } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { ClipboardList, Trash2, AlertTriangle, Info } from 'lucide-react'
 
 let nextId = 1
 
@@ -24,7 +31,14 @@ export default function TempPowerWizard() {
   const [durationHours, setDurationHours] = useState('720')
   const [altitude, setAltitude] = useState('0')
   const [powerFactor, setPowerFactor] = useState('0.8')
+  const [serviceIntervalDays, setServiceIntervalDays] = useState('10')
+  const [technicianCoverage, setTechnicianCoverage] = useState<'none' | 'business_hours' | '24_7'>('business_hours')
+  const [containmentRequired, setContainmentRequired] = useState(true)
+  const [noiseFinePerDay, setNoiseFinePerDay] = useState('0')
+  const [clientName, setClientName] = useState('')
+  const [projectName, setProjectName] = useState('')
   const [facilities, setFacilities] = useState<FacilityEntry[]>([])
+  const [riskInputs, setRiskInputs] = useState<TempPowerRiskInputs>(defaultTempPowerRiskInputs)
 
   const addFacility = (type: string) => {
     const preset = FACILITY_PRESETS[type]
@@ -60,6 +74,43 @@ export default function TempPowerWizard() {
     setFacilities((prev) => prev.filter((f) => f.id !== id))
   }
 
+  const updateRiskInput = <K extends keyof TempPowerRiskInputs>(field: K, value: TempPowerRiskInputs[K]) => {
+    setRiskInputs((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const loadTempHousingScenario = () => {
+    setMode('basecamp')
+    setLoadKw('0')
+    setSqFt('0')
+    setAmbientTemp('95')
+    setTargetTemp('72')
+    setDurationHours('23376')
+    setAltitude('0')
+    setPowerFactor('0.8')
+    setServiceIntervalDays('10')
+    setTechnicianCoverage('24_7')
+    setContainmentRequired(true)
+    setNoiseFinePerDay('0')
+    setClientName('Stark Industries')
+    setProjectName('Temporary Housing - North Lot')
+    setFacilities([
+      { id: 'workshop-rv', type: 'rv', label: 'RV Pedestal (50A)', quantity: 60, kwPerUnit: 9.6, structureType: 'container', structureMultiplier: 1.0 },
+      { id: 'workshop-bath', type: 'bathroom', label: 'Bathroom Trailer', quantity: 4, kwPerUnit: 14.4, structureType: 'container', structureMultiplier: 1.0 },
+      { id: 'workshop-shower', type: 'shower', label: 'Shower Trailer', quantity: 2, kwPerUnit: 57.6, structureType: 'container', structureMultiplier: 1.0 },
+      { id: 'workshop-concession', type: 'concession', label: 'Concession Structure', quantity: 2, kwPerUnit: 115.3, structureType: 'sprung', structureMultiplier: 1.4 },
+    ])
+    setRiskInputs({
+      ...defaultTempPowerRiskInputs,
+      rvService: 'unknown',
+      hiddenPlugLoads: 'unknown',
+      motorStarting: 'unknown',
+      occupancyVariance: 'assume_typical',
+      airDistribution: 'unknown',
+      winterHeat: 'unknown',
+      waterHeating: 'unknown',
+    })
+  }
+
   const inputs: TempPowerInputs = {
     mode,
     loadKw: parseFloat(loadKw) || 0,
@@ -69,11 +120,25 @@ export default function TempPowerWizard() {
     durationHours: parseFloat(durationHours) || 24,
     altitude: parseFloat(altitude) || 0,
     powerFactor: parseFloat(powerFactor) || 0.8,
+    serviceIntervalDays: parseFloat(serviceIntervalDays) || 0,
+    technicianCoverage,
+    containmentRequired,
+    noiseFinePerDay: parseFloat(noiseFinePerDay) || 0,
     facilities,
   }
 
   const calculate = useCallback((inp: TempPowerInputs) => calculateTempPower(inp), [])
   const results = useCalculator(inputs, calculate)
+  const oneLineDiagram = results ? buildTempPowerOneLineDiagram(inputs, results) : null
+  const fieldRiskReview = results
+    ? buildFieldRiskReview({
+        inputs: riskInputs,
+        totalLoadKw: results.totalLoadKw,
+        coolingKw: results.coolingKw,
+        totalWithCoolingKw: results.totalWithCoolingKw,
+        powerFactor: inputs.powerFactor,
+      })
+    : null
 
   const structureOptions = Object.entries(STRUCTURE_COOLING_MULTIPLIERS).map(([value, { label, multiplier }]) => ({
     value,
@@ -96,7 +161,23 @@ export default function TempPowerWizard() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
-        <CardHeader title="Temporary Power & Cooling" subtitle="Emergency sizing — enter your load, get an equipment list" />
+        <CardHeader
+          title="Temporary Power & Cooling"
+          subtitle="EMaaS load capture, equipment planning, service cadence, and report generation"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={loadTempHousingScenario}>
+              <ClipboardList size={14} />
+              Load Temp Housing Scenario
+            </Button>
+          }
+        />
+
+        <ReportContextFields
+          clientName={clientName}
+          projectName={projectName}
+          onClientNameChange={setClientName}
+          onProjectNameChange={setProjectName}
+        />
 
         <RadioGroup
           label="Sizing Mode"
@@ -131,6 +212,27 @@ export default function TempPowerWizard() {
             ]}
             required
           />
+          <InputField label="PM Service Interval" unit="days" value={serviceIntervalDays} onChange={setServiceIntervalDays} tooltip="Planned maintenance cadence for generators and temporary power assets" />
+          <SelectField
+            label="Technician Coverage"
+            value={technicianCoverage}
+            onChange={(v) => setTechnicianCoverage(v as 'none' | 'business_hours' | '24_7')}
+            options={[
+              { value: 'none', label: 'None / customer managed' },
+              { value: 'business_hours', label: 'Business hours' },
+              { value: '24_7', label: '24/7 field technician' },
+            ]}
+          />
+          <SelectField
+            label="Containment Required"
+            value={containmentRequired ? 'yes' : 'no'}
+            onChange={(v) => setContainmentRequired(v === 'yes')}
+            options={[
+              { value: 'yes', label: 'Yes - 110% contained' },
+              { value: 'no', label: 'No - confirm site spec' },
+            ]}
+          />
+          <InputField label="Night Noise Fine" unit="$/day" value={noiseFinePerDay} onChange={setNoiseFinePerDay} tooltip="Daily fine exposure if site noise limits are exceeded" />
         </div>
       </Card>
 
@@ -206,6 +308,9 @@ export default function TempPowerWizard() {
               <ResultItem label="BSFC" value={fmt(results.bsfcGalPerKwh, 3)} unit="gal/kWh" />
               <ResultItem label="Fuel Rate" value={fmt(results.fuelGallonsPerHour, 1)} unit="gal/hr" />
               <ResultItem label="Total Fuel" value={fmtInt(results.totalFuelGallons)} unit="gallons" highlight beforeMargin={fmtInt(results.totalFuelGallons / 1.1) + ' gal'} />
+              <ResultItem label="Operating Days" value={fmt(results.operatingDays, 1)} unit="days" />
+              <ResultItem label="PM Service Events" value={fmtInt(results.serviceEvents)} unit="events" />
+              <ResultItem label="Noise Fine Exposure" value={`$${fmtInt(results.noiseFineExposure)}`} highlight={results.noiseFineExposure > 0} />
             </ResultGrid>
 
             {results.parallelRunsNeeded && (
@@ -233,6 +338,16 @@ export default function TempPowerWizard() {
               </div>
             </div>
           </Card>
+
+          {fieldRiskReview && (
+            <FieldRiskReviewPanel
+              inputs={riskInputs}
+              review={fieldRiskReview}
+              onChange={updateRiskInput}
+            />
+          )}
+
+          {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
 
           {results.hybrid && (
             <Card>
@@ -294,19 +409,17 @@ export default function TempPowerWizard() {
               </div>
 
               {fuelComparisonData.length > 0 && (
-                <div className="mt-4" style={{ height: 250 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={fuelComparisonData} barGap={8}>
+                <ChartFrame className="mt-4" height={250}>
+                  <BarChart data={fuelComparisonData} barGap={8}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
                       <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} />
                       <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} />
                       <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
                       <Legend />
-                      <Bar dataKey="All Generator" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Hybrid (Gen + BESS)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="All Generator" fill="#e07460" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Hybrid (Gen + BESS)" fill="#38bdf8" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                </ChartFrame>
               )}
 
               <div className="mt-4 space-y-2 text-sm">
@@ -320,8 +433,8 @@ export default function TempPowerWizard() {
 
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={<TempPowerPdfDoc inputs={inputs} results={results} />}
-              filename="temp-power-report.pdf"
+              document={<TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />}
+              filename="emaas-temp-power-report.pdf"
             />
           </div>
 

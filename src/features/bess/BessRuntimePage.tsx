@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
@@ -59,12 +59,12 @@ export default function BessRuntimePage() {
   // Calculation history
   const { entries, addEntry, clearHistory } = useCalculationHistory<RuntimeInputs>(ROUTE_KEY)
 
-  const inputs: RuntimeInputs = {
+  const inputs: RuntimeInputs = useMemo(() => ({
     kWh: parseFloat(kWh) || 0,
     voltage: parseFloat(voltage) || 0,
     amps: parseFloat(amps) || 0,
     powerFactor: parseFloat(powerFactor) || 0.8,
-  }
+  }), [kWh, voltage, amps, powerFactor])
 
   const calculate = useCallback(
     (i: RuntimeInputs): RuntimeResults | null => {

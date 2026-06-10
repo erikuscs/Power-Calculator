@@ -12,8 +12,8 @@ export default function HvacDashboard() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text">HVAC Calculators</h1>
-        <p className="text-text-muted mt-1">Cooling load, chiller sizing, and psychrometric calculations</p>
+        <h1 className="text-2xl font-bold text-text">EMaaS Cooling Tools</h1>
+        <p className="text-text-muted mt-1">Cooling load, chiller sizing, and psychrometric planning for energy-managed sites</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {calculators.map((calc) => (
