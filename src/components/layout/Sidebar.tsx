@@ -63,7 +63,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       )}
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-sg-900 border-r border-sg-600 z-50 overflow-y-auto
+          fixed top-0 left-0 h-full w-64 bg-sg-900 border-r border-sg-600/30 z-50 overflow-y-auto
           transform transition-transform duration-200
           ${open ? 'translate-x-0' : '-translate-x-full'}
           lg:static lg:translate-x-0 lg:z-0
@@ -77,9 +77,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <nav className="px-3 pb-6 space-y-5">
           {navGroups.map((group) => (
             <div key={group.label}>
-              <div className="flex items-center gap-2 px-3 mb-1">
-                <group.icon size={14} className="text-accent-500" />
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{group.label}</span>
+              <div className="flex items-center gap-2 px-3 mb-2">
+                <group.icon size={13} className="text-accent-500" />
+                <span className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em]">{group.label}</span>
               </div>
               <ul className="space-y-0.5">
                 {group.items.map((item) => (
@@ -89,10 +89,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                       end={item.to === '/'}
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                        `block px-3 py-2 rounded-lg text-sm transition-colors ${
                           isActive
-                            ? 'bg-accent-500/15 text-accent-300 font-medium'
-                            : 'text-text-muted hover:bg-sg-700 hover:text-text'
+                            ? 'bg-accent-500/10 text-accent-300 font-medium border-l-2 border-accent-500'
+                            : 'text-text-muted hover:bg-sg-800 hover:text-text'
                         }`
                       }
                     >

@@ -41,14 +41,14 @@ interface CalcItem {
 function CalcGrid({ title, items }: { title: string; items: CalcItem[] }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">{title}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <h2 className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em] mb-4">{title}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
           <Link key={item.to} to={item.to} className="no-underline">
-            <Card className={`hover:border-accent-500/50 transition-colors h-full ${'accent' in item && item.accent ? 'border-accent-500/30 bg-accent-500/5' : ''}`}>
-              <item.icon size={22} className="text-accent-500 mb-2" />
-              <h3 className="text-sm font-semibold text-text mb-1">{item.title}</h3>
-              <p className="text-xs text-text-muted leading-relaxed">{item.desc}</p>
+            <Card className={`hover:border-accent-500/40 transition-all h-full ${item.accent ? 'border-l-3 border-l-accent-500' : ''}`}>
+              <item.icon size={20} className="text-accent-500 mb-3" />
+              <h3 className="text-sm font-bold text-text mb-1 tracking-tight">{item.title}</h3>
+              <p className="text-xs text-text-dim leading-relaxed">{item.desc}</p>
             </Card>
           </Link>
         ))}
@@ -59,10 +59,10 @@ function CalcGrid({ title, items }: { title: string; items: CalcItem[] }) {
 
 export default function DashboardPage() {
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-10">
       <div>
-        <h1 className="text-2xl font-bold text-text">Power Calculator</h1>
-        <p className="text-text-muted mt-1">Sizing tools for BESS, generators, cooling, and hybrid energy systems</p>
+        <h1 className="text-3xl font-bold text-text tracking-tight">Power Calculator</h1>
+        <p className="text-text-muted mt-2 text-base leading-relaxed">Sizing tools for BESS, generators, cooling, and hybrid energy systems</p>
       </div>
       <CalcGrid title="Quick Start — What are you sizing today?" items={scenarios} />
       <CalcGrid title="BESS (Battery Energy Storage)" items={bessCalcs} />
