@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor iOS build artifacts
+ios/App/build
+ios/App/output
+ios/DerivedData
