@@ -198,13 +198,19 @@ export function calculateAirsideTonnage(inputs: AirsideTonnageInputs): AirsideTo
   return { inletEnthalpy, outletEnthalpy, totalCoolingBtu, tonnage, sensibleCoolingBtu, latentCoolingBtu }
 }
 
+// Moist-air enthalpy in BTU/lb dry air (IP units — required by the
+// 4.5 × CFM × Δh airside formula). Humidity ratio via ASHRAE Fundamentals
+// psychrometric relation from wet-bulb; saturation pressure via Magnus.
 function estimateEnthalpy(dryBulb: number, wetBulb: number): number {
   const tC = (dryBulb - 32) * 5 / 9
   const wbC = (wetBulb - 32) * 5 / 9
   const satPressWb = 610.78 * Math.exp((17.27 * wbC) / (wbC + 237.3))
-  const W = 0.622 * (satPressWb / (101325 - satPressWb)) - 0.000662 * (tC - wbC)
+  const Ws = 0.622 * (satPressWb / (101325 - satPressWb))
+  const W =
+    ((2501 - 2.381 * wbC) * Ws - 1.006 * (tC - wbC)) /
+    (2501 + 1.805 * tC - 4.186 * wbC)
   const Wpos = Math.max(0, W)
-  return 1.006 * tC + Wpos * (2501 + 1.86 * tC)
+  return 0.24 * dryBulb + Wpos * (1061 + 0.444 * dryBulb)
 }
 
 export function describeAirsideTonnage(inputs: AirsideTonnageInputs, results: AirsideTonnageResults) {

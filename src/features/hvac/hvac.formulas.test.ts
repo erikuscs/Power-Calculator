@@ -125,6 +125,25 @@ describe('calculateCooling', () => {
 })
 
 describe('calculateAirsideTonnage', () => {
+  it('matches the ASHRAE textbook case: 80/67°F to 55/54°F at 10,000 CFM ≈ 33 tons', () => {
+    // Published values: h(80°F db / 67°F wb) ≈ 31.5 BTU/lb, h(55/54) ≈ 22.6 BTU/lb,
+    // total ≈ 4.5 × 10,000 × 8.9 ≈ 400,000 BTU/hr ≈ 33 tons.
+    const result = calculateAirsideTonnage({
+      cfm: 10000,
+      inletDryBulb: 80,
+      inletWetBulb: 67,
+      outletDryBulb: 55,
+      outletWetBulb: 54,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.inletEnthalpy).toBeGreaterThan(30.9)
+    expect(result!.inletEnthalpy).toBeLessThan(32.1)
+    expect(result!.outletEnthalpy).toBeGreaterThan(22.1)
+    expect(result!.outletEnthalpy).toBeLessThan(23.1)
+    expect(result!.tonnage).toBeGreaterThan(31)
+    expect(result!.tonnage).toBeLessThan(35)
+  })
+
   it('calculates sensible and latent cooling from CFM', () => {
     const result = calculateAirsideTonnage({
       cfm: 10000,
@@ -136,6 +155,8 @@ describe('calculateAirsideTonnage', () => {
     expect(result).not.toBeNull()
     expect(result!.tonnage).toBeGreaterThan(0)
     expect(result!.sensibleCoolingBtu).toBeCloseTo(1.08 * 10000 * (95 - 55), 0)
+    // Latent must be positive when dehumidifying from 78°F to 54°F wet bulb
+    expect(result!.latentCoolingBtu).toBeGreaterThan(0)
   })
 
   it('returns null for zero CFM', () => {

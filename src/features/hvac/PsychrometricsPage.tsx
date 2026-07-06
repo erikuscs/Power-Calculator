@@ -54,8 +54,8 @@ export default function PsychrometricsPage() {
             <ResultItem label="Tonnage" value={fmt(results.tonnage, 1)} unit="tons" highlight />
             <ResultItem label="Sensible Cooling" value={fmt(results.sensibleCoolingBtu, 0)} unit="BTU/hr" />
             <ResultItem label="Latent Cooling" value={fmt(results.latentCoolingBtu, 0)} unit="BTU/hr" />
-            <ResultItem label="Inlet Enthalpy" value={fmt(results.inletEnthalpy, 2)} unit="kJ/kg" />
-            <ResultItem label="Outlet Enthalpy" value={fmt(results.outletEnthalpy, 2)} unit="kJ/kg" />
+            <ResultItem label="Inlet Enthalpy" value={fmt(results.inletEnthalpy, 2)} unit="BTU/lb" />
+            <ResultItem label="Outlet Enthalpy" value={fmt(results.outletEnthalpy, 2)} unit="BTU/lb" />
           </ResultGrid>
           <FormulaBreakdown steps={describeAirsideTonnage(inputs, results)} />
         </Card>

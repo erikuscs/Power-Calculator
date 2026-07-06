@@ -36,7 +36,7 @@ export default function BessSizingPage() {
 
   const calculate = useCallback(
     (i: SizingInputs): SizingResults | null => {
-      if (i.loadKW <= 0 || i.hours <= 0 || i.dodPercent <= 0 || i.unitCapacity <= 0) return null
+      if (i.loadKW <= 0 || i.hours <= 0 || i.dodPercent <= 0 || i.dodPercent > 100 || i.unitCapacity <= 0 || i.lossesPercent < 0 || i.lossesPercent >= 100) return null
       return calculateSizing(i)
     },
     [],
