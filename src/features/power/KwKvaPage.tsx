@@ -31,7 +31,7 @@ export default function KwKvaPage() {
 
   const calculate = useCallback(
     (i: KwKvaInputs): KwKvaResults | null => {
-      if (i.value <= 0 || i.powerFactor <= 0) return null
+      if (i.value <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calcKwKva(i)
     },
     [],

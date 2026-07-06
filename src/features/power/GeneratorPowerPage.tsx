@@ -35,7 +35,7 @@ export default function GeneratorPowerPage() {
 
   const calculate = useCallback(
     (i: GeneratorPowerInputs): GeneratorPowerResults | null => {
-      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0) return null
+      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calcGeneratorPower(i)
     },
     [],

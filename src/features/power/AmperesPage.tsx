@@ -33,7 +33,7 @@ export default function AmperesPage() {
 
   const calculate = useCallback(
     (i: AmperesInputs): AmperesResults | null => {
-      if (i.kw <= 0 || i.voltage <= 0 || i.powerFactor <= 0) return null
+      if (i.kw <= 0 || i.voltage <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calcAmperes(i)
     },
     [],

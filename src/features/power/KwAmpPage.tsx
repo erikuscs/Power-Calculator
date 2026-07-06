@@ -41,7 +41,7 @@ export default function KwAmpPage() {
 
   const calculate = useCallback(
     (i: KwAmpInputs): KwAmpResults | null => {
-      if (i.value <= 0 || i.voltage <= 0 || i.powerFactor <= 0) return null
+      if (i.value <= 0 || i.voltage <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calcKwAmp(i)
     },
     [],

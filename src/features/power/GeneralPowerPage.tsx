@@ -33,7 +33,7 @@ export default function GeneralPowerPage() {
 
   const calculate = useCallback(
     (i: GeneralPowerInputs): GeneralPowerResults | null => {
-      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0) return null
+      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calcGeneralPower(i)
     },
     [],

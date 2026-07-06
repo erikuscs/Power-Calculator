@@ -35,7 +35,7 @@ export default function UpsPowerPage() {
 
   const calculate = useCallback(
     (i: UpsPowerInputs): UpsPowerResults | null => {
-      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0 || i.batteryKwh <= 0) return null
+      if (i.voltage <= 0 || i.amperes <= 0 || i.powerFactor <= 0 || i.powerFactor > 1 || i.batteryKwh <= 0) return null
       return calcUpsPower(i)
     },
     [],
