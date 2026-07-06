@@ -124,6 +124,31 @@ describe('calculateCooling', () => {
   })
 })
 
+describe('occupant activity levels', () => {
+  const base = {
+    loadKw: 10, sqFt: 0, ambientTemp: 95, targetTemp: 72,
+    occupants: 300, structureType: 'vinyl', structureMultiplier: 1.5,
+  }
+
+  it('defaults to seated 450 BTU/person when no activity level given', () => {
+    const result = calculateCooling(base)
+    expect(result!.occupantBtu).toBe(300 * 450)
+  })
+
+  it('standing crowds add ~22% more occupant heat than seated', () => {
+    const standing = calculateCooling({ ...base, occupantBtuPerPerson: 550 })
+    expect(standing!.occupantBtu).toBe(300 * 550)
+  })
+
+  it('a 300-person dance floor doubles occupant load vs seated (the tent-cooling gotcha)', () => {
+    const seated = calculateCooling({ ...base, occupantBtuPerPerson: 450 })
+    const dancing = calculateCooling({ ...base, occupantBtuPerPerson: 900 })
+    expect(dancing!.occupantBtu).toBe(2 * seated!.occupantBtu)
+    // 300 dancers = 270,000 BTU/hr = 11+ tons from people alone
+    expect(dancing!.occupantBtu).toBe(270000)
+  })
+})
+
 describe('calculateAirsideTonnage', () => {
   it('matches the ASHRAE textbook case: 80/67°F to 55/54°F at 10,000 CFM ≈ 33 tons', () => {
     // Published values: h(80°F db / 67°F wb) ≈ 31.5 BTU/lb, h(55/54) ≈ 22.6 BTU/lb,

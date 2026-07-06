@@ -9,7 +9,7 @@ import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { calculateCooling, describeCooling, type CoolingInputs } from './hvac.formulas'
-import { STRUCTURE_COOLING_MULTIPLIERS } from '../../lib/constants'
+import { STRUCTURE_COOLING_MULTIPLIERS, OCCUPANT_ACTIVITY_LEVELS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import { AlertTriangle } from 'lucide-react'
 
@@ -21,10 +21,12 @@ export default function CoolingPage() {
   const [ambientTemp, setAmbientTemp] = usePersistedState(ROUTE_KEY, 'ambientTemp', '95')
   const [targetTemp, setTargetTemp] = usePersistedState(ROUTE_KEY, 'targetTemp', '72')
   const [occupants, setOccupants] = usePersistedState(ROUTE_KEY, 'occupants', '0')
+  const [activityLevel, setActivityLevel] = usePersistedState(ROUTE_KEY, 'activityLevel', 'seated')
   const [structureType, setStructureType] = usePersistedState(ROUTE_KEY, 'structureType', 'container')
   const [rh, setRh] = usePersistedState(ROUTE_KEY, 'rh', '')
 
   const mult = STRUCTURE_COOLING_MULTIPLIERS[structureType]?.multiplier ?? 1.0
+  const btuPerPerson = OCCUPANT_ACTIVITY_LEVELS[activityLevel]?.btuPerPerson ?? 450
   const rhValue = parseFloat(rh) || 0
 
   const inputs: CoolingInputs = {
@@ -33,6 +35,7 @@ export default function CoolingPage() {
     ambientTemp: parseFloat(ambientTemp) || 95,
     targetTemp: parseFloat(targetTemp) || 72,
     occupants: parseInt(occupants) || 0,
+    occupantBtuPerPerson: btuPerPerson,
     structureType,
     structureMultiplier: mult,
     relativeHumidity: rhValue > 0 ? rhValue : undefined,
@@ -57,7 +60,17 @@ export default function CoolingPage() {
           <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} required />
           <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />
           <SelectField label="Structure Type" value={structureType} onChange={setStructureType} options={structureOptions} required tooltip="Affects envelope heat gain multiplier" />
-          <InputField label="Occupants" value={occupants} onChange={setOccupants} required tooltip="Each person adds ~250 BTU/hr sensible + ~200 BTU/hr latent" />
+          <InputField label="Occupants" value={occupants} onChange={setOccupants} required tooltip="Number of people in the space" />
+          <SelectField
+            label="Occupant Activity"
+            value={activityLevel}
+            onChange={setActivityLevel}
+            options={Object.entries(OCCUPANT_ACTIVITY_LEVELS).map(([value, { label, btuPerPerson: btu }]) => ({
+              value,
+              label: `${label} (${btu} BTU/person)`,
+            }))}
+            tooltip="Standing crowds emit far more heat than seated guests — the classic tent-cooling underestimate. Dancing nearly doubles it."
+          />
           <InputField label="Relative Humidity" unit="% RH" value={rh} onChange={setRh} placeholder="Optional" tooltip="Leave blank for standard conditions. Above 60% RH, latent load is added automatically." />
         </div>
 

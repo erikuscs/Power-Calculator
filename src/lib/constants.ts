@@ -28,6 +28,15 @@ export const STRUCTURE_COOLING_MULTIPLIERS: Record<string, { multiplier: number;
   sprung: { multiplier: 1.4, label: 'Sprung/fabric structure' },
 }
 
+// ASHRAE Fundamentals heat gain per person by activity level. Standing event
+// crowds run far hotter than the seated default — undersizing occupant load
+// is the classic tent-cooling mistake.
+export const OCCUPANT_ACTIVITY_LEVELS: Record<string, { btuPerPerson: number; label: string }> = {
+  seated: { btuPerPerson: 450, label: 'Seated / dining' },
+  standing: { btuPerPerson: 550, label: 'Standing reception / mingling' },
+  active: { btuPerPerson: 900, label: 'Dancing / active event' },
+}
+
 export const FACILITY_PRESETS: Record<string, { label: string; defaultKw: number; unit: string; notes: string; category: 'camp' | 'event' | 'both' }> = {
   kitchen: { label: 'Commercial Kitchen', defaultKw: 50, unit: 'per 100 pax', notes: 'Scales per 100 people served', category: 'both' },
   dining: { label: 'Dining Hall', defaultKw: 15, unit: 'per 100 pax', notes: 'HVAC + lighting', category: 'camp' },

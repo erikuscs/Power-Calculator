@@ -50,6 +50,8 @@ export interface CoolingInputs {
   ambientTemp: number
   targetTemp: number
   occupants: number
+  /** BTU/hr heat gain per person by activity level (default 450 = seated) */
+  occupantBtuPerPerson?: number
   structureType: string
   structureMultiplier: number
   relativeHumidity?: number
@@ -72,7 +74,8 @@ export function calculateCooling(inputs: CoolingInputs): CoolingResults | null {
   const equipmentBtu = loadKw * 3412.14
   const deltaT = Math.max(0, ambientTemp - targetTemp)
   const envelopeBtu = sqFt > 0 ? sqFt * deltaT * 0.5 * structureMultiplier : 0
-  const occupantBtu = occupants * 450
+  const btuPerPerson = inputs.occupantBtuPerPerson ?? 450
+  const occupantBtu = occupants * btuPerPerson
   const sensibleBtu = equipmentBtu + envelopeBtu + occupantBtu
 
   // Latent load using Sensible Heat Ratio (SHR) — the industry-standard approach
@@ -125,8 +128,8 @@ export function describeCooling(inputs: CoolingInputs, results: CoolingResults) 
   if (inputs.occupants > 0) {
     steps.push({
       label: 'Occupant Heat (BTU/hr)',
-      formula: 'Occupant BTU = Occupants × 450 BTU/person',
-      substituted: `${inputs.occupants} × 450`,
+      formula: 'Occupant BTU = Occupants × BTU/person (by activity level)',
+      substituted: `${inputs.occupants} × ${inputs.occupantBtuPerPerson ?? 450}`,
       result: `${results.occupantBtu.toLocaleString()} BTU/hr`,
     })
   }
