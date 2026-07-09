@@ -86,7 +86,11 @@ export default function HybridEnergyWizard() {
     motors,
   }
 
-  const calculate = useCallback((inp: HybridWizardInputs) => calculateHybridWizard(inp), [])
+  const calculate = useCallback((inp: HybridWizardInputs) => {
+    // Inverted or negative loads produce nonsense (negative "savings", BESS sized beyond peak)
+    if (inp.baseLoadKw < 0 || inp.baseLoadKw > inp.peakLoadKw) return null
+    return calculateHybridWizard(inp)
+  }, [])
   const results = useCalculator(inputs, calculate)
   const oneLineDiagram = results ? buildHybridOneLineDiagram(inputs, results, zones) : null
 
@@ -126,7 +130,15 @@ export default function HybridEnergyWizard() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField label="Peak Load Demand" unit="kW" value={peakLoadKw} onChange={setPeakLoadKw} required tooltip="Maximum load the system must handle" max={25000} />
-            <InputField label="Base/Continuous Load" unit="kW" value={baseLoadKw} onChange={setBaseLoadKw} required tooltip="Average continuous load — generators sized for this" />
+            <InputField
+              label="Base/Continuous Load"
+              unit="kW"
+              value={baseLoadKw}
+              onChange={setBaseLoadKw}
+              required
+              tooltip="Average continuous load — generators sized for this"
+              error={inputs.peakLoadKw > 0 && inputs.baseLoadKw > inputs.peakLoadKw ? 'Base load cannot exceed peak load' : undefined}
+            />
           </div>
 
           <RadioGroup

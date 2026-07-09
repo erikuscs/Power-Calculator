@@ -62,7 +62,8 @@ export default function BessProjectWizard() {
   }
 
   const sizingCalc = useCallback((inp: SizingInputs) => {
-    if (inp.loadKW <= 0 || inp.hours <= 0) return null
+    // Same bounds as BessSizingPage — DoD/losses outside (0, 100] flip signs in the sizing math
+    if (inp.loadKW <= 0 || inp.hours <= 0 || inp.dodPercent <= 0 || inp.dodPercent > 100 || inp.unitCapacity <= 0 || inp.lossesPercent < 0 || inp.lossesPercent >= 100) return null
     return calculateSizing(inp)
   }, [])
 

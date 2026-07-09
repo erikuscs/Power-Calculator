@@ -68,7 +68,7 @@ export default function BessRuntimePage() {
 
   const calculate = useCallback(
     (i: RuntimeInputs): RuntimeResults | null => {
-      if (i.kWh <= 0 || i.voltage <= 0 || i.amps <= 0) return null
+      if (i.kWh <= 0 || i.voltage <= 0 || i.amps <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
       return calculateRuntime(i)
     },
     [],
