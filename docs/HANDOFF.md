@@ -80,12 +80,34 @@ hybrid strategy calculators + PDF reports). Live at **https://emaas.pro**.
 - Home-directory git repo issue: separate session was untangling
   (~/.git pointed at Dashboard-Repos with credential files staged)
 
+## 2b. UPDATE (2026-07-08 evening → overnight)
+
+**Apple: DONE.** Org enrollment approved; $99/yr membership PAID
+(order W1584667595, 07/08, developer@sustainablegaps.com,
+billing 912 Town Creek Rd, Talking Rock 30175).
+
+**Privacy page: LIVE** at https://emaas.pro/privacy (PR #2 merged, Azure
+deployed). Footer links to it; /privacy route + 404 catch-all added.
+App Store's hard blocker is cleared.
+
+**Mac Mini progress:** repo cloned at `~/Projects/emaas-pro`, npm install +
+build + `cap sync ios` all succeeded, CLI build SUCCEEDED. Stopped at Xcode
+signing: Apple ID not yet added to Xcode on the Mini (Team=None) and run
+destination was a disconnected physical phone ("Not Your iPhone").
+
+**D&B: REJECTED 07/08** — could not verify Erik as principal (docs lacked
+name+title; record still cross-linked to "Lisa Borowsky / clothing retail").
+Fix: re-upload GA 2026 Annual Registration / CA SOI / EIN letter, or call D&B.
+
+**→ Remaining submission steps are scripted click-by-click in
+`docs/MORNING-CHECKLIST.md` (includes all App Store Connect listing copy).**
+
 ## 3. IMMEDIATE NEXT ACTIONS
 
-1. ⏳ Watch inbox for **Apple verification** → answer call → pay $99
-2. ⏳ Watch inbox for **D&B approval** → apply DUNS Update Package fixes
-3. 🔜 After Apple: privacy page, screenshots, listing, submit (~1 day, mostly Claude)
-4. Optional: attorney hour (questions pre-written in the Provenance file);
+1. 🔜 **Run docs/MORNING-CHECKLIST.md top to bottom** (~45 min): Xcode
+   sign-in → team → simulator → screenshots → archive → upload → listing → submit
+2. ⏳ D&B: re-upload principal docs showing name + title (see checklist bottom)
+3. Optional: attorney hour (questions pre-written in the Provenance file);
    drop severance-agreement photo + emaas.pro domain receipt into `SBR Evidence/`
 
 ## 4. RESUMING WITH CLAUDE ON ANOTHER MACHINE

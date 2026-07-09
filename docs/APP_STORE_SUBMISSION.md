@@ -1,5 +1,10 @@
 # EMaaS.pro — iOS App Store Submission Guide
 
+> **2026-07-08:** Apple membership is paid and the privacy page is live.
+> For the current click-by-click path to submission (with all listing copy
+> ready to paste), use **`docs/MORNING-CHECKLIST.md`** — it reflects exactly
+> where the Mac Mini setup stopped. This file remains the background reference.
+
 The app is wrapped with Capacitor 8 (`ios/` folder). The web app is unchanged and
 still deploys to Azure SWA at emaas.pro; the iOS app is built from the same codebase.
 
