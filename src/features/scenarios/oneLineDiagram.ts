@@ -225,7 +225,7 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
 
   return finishDiagram({
     title: 'Temporary Power One-Line Diagram',
-    caption: 'Planning-grade topology for source, transfer, distribution, load branches, and EMaaS service assumptions.',
+    caption: 'Planning topology (estimates) for source, transfer, distribution, load branches, and EMaaS service assumptions.',
     stages,
     edges,
     assumptions: [
@@ -347,7 +347,7 @@ export function buildHybridOneLineDiagram(
 
   return finishDiagram({
     title: 'Hybrid Energy One-Line Diagram',
-    caption: 'Planning-grade topology for generator, BESS, dispatch control, switchgear, and load-zone handoff.',
+    caption: 'Planning topology (estimates) for generator, BESS, dispatch control, switchgear, and load-zone handoff.',
     stages,
     edges,
     assumptions: [

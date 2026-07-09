@@ -59,7 +59,7 @@ export default function CoolingPage() {
           <InputField label="Facility Size" unit="sq ft" value={sqFt} onChange={setSqFt} tooltip="Floor area — used for envelope heat gain" />
           <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} required />
           <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />
-          <SelectField label="Structure Type" value={structureType} onChange={setStructureType} options={structureOptions} required tooltip="Affects envelope heat gain multiplier" />
+          <SelectField label="Structure Type" value={structureType} onChange={setStructureType} options={structureOptions} required tooltip="Multipliers from deployed-structure field observations — canvas runs hottest, hard-sided holds best" />
           <InputField label="Occupants" value={occupants} onChange={setOccupants} required tooltip="Number of people in the space" />
           <SelectField
             label="Occupant Activity"
@@ -71,7 +71,15 @@ export default function CoolingPage() {
             }))}
             tooltip="Standing crowds emit far more heat than seated guests — the classic tent-cooling underestimate. Dancing nearly doubles it."
           />
-          <InputField label="Relative Humidity" unit="% RH" value={rh} onChange={setRh} placeholder="Optional" tooltip="Leave blank for standard conditions. Above 60% RH, latent load is added automatically." />
+          <InputField
+            label="Relative Humidity"
+            unit="% RH"
+            value={rh}
+            onChange={setRh}
+            placeholder="Optional"
+            tooltip="Leave blank for standard conditions. Above 60% RH, latent load is added automatically."
+            warning={rhValue > 55 ? 'High-humidity conditions — latent load rises steeply above 60% RH. This model simplifies full psychrometrics; verify cooling with an engineer before ordering equipment.' : undefined}
+          />
         </div>
 
         {parseInt(occupants) === 0 && (

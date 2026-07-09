@@ -92,7 +92,7 @@ export default function FuelConsumptionPage() {
             value={ratedKw}
             onChange={setRatedKw}
             min={0}
-            tooltip="Nameplate rated capacity of the generator"
+            tooltip="Nameplate rated capacity. Field audit lesson: we've measured sites running 24% utilization — burning fuel around the clock for capacity that was never used"
           />
           <InputField
             label="Runtime"
