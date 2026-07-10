@@ -12,6 +12,44 @@
 
 ---
 
+## 0. STARTING POSITION — declared by Erik, 2026-07-10
+
+**✅ VERIFIED by founder declaration. This is the frame for the entire plan:**
+
+- **Zero clients. Zero revenue.** All three lines are pre-revenue. Every
+  pipeline reference (Langston, BHE, Walmart) stays relationship-stage /
+  UNSIGNED. No projection starts anywhere but $0.
+- **All work product is internally built.** The live app, the iOS build, the
+  Signal Engine pipeline, the SG-TOC dashboard, the M365 operating build,
+  the network infrastructure, the documentation and audit trail — 100%
+  founder-built, founder-funded. No contractors, no outside capital.
+
+**What this means for the plan (the next session must adopt this posture):**
+
+1. **This is a STARTUP plan, not a growth plan.** No revenue history to
+  present — so the lender's confidence must come from: (a) founder domain
+  depth, (b) the built-asset inventory below, (c) skin-in-the-game, and
+  (d) conservative zero-based projections with a credible first-revenue path.
+2. **The built work product IS the equity story.** SG didn't spend the
+  pre-revenue year idle — it built three functioning platforms, shipped to
+  production, red-teamed itself, and documented everything. Frame this as
+  founder investment: months of full-time build + out-of-pocket costs
+  (filings, Apple, domains, hardware, insurance-to-be). Note honestly:
+  sweat equity does NOT count as the SBA cash equity injection — but it is
+  the strongest available substitute for a track record, and the commit
+  history/audit trail makes it independently verifiable.
+3. **Size the ask to the stage.** Pre-revenue, no collateral, two-member LLC:
+  a large 7(a) is a hard sell. The natural fits are an **SBA microloan
+  ($5–50k)** or a small 7(a). The already-scoped use of funds fits a
+  microloan almost exactly: E&O/GL insurance, Terms-of-Use legal work,
+  PE retainer, IP-attorney hour, basic marketing, and working capital to
+  first revenue. A right-sized ask that is fully itemized reads as
+  competence; an oversized ask reads as fantasy.
+4. **Zero clients is also the clean version of the story.** Nothing to
+  exaggerate, nothing to defend, no messy claims. The plan's honesty IS the
+  differentiator: "here is exactly what exists, who built it, what it cost,
+  and the priced plan to first revenue."
+
 ## 1. Company ground truth
 
 - ✅ **Sustainable Gaps LLC** — Georgia domestic LLC, formed 11/04/2024,
@@ -33,9 +71,11 @@
   1-hr IP attorney review is pre-scoped but not yet done.
 - ✅ Tracy Herring — co-owner; ops/relationship strength; ~37 years together
   (continuity and judgment story, documented in Vault26 playbook).
-- ❓ ASK ERIK: revenue to date (assumed $0 product revenue; any consulting
-  income?), personal capital invested, credit posture, existing debt,
-  requested SBA loan amount and use of funds, owner compensation needs.
+- ✅ Revenue to date: **$0 across all lines** (declared, §0).
+- ❓ ASK ERIK: personal capital invested to date (itemize: filings, Apple,
+  domains, hardware, tools — the out-of-pocket ledger), personal credit
+  posture, existing debt, requested loan amount (see §0 sizing guidance),
+  and owner compensation needs during the runway to first revenue.
 
 ## 2. Line 1 — EMaaS (Energy Management as a Service)
 
