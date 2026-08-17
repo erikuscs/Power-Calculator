@@ -11,18 +11,23 @@ import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
 import { FieldRiskReviewPanel } from '../../components/ui/FieldRiskReviewPanel'
 import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { Button } from '../../components/ui/Button'
+import { SpecSummaryPanel, type SpecSummaryTone } from '../../components/ui/SpecSummaryPanel'
 import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
 import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
 import { buildFieldRiskReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
 import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS, VOLTAGE_OPTIONS } from '../../lib/constants'
-import { recommendEquipment } from '../../lib/equipmentRecommendations'
+import { recommendEquipment, type EquipmentRecommendation } from '../../lib/equipmentRecommendations'
 import { fmt, fmtInt, fmtPercent } from '../../lib/formatters'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { ClipboardList, Trash2, AlertTriangle, Info } from 'lucide-react'
 
 let nextId = 1
+
+function preferredOption(recommendation: EquipmentRecommendation) {
+  return recommendation[recommendation.preferred]
+}
 
 export default function TempPowerWizard() {
   const [mode, setMode] = useState<'single' | 'basecamp'>('single')
@@ -174,8 +179,99 @@ export default function TempPowerWizard() {
     ]
   }, [results])
 
+  const tempSpecSummary = results && recommendation && fieldRiskReview
+    ? (() => {
+        const recommended = preferredOption(recommendation)
+        const cableLegs = Math.max(1, Math.ceil(results.ampsPerPhase / 400))
+        const effectiveSiteVoltage = inputs.siteVoltage ?? 480
+        const confidenceTone: SpecSummaryTone = fieldRiskReview.confidenceBand === 'high'
+          ? 'success'
+          : fieldRiskReview.confidenceBand === 'medium' ? 'info' : 'warning'
+        const confidenceLabel = `${fieldRiskReview.confidenceBand.charAt(0).toUpperCase()}${fieldRiskReview.confidenceBand.slice(1)} confidence`
+        const statusLabel = `${confidenceLabel} - ${fieldRiskReview.confidenceScore}/100`
+
+        return {
+          statusLabel,
+          statusTone: confidenceTone,
+          metrics: [
+            {
+              label: 'Recommended Package',
+              value: recommended.units,
+              detail: `${recommended.label} using rental-fleet planning classes`,
+            },
+            {
+              label: 'Planning Load',
+              value: `${fmt(fieldRiskReview.adjustedPlanningKw, 1)} kW`,
+              detail: `${fmt(results.totalWithCoolingKw, 1)} kW calculated before field contingency`,
+            },
+            {
+              label: 'Generator Spec',
+              value: `${fmt(results.generatorKva, 0)} kVA`,
+              detail: `${fmt(results.generatorKw, 0)} kW after margin`,
+            },
+            {
+              label: 'Cooling Spec',
+              value: `${fmt(results.coolingTons, 1)} tons`,
+              detail: `${fmt(results.coolingKw, 1)} kW cooling load`,
+            },
+            {
+              label: 'Distribution',
+              value: `${effectiveSiteVoltage} V, ${cableLegs} leg${cableLegs === 1 ? '' : 's'}/phase`,
+              detail: `${fmt(results.ampsPerPhase, 0)} A/phase at ${inputs.powerFactor} PF`,
+            },
+            {
+              label: 'Runtime / Service',
+              value: `${fmt(results.operatingDays, 1)} days`,
+              detail: `${fmtInt(results.serviceEvents)} PM events at ${inputs.serviceIntervalDays || 0}-day cadence`,
+            },
+            {
+              label: 'Footprint',
+              value: `~${fmtInt(recommended.footprintSqFt)} sq ft`,
+              detail: 'Planning space before cable, fuel, and service clearances',
+            },
+            {
+              label: 'Risk Contingency',
+              value: `${fmt(fieldRiskReview.contingencyKw, 1)} kW`,
+              detail: `${fmtPercent(fieldRiskReview.loadContingencyPct)} load / ${fmtPercent(fieldRiskReview.coolingContingencyPct)} cooling`,
+            },
+          ],
+          steps: [
+            {
+              label: 'Confirm load',
+              detail: mode === 'basecamp' ? 'Build the facility schedule and confirm hidden trailer, RV, shower, and concession loads.' : 'Confirm measured kW, operating schedule, and any hidden plug or motor loads.',
+            },
+            {
+              label: 'Size source',
+              detail: 'Generator package covers calculated load, cooling, altitude, power factor, and risk contingency.',
+            },
+            {
+              label: 'Set control point',
+              detail: 'ATS/controller handles dispatch, transfer logic, and any hybrid BESS peak-support strategy.',
+            },
+            {
+              label: 'Place distribution',
+              detail: 'Switchgear, transformers, branch panels, cable legs, and grounding follow the printable one-line.',
+            },
+            {
+              label: 'Schedule service',
+              detail: 'Fuel, containment, PM visits, technician coverage, and noise limits stay in the report package.',
+            },
+          ],
+          notes: [
+            fieldRiskReview.rfis.length > 0
+              ? `${fieldRiskReview.rfis.length} field RFI${fieldRiskReview.rfis.length === 1 ? '' : 's'} need answers before release; review the field-risk panel below.`
+              : 'Confirm final load schedule, voltage, phase, cable distance, and operating windows before release.',
+            'Verify step-down transformer placement, voltage drop, OCPD ratings, grounding, and final conductor sizes.',
+            effectiveSiteVoltage <= 240 && results.totalWithCoolingKw >= 500
+              ? 'High current at low voltage may justify 480 V distribution with local step-down transformers.'
+              : 'Keep the printable one-line with the field layout and cable schedule.',
+          ],
+        }
+      })()
+    : null
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <Card>
         <CardHeader
           title="Temporary Power & Cooling"
@@ -300,6 +396,25 @@ export default function TempPowerWizard() {
 
       {results && (results.totalLoadKw > 0) && (
         <>
+          {tempSpecSummary && (
+            <SpecSummaryPanel
+              title="Streamlined Temp Power Spec"
+              subtitle="Recommended package, field confidence, distribution path, and report handoff"
+              statusLabel={tempSpecSummary.statusLabel}
+              statusTone={tempSpecSummary.statusTone}
+              metrics={tempSpecSummary.metrics}
+              steps={tempSpecSummary.steps}
+              notes={tempSpecSummary.notes}
+              action={
+                <PdfExportButton
+                  document={<TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />}
+                  filename="emaas-temp-power-report.pdf"
+                  label="Generate Report"
+                />
+              }
+            />
+          )}
+
           <Card>
             <CardHeader title="Equipment Sizing Results" subtitle="Safety margins applied — see values before margin in each card" />
 
@@ -455,13 +570,6 @@ export default function TempPowerWizard() {
               </div>
             </Card>
           )}
-
-          <div className="flex justify-center py-4">
-            <PdfExportButton
-              document={<TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />}
-              filename="emaas-temp-power-report.pdf"
-            />
-          </div>
 
           <div className="text-center text-xs text-text-dim py-2">
             These are emergency estimates. Final sizing must be verified by a licensed engineer.

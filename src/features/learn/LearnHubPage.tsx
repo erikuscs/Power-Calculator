@@ -23,12 +23,12 @@ const startSteps = [
     body: 'Use measured values when you have them. When a field value is unknown, choose the neutral or field-verify option.',
   },
   {
-    title: 'Review calculated demand',
-    body: 'Confirm voltage, phase, power factor, runtime, redundancy, and cooling assumptions before trusting the output.',
+    title: 'Read the spec summary',
+    body: 'Start with the streamlined spec: recommended setup, footprint, operating path, and confidence label.',
   },
   {
-    title: 'Check the suggested setup',
-    body: 'Use the generator, BESS, hybrid, fuel-cell, and footprint recommendation as a planning baseline.',
+    title: 'Inspect the details',
+    body: 'Use the sizing results, 24/7 coverage scenarios, one-line, and risk review to challenge the recommendation.',
   },
   {
     title: 'Export for review',

@@ -10,12 +10,13 @@ import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
 import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
+import { SpecSummaryPanel, type SpecSummaryTone } from '../../components/ui/SpecSummaryPanel'
 import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
 import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { BESS_UNIT_SIZES, RATE_PERIOD_OPTIONS, VOLTAGE_OPTIONS, type RatePeriod, SQRT3 } from '../../lib/constants'
-import { BESS_FLEET, normalizeRateToDaily, recommendEquipment } from '../../lib/equipmentRecommendations'
+import { BESS_FLEET, normalizeRateToDaily, recommendEquipment, type EquipmentRecommendation } from '../../lib/equipmentRecommendations'
 import { fmt, fmtInt, fmtCurrency } from '../../lib/formatters'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -36,6 +37,10 @@ const coverageStatusClass = {
   conditional: 'border-warning/35 bg-warning/10 text-warning',
   not_feasible: 'border-error/35 bg-error/10 text-error',
 } as const
+
+function preferredOption(recommendation: EquipmentRecommendation) {
+  return recommendation[recommendation.preferred]
+}
 
 export default function HybridEnergyWizard() {
   const [peakLoadKw, setPeakLoadKw] = useState('800')
@@ -142,8 +147,103 @@ export default function HybridEnergyWizard() {
     ]
   }, [results, inputs.bessUnitSize])
 
+  const hybridSpecSummary = results && recommendation
+    ? (() => {
+        const primaryScenario = results.coverage.scenarios[0]
+        const fallbackScenario = results.coverage.scenarios.find((scenario) => scenario.label.includes('Generator-backed'))
+        const recommended = preferredOption(recommendation)
+        const cableLegs = Math.max(1, Math.ceil(results.peakAmpsPerPhase / 400))
+        const rechargeWindow = results.coverage.estimatedRechargeHours === null
+          ? 'No reserve'
+          : `${fmt(results.coverage.estimatedRechargeHours, 1)} hrs`
+        const statusTone: SpecSummaryTone = primaryScenario.status === '24_7_ready'
+          ? fallbackScenario?.status === '24_7_ready' ? 'success' : 'info'
+          : primaryScenario.status === 'conditional' ? 'warning' : 'warning'
+        const statusLabel = primaryScenario.status === '24_7_ready'
+          ? fallbackScenario?.status === '24_7_ready' ? 'Full 24/7 fallback ready' : '24/7 hybrid ready'
+          : primaryScenario.status === 'conditional' ? 'Conditional hybrid coverage' : 'Needs redesign'
+
+        return {
+          statusLabel,
+          statusTone,
+          metrics: [
+            {
+              label: 'Recommended Package',
+              value: recommended.units,
+              detail: `${recommended.label} using Sunbelt-style fleet classes`,
+            },
+            {
+              label: 'Load Profile',
+              value: `${fmtInt(inputs.peakLoadKw)} / ${fmtInt(inputs.baseLoadKw)} kW`,
+              detail: 'Peak / base demand',
+            },
+            {
+              label: 'Installed Capacity',
+              value: `${results.bessUnits} BESS + ${results.genUnits} gen`,
+              detail: `${fmtInt(results.coverage.bessInstalledKw)} kW BESS, ${fmtInt(results.coverage.generatorOnlineKw)} kW generator`,
+            },
+            {
+              label: 'Footprint',
+              value: `~${fmtInt(recommended.footprintSqFt)} sq ft`,
+              detail: 'Planning space before clearances and fuel logistics',
+            },
+            {
+              label: 'Distribution',
+              value: `${inputs.siteVoltage} V, ${cableLegs} leg${cableLegs === 1 ? '' : 's'}/phase`,
+              detail: `${fmt(results.peakAmpsPerPhase, 0)} A/phase at peak`,
+            },
+            {
+              label: 'Recharge Reserve',
+              value: `${fmtInt(results.coverage.generatorRechargeReserveKw)} kW`,
+              detail: `Estimated recharge window: ${rechargeWindow}`,
+            },
+            {
+              label: 'Quiet Runtime',
+              value: `${fmt(results.coverage.baseBatteryHours, 1)} hrs`,
+              detail: 'Usable BESS at base load before recharge',
+            },
+            {
+              label: 'Fuel Signal',
+              value: `${fmtInt(results.dailyFuelReduction)} gal/day`,
+              detail: `${fmtCurrency(results.totalFuelSavingsDollars)} project fuel savings estimate`,
+            },
+          ],
+          steps: [
+            {
+              label: 'BESS serves load',
+              detail: 'Battery/PCS carries quiet runtime and absorbs peak swings while SOC stays above threshold.',
+            },
+            {
+              label: 'EMS starts gen',
+              detail: 'Remote start fires the generator when SOC, load, or reserve threshold requires recharge.',
+            },
+            {
+              label: 'Generator carries load',
+              detail: 'Generator supports the customer load and leaves reserve for BESS recharge where capacity allows.',
+            },
+            {
+              label: 'ATS / gear transfers',
+              detail: 'ATS or paralleling gear manages source handoff, synchronization, and protected feeder output.',
+            },
+            {
+              label: 'Switchgear feeds loads',
+              detail: 'Main switchgear, transformers, and branch panels distribute power to protected zones.',
+            },
+          ],
+          notes: [
+            primaryScenario.requirement,
+            fallbackScenario?.requirement ?? 'Define load-shed rules if generator fallback cannot carry the full protected peak.',
+            inputs.siteVoltage <= 240 && inputs.peakLoadKw >= 500
+              ? 'Large low-voltage systems create high current; consider 480 V distribution with step-down transformers.'
+              : 'Confirm cable length, voltage drop, grounding, OCPD ratings, and protection coordination.',
+            'Keep the printable one-line with the load schedule, cable schedule, fuel plan, and engineering review package.',
+          ],
+        }
+      })()
+    : null
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Step 1: Requirements */}
       <Card>
         <CardHeader title="Hybrid EMaaS Strategy - BESS + Generator" subtitle="Design redundant systems for construction, commissioning, and mission-critical loads" />
@@ -252,6 +352,25 @@ export default function HybridEnergyWizard() {
           </div>
         </div>
       </Card>
+
+      {results && inputs.peakLoadKw > 0 && hybridSpecSummary && (
+        <SpecSummaryPanel
+          title="Streamlined Hybrid Spec"
+          subtitle="Recommended package, operating sequence, footprint, and handoff notes"
+          statusLabel={hybridSpecSummary.statusLabel}
+          statusTone={hybridSpecSummary.statusTone}
+          metrics={hybridSpecSummary.metrics}
+          steps={hybridSpecSummary.steps}
+          notes={hybridSpecSummary.notes}
+          action={
+            <PdfExportButton
+              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} clientName={clientName} projectName={projectName} />}
+              filename="emaas-hybrid-energy-report.pdf"
+              label="Generate Report"
+            />
+          }
+        />
+      )}
 
       {/* Motor Loads */}
       <Card>
@@ -586,13 +705,6 @@ export default function HybridEnergyWizard() {
               </div>
             </Card>
           )}
-
-          <div className="flex justify-center py-4">
-            <PdfExportButton
-              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} clientName={clientName} projectName={projectName} />}
-              filename="emaas-hybrid-energy-report.pdf"
-            />
-          </div>
 
           <div className="text-center text-xs text-text-dim py-2">
             These are estimates for reference only. Final system design must be verified by a licensed professional engineer.

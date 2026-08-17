@@ -89,6 +89,7 @@ async function run() {
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
     await page.getByLabel('Site Voltage').selectOption('208')
     await expectText(page, /Unknown \/ add contingency/i, 'clear risk posture wording')
+    await expectText(page, /Streamlined Temp Power Spec/i, 'streamlined temp power spec summary')
     await expectText(page, /Suggested Equipment Setup/i, 'temp power suggested setup')
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
@@ -97,6 +98,8 @@ async function run() {
     await page.getByLabel('Generator Rate Period').selectOption('monthly')
     await page.getByLabel('Redundancy Level').selectOption('field_verify')
     await expectText(page, /Field verify uses N\+1 planning capacity/i, 'field-verify redundancy note')
+    await expectText(page, /Streamlined Hybrid Spec/i, 'streamlined hybrid spec summary')
+    await expectText(page, /Operating Path/i, 'streamlined operating path')
     await expectText(page, /24\/7 Hybrid Coverage Scenarios/i, 'hybrid 24/7 coverage scenarios')
     await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
     await expectText(page, /Printable Electrical One-Line/i, 'printable electrical one-line diagram')
