@@ -86,7 +86,7 @@ async function run() {
   await expectText(page, /Fuel-cell|Fuel cell/i, 'fuel-cell guidance')
 
   await page.goto(`${baseUrl}/privacy`, { waitUntil: 'networkidle' })
-  await expectText(page, /does not collect, store, sell, rent, or transmit personal data/i, 'privacy policy content')
+  await expectText(page, /does not collect, store, or transmit any personal data/i, 'privacy policy content')
 
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })

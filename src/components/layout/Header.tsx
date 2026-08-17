@@ -44,7 +44,7 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
       )}
       <div className="ml-auto hidden items-center gap-2 rounded-lg border border-sg-600/50 bg-sg-800/70 px-3 py-2 text-xs text-text-muted md:flex">
         <ShieldCheck size={14} className="text-signal-blue" />
-        <span>Planning-grade console</span>
+        <span>Estimates — PE verification required</span>
       </div>
     </header>
   )

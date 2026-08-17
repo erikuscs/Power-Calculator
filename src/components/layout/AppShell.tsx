@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { APP_BRAND } from '../../lib/brand'
@@ -19,6 +20,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         {APP_BRAND.productName} outputs are planning estimates for reference only. Always verify with a licensed professional engineer before making design decisions.
         <br className="sm:hidden" />
         <span className="sm:ml-2">© {new Date().getFullYear()} {APP_BRAND.reportBrand}</span>
+        <span className="mx-2 text-sg-600">·</span>
+        <Link to="/privacy" className="text-text-dim hover:text-accent-400 no-underline">Privacy</Link>
       </footer>
     </div>
   )

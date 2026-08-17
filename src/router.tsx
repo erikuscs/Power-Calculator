@@ -24,12 +24,12 @@ const TempPowerWizard = lazy(() => import('./features/scenarios/TempPowerWizard'
 const HybridEnergyWizard = lazy(() => import('./features/scenarios/HybridEnergyWizard'))
 const BessProjectWizard = lazy(() => import('./features/scenarios/BessProjectWizard'))
 const HvacAssessmentWizard = lazy(() => import('./features/scenarios/HvacAssessmentWizard'))
-const PrivacyPage = lazy(() => import('./features/privacy/PrivacyPage'))
+const PrivacyPage = lazy(() => import('./features/legal/PrivacyPage'))
 
 interface AppRoute {
   path: string
   element: ReactNode
-  label: string
+  label?: string
   group?: string
 }
 
@@ -57,5 +57,5 @@ export const routes: AppRoute[] = [
   { path: '/scenarios/hybrid-energy', element: <HybridEnergyWizard />, label: 'Hybrid EMaaS Strategy', group: 'EMaaS Workflows' },
   { path: '/scenarios/bess-project', element: <BessProjectWizard />, label: 'BESS Project Economics', group: 'EMaaS Workflows' },
   { path: '/scenarios/hvac-assessment', element: <HvacAssessmentWizard />, label: 'Cooling Load Strategy', group: 'EMaaS Workflows' },
-  { path: '/privacy', element: <PrivacyPage />, label: 'Privacy Policy' },
+  { path: '/privacy', element: <PrivacyPage /> },
 ]
