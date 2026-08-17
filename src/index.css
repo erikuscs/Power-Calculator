@@ -67,3 +67,47 @@ input[type="number"] {
 .animate-slide-in-right {
   animation: slide-in-right 0.2s ease-out;
 }
+
+@media print {
+  body.printing-one-line {
+    background: #ffffff;
+    color: #111827;
+    padding: 0;
+  }
+
+  body.printing-one-line * {
+    visibility: hidden !important;
+  }
+
+  body.printing-one-line .printable-one-line,
+  body.printing-one-line .printable-one-line * {
+    visibility: visible !important;
+  }
+
+  body.printing-one-line .printable-one-line {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0.35in !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  body.printing-one-line .printable-one-line svg {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: 7in;
+  }
+
+  body.printing-one-line .print-hidden {
+    display: none !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 0.35in;
+  }
+}

@@ -24,6 +24,7 @@ export interface OneLineEdge {
   from: string
   to: string
   label?: string
+  kind?: 'power' | 'control' | 'service'
 }
 
 export interface OneLineDiagram {
@@ -62,7 +63,10 @@ function buildMermaid(stages: OneLineStage[], edges: OneLineEdge[]) {
   }
   for (const edge of edges) {
     const label = edge.label ? `|${mermaidSafe(edge.label)}|` : ''
-    lines.push(`  ${edge.from} -->${label} ${edge.to}`)
+    const connector = edge.kind === 'control' || edge.kind === 'service'
+      ? edge.label ? `-. ${mermaidSafe(edge.label)} .->` : '-.->'
+      : `-->${label}`
+    lines.push(`  ${edge.from} ${connector} ${edge.to}`)
   }
   lines.push('  classDef source fill:#1a1f2e,stroke:#c89a3c,color:#f1f5f9')
   lines.push('  classDef storage fill:#102333,stroke:#38bdf8,color:#f1f5f9')
@@ -220,7 +224,7 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
     { from: 'XFMR', to: 'PANELS', label: '120/208V' },
     { from: 'PANELS', to: loadNodes[0].id, label: 'branch circuits' },
     { from: 'PANELS', to: 'COOLING', label: 'cooling feeders' },
-    { from: 'GEN', to: 'SERVICE', label: 'fuel / PM' },
+    { from: 'GEN', to: 'SERVICE', label: 'fuel / PM', kind: 'service' },
   ]
 
   return finishDiagram({
@@ -326,9 +330,11 @@ export function buildHybridOneLineDiagram(
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'EMS', label: 'remote-start recharge' },
-    { from: 'BESS', to: 'EMS', label: 'battery-first output' },
-    { from: 'EMS', to: 'ATS', label: 'load + recharge dispatch' },
+    { from: 'GEN', to: 'ATS', label: 'generator feeder' },
+    { from: 'BESS', to: 'ATS', label: 'PCS AC output' },
+    { from: 'EMS', to: 'GEN', label: 'remote start', kind: 'control' },
+    { from: 'EMS', to: 'BESS', label: 'SOC telemetry', kind: 'control' },
+    { from: 'EMS', to: 'ATS', label: 'dispatch control', kind: 'control' },
     { from: 'ATS', to: 'SWGR', label: `${inputs.siteVoltage}V 3-phase` },
     { from: 'SWGR', to: 'XFMR', label: 'protected feeders' },
     ...zoneNodes.map((node) => ({ from: 'XFMR', to: node.id, label: 'branch feeder' })),
