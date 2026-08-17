@@ -101,9 +101,12 @@ export default function HybridEnergyWizard() {
     ? recommendEquipment({
         peakKw: inputs.peakLoadKw,
         baseKw: inputs.baseLoadKw,
-        runtimeHours: inputs.projectDurationDays * 24,
+        runtimeHours: inputs.peakHoursPerDay,
+        projectDurationHours: inputs.projectDurationDays * 24,
         peakHoursPerDay: inputs.peakHoursPerDay,
         preferredBessKw: inputs.bessUnitSize,
+        redundancyFactor: results.redundancyFactor,
+        siteVoltage: inputs.siteVoltage,
       })
     : null
 

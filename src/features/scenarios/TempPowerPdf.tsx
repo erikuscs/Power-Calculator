@@ -29,9 +29,11 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
   const recommendation = recommendEquipment({
     peakKw: results.totalWithCoolingKw,
     baseKw: results.totalWithCoolingKw * 0.6,
-    runtimeHours: inputs.durationHours,
+    runtimeHours: Math.min(8, inputs.durationHours),
+    projectDurationHours: inputs.durationHours,
     peakHoursPerDay: Math.min(8, inputs.durationHours),
     powerFactor: inputs.powerFactor,
+    siteVoltage: inputs.siteVoltage,
   })
 
   return (

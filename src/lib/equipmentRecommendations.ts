@@ -21,9 +21,12 @@ export interface EquipmentRecommendationInputs {
   peakKw: number
   baseKw?: number
   runtimeHours?: number
+  projectDurationHours?: number
   peakHoursPerDay?: number
   powerFactor?: number
   preferredBessKw?: number
+  redundancyFactor?: number
+  siteVoltage?: number
 }
 
 export interface EquipmentRecommendation {
@@ -84,24 +87,31 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
   const peakKw = Math.max(0, inputs.peakKw)
   if (peakKw <= 0) return null
 
-  const runtimeHours = Math.max(1, inputs.runtimeHours ?? 4)
-  const peakHoursPerDay = Math.max(1, inputs.peakHoursPerDay ?? Math.min(runtimeHours, 8))
+  const bessAutonomyHours = Math.max(1, inputs.runtimeHours ?? 4)
+  const projectDurationHours = Math.max(bessAutonomyHours, inputs.projectDurationHours ?? bessAutonomyHours)
+  const peakHoursPerDay = Math.max(1, inputs.peakHoursPerDay ?? Math.min(bessAutonomyHours, 8))
+  const capacityFactor = Math.max(SAFETY_MARGINS.generator, inputs.redundancyFactor ?? SAFETY_MARGINS.generator)
   const baseKw = Math.max(0, Math.min(inputs.baseKw ?? peakKw * 0.6, peakKw))
   const peakDeltaKw = Math.max(0, peakKw - baseKw)
+  const lowVoltageDistributionNotes = inputs.siteVoltage && inputs.siteVoltage <= 240 && peakKw >= 500
+    ? [
+        `${inputs.siteVoltage} V at this load creates very high current; plan around 480 V or medium-voltage distribution with step-down transformers where practical.`,
+      ]
+    : []
 
-  const generatorRequiredKw = peakKw * SAFETY_MARGINS.generator
+  const generatorRequiredKw = peakKw * capacityFactor
   const generatorPick = pickGenerator(generatorRequiredKw)
-  const fullBessPick = pickBess(peakKw, peakKw * runtimeHours, inputs.preferredBessKw)
-  const hybridGenPick = pickGenerator(Math.max(baseKw, peakKw * 0.35) * SAFETY_MARGINS.generator)
+  const fullBessPick = pickBess(peakKw, peakKw * bessAutonomyHours, inputs.preferredBessKw)
+  const hybridGenPick = pickGenerator(Math.max(baseKw * capacityFactor, peakKw * 0.35 * SAFETY_MARGINS.generator))
   const hybridBessPick = pickBess(Math.max(peakDeltaKw, peakKw * 0.15), Math.max(peakDeltaKw, peakKw * 0.15) * peakHoursPerDay, inputs.preferredBessKw)
   const bessOnlyImpractical = fullBessPick.count > 12 || fullBessPick.footprintSqFt > 2500
 
   const hasMeaningfulPeakSwing = peakDeltaKw / peakKw >= 0.25
-  const longRuntime = runtimeHours >= 8
-  const preferred = hasMeaningfulPeakSwing || longRuntime ? 'hybrid' : peakKw <= 24 && runtimeHours <= 4 ? 'bess' : 'generator'
+  const longRuntime = bessAutonomyHours >= 8 || projectDurationHours >= 24 * 7
+  const preferred = hasMeaningfulPeakSwing || longRuntime ? 'hybrid' : peakKw <= 24 && bessAutonomyHours <= 4 ? 'bess' : 'generator'
 
   return {
-    sourceNote: 'Fleet classes modeled from public Sunbelt Rentals generator and BESS catalog groupings; footprints are planning allowances and need site verification.',
+    sourceNote: 'Fleet classes modeled from public Sunbelt Rentals generator and BESS catalog groupings. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; footprints are planning allowances and need site verification.',
     preferred,
     generator: {
       label: 'Generator only',
@@ -109,12 +119,13 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
       capacityKw: generatorPick.capacityKw,
       footprintSqFt: generatorPick.footprintSqFt,
       notes: [
-        `${Math.round(generatorRequiredKw)} kW required after 125% continuous-load margin.`,
+        `${Math.round(generatorRequiredKw)} kW planning requirement after margin or redundancy factor.`,
+        ...lowVoltageDistributionNotes,
         'Best when load is steady, runtime is short, or battery charging logistics are unclear.',
       ],
     },
     bess: {
-      label: 'BESS only',
+      label: 'BESS only - autonomy window',
       units: formatUnitCount(fullBessPick.unit.label, fullBessPick.count),
       capacityKw: fullBessPick.capacityKw,
       energyKwh: fullBessPick.energyKwh,
@@ -122,7 +133,8 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
       practicality: bessOnlyImpractical ? 'impractical' : 'normal',
       notes: [
         ...(bessOnlyImpractical ? ['Usually impractical as a battery-only rental setup at this load or duration; compare against hybrid.'] : []),
-        `${Math.round(peakKw * runtimeHours)} kWh target energy for ${runtimeHours.toFixed(1)} hours at peak load.`,
+        `${Math.round(peakKw * bessAutonomyHours)} kWh target energy for ${bessAutonomyHours.toFixed(1)} hours at peak load.`,
+        'Does not imply battery support for the full project without recharge from grid, generator, or another source.',
         'Best for quiet, emissions-sensitive, short-duration loads with controlled inrush.',
       ],
     },
@@ -135,10 +147,11 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
       practicality: 'normal',
       notes: [
         `Generator carries about ${Math.round(baseKw)} kW base load; BESS covers about ${Math.round(Math.max(peakDeltaKw, peakKw * 0.15))} kW of peaks.`,
+        ...lowVoltageDistributionNotes,
         'Best default when peak load swings, noise windows, fuel logistics, or emissions targets matter.',
       ],
     },
-    fuelCell: assessFuelCellFit(peakKw, baseKw, runtimeHours),
+    fuelCell: assessFuelCellFit(peakKw, baseKw, projectDurationHours),
   }
 }
 

@@ -5,9 +5,9 @@ export function PdfEquipmentRecommendationSection({ recommendation }: { recommen
   if (!recommendation) return null
 
   const rows = [
-    formatOption('Generator only', recommendation.generator),
-    formatOption('BESS only', recommendation.bess),
-    formatOption('Hybrid', recommendation.hybrid),
+    formatOption(recommendation.generator),
+    formatOption(recommendation.bess),
+    formatOption(recommendation.hybrid),
   ]
 
   return (
@@ -16,6 +16,11 @@ export function PdfEquipmentRecommendationSection({ recommendation }: { recommen
         headers={['Option', 'Planning Units', 'Capacity', 'Footprint']}
         rows={rows}
       />
+      {[recommendation.generator, recommendation.bess, recommendation.hybrid].map((option) => (
+        <PdfWarning key={option.label}>
+          {`${option.label}: ${option.notes.join(' ')}`}
+        </PdfWarning>
+      ))}
       <PdfWarning>
         {`${recommendation.fuelCell.label}: ${recommendation.fuelCell.reason}`}
       </PdfWarning>
@@ -26,9 +31,9 @@ export function PdfEquipmentRecommendationSection({ recommendation }: { recommen
   )
 }
 
-function formatOption(label: string, option: EquipmentRecommendation['generator']) {
+function formatOption(option: EquipmentRecommendation['generator']) {
   return [
-    `${label}${option.practicality === 'impractical' ? ' (usually impractical)' : ''}`,
+    `${option.label}${option.practicality === 'impractical' ? ' (usually impractical)' : ''}`,
     option.units,
     option.energyKwh === undefined
       ? `${fi(option.capacityKw)} kW`

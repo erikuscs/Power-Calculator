@@ -23,9 +23,12 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
   const recommendation = recommendEquipment({
     peakKw: inputs.peakLoadKw,
     baseKw: inputs.baseLoadKw,
-    runtimeHours: inputs.projectDurationDays * 24,
+    runtimeHours: inputs.peakHoursPerDay,
+    projectDurationHours: inputs.projectDurationDays * 24,
     peakHoursPerDay: inputs.peakHoursPerDay,
     preferredBessKw: inputs.bessUnitSize,
+    redundancyFactor: results.redundancyFactor,
+    siteVoltage: inputs.siteVoltage,
   })
 
   return (
