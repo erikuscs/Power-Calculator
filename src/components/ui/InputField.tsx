@@ -1,4 +1,5 @@
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { useId } from 'react'
 
 interface InputFieldProps {
   label: string
@@ -22,9 +23,11 @@ export function InputField({
   placeholder, required, error, warning, tooltip,
   min, max, step, disabled,
 }: InputFieldProps) {
+  const inputId = useId()
+
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
+      <label htmlFor={inputId} className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
         {label}
         {unit && <span className="text-accent-400 font-normal normal-case tracking-normal">({unit})</span>}
         {required && <span className="text-coral-500">*</span>}
@@ -38,6 +41,8 @@ export function InputField({
         )}
       </label>
       <input
+        id={inputId}
+        aria-label={label}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}

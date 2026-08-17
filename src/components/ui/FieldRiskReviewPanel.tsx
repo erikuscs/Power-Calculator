@@ -12,16 +12,16 @@ interface FieldRiskReviewPanelProps {
 }
 
 const postureOptions: { value: RiskPosture; label: string }[] = [
-  { value: 'known', label: 'Known' },
-  { value: 'assume_typical', label: 'Assume typical' },
-  { value: 'unknown', label: 'Unknown' },
+  { value: 'known', label: 'Confirmed / no added risk' },
+  { value: 'assume_typical', label: 'Use typical allowance' },
+  { value: 'unknown', label: 'Unknown / add contingency' },
 ]
 
 const rvOptions: { value: RvServicePosture; label: string }[] = [
-  { value: 'unknown', label: 'Unknown' },
-  { value: 'known_30a', label: 'Known - 30A' },
-  { value: 'known_50a', label: 'Known - 50A' },
-  { value: 'mixed', label: 'Mixed' },
+  { value: 'unknown', label: 'Unknown / add contingency' },
+  { value: 'known_30a', label: 'Confirmed 30A pedestals' },
+  { value: 'known_50a', label: 'Confirmed 50A pedestals' },
+  { value: 'mixed', label: 'Mixed 30A / 50A service' },
 ]
 
 function confidenceClass(band: FieldRiskReview['confidenceBand']) {

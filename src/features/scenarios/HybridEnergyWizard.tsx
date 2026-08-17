@@ -9,11 +9,13 @@ import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
+import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
 import { buildHybridOneLineDiagram } from './oneLineDiagram'
-import { BESS_UNIT_SIZES, SQRT3 } from '../../lib/constants'
+import { BESS_UNIT_SIZES, RATE_PERIOD_OPTIONS, VOLTAGE_OPTIONS, type RatePeriod, SQRT3 } from '../../lib/constants'
+import { BESS_FLEET, normalizeRateToDaily, recommendEquipment } from '../../lib/equipmentRecommendations'
 import { fmt, fmtInt, fmtCurrency } from '../../lib/formatters'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -36,7 +38,9 @@ export default function HybridEnergyWizard() {
   const [ambientTemp, setAmbientTemp] = useState('85')
   const [fuelCost, setFuelCost] = useState('4.50')
   const [bessRental, setBessRental] = useState('350')
+  const [bessRatePeriod, setBessRatePeriod] = useState<RatePeriod>('daily')
   const [genRental, setGenRental] = useState('500')
+  const [genRatePeriod, setGenRatePeriod] = useState<RatePeriod>('daily')
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
   const [motors, setMotors] = useState<MotorEntry[]>([])
@@ -74,13 +78,13 @@ export default function HybridEnergyWizard() {
     bessUnitSize: parseInt(bessUnitSize) as BessUnitSize,
     peakHoursPerDay: parseFloat(peakHoursPerDay) || 8,
     projectDurationDays: parseFloat(projectDays) || 30,
-    redundancy: redundancy as 'n' | 'n1' | '2n',
+    redundancy: redundancy as 'field_verify' | 'n' | 'n1' | '2n',
     siteVoltage: parseInt(siteVoltage) || 480,
     altitude: parseFloat(altitude) || 0,
     ambientTemp: parseFloat(ambientTemp) || 85,
     fuelCostPerGallon: parseFloat(fuelCost) || 4.5,
-    bessRentalPerDay: parseFloat(bessRental) || 350,
-    genRentalPerDay: parseFloat(genRental) || 500,
+    bessRentalPerDay: normalizeRateToDaily(parseFloat(bessRental) || 350, bessRatePeriod),
+    genRentalPerDay: normalizeRateToDaily(parseFloat(genRental) || 500, genRatePeriod),
     startDate,
     endDate,
     motors,
@@ -89,6 +93,15 @@ export default function HybridEnergyWizard() {
   const calculate = useCallback((inp: HybridWizardInputs) => calculateHybridWizard(inp), [])
   const results = useCalculator(inputs, calculate)
   const oneLineDiagram = results ? buildHybridOneLineDiagram(inputs, results, zones) : null
+  const recommendation = results
+    ? recommendEquipment({
+        peakKw: inputs.peakLoadKw,
+        baseKw: inputs.baseLoadKw,
+        runtimeHours: inputs.projectDurationDays * 24,
+        peakHoursPerDay: inputs.peakHoursPerDay,
+        preferredBessKw: inputs.bessUnitSize,
+      })
+    : null
 
   const fuelComparisonData = useMemo(() => {
     if (!results) return []
@@ -150,7 +163,10 @@ export default function HybridEnergyWizard() {
               label="BESS Unit Size"
               value={bessUnitSize}
               onChange={setBessUnitSize}
-              options={BESS_UNIT_SIZES.map((s) => ({ value: String(s), label: `${s} kW` }))}
+              options={BESS_UNIT_SIZES.map((s) => {
+                const fleet = BESS_FLEET.find((unit) => unit.kw === s)
+                return { value: String(s), label: fleet ? fleet.label : `${s} kW legacy / large-system option` }
+              })}
               required
             />
             <SelectField
@@ -158,6 +174,7 @@ export default function HybridEnergyWizard() {
               value={redundancy}
               onChange={setRedundancy}
               options={[
+                { value: 'field_verify', label: 'Field verify before final design' },
                 { value: 'n', label: 'N (no redundancy)' },
                 { value: 'n1', label: 'N+1 (recommended)' },
                 { value: '2n', label: '2N (full redundancy)' },
@@ -167,12 +184,15 @@ export default function HybridEnergyWizard() {
               label="Site Voltage"
               value={siteVoltage}
               onChange={setSiteVoltage}
-              options={[
-                { value: '480', label: '480V' },
-                { value: '4160', label: '4160V' },
-              ]}
+              options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             />
           </div>
+          {redundancy === 'field_verify' && (
+            <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-sm text-info">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              Field verify uses N+1 planning capacity until the redundancy requirement is confirmed.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Peak Hours/Day" unit="hrs" value={peakHoursPerDay} onChange={setPeakHoursPerDay} />
@@ -185,10 +205,24 @@ export default function HybridEnergyWizard() {
             <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} />
             <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} />
             <InputField label="Fuel Cost" unit="$/gal" value={fuelCost} onChange={setFuelCost} />
-            <InputField label="BESS Rental" unit="$/day/unit" value={bessRental} onChange={setBessRental} />
+            <InputField label="BESS Rental" unit={`$/${bessRatePeriod}/unit`} value={bessRental} onChange={setBessRental} />
           </div>
 
-          <InputField label="Generator Rental" unit="$/day/unit" value={genRental} onChange={setGenRental} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <SelectField
+              label="BESS Rate Period"
+              value={bessRatePeriod}
+              onChange={(v) => setBessRatePeriod(v as RatePeriod)}
+              options={RATE_PERIOD_OPTIONS.map((option) => ({ ...option }))}
+            />
+            <InputField label="Generator Rental" unit={`$/${genRatePeriod}/unit`} value={genRental} onChange={setGenRental} />
+            <SelectField
+              label="Generator Rate Period"
+              value={genRatePeriod}
+              onChange={(v) => setGenRatePeriod(v as RatePeriod)}
+              options={RATE_PERIOD_OPTIONS.map((option) => ({ ...option }))}
+            />
+          </div>
         </div>
       </Card>
 
@@ -309,6 +343,8 @@ export default function HybridEnergyWizard() {
                 </BarChart>
             </ChartFrame>
           </Card>
+
+          {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}
 
           {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
 
@@ -449,20 +485,20 @@ export default function HybridEnergyWizard() {
           {/* Per-Zone Breakdown */}
           {zones.length > 0 && (
             <Card>
-              <CardHeader title="Power Zone Breakdown" subtitle="Per-zone distribution planning (480V 3-phase)" />
+              <CardHeader title="Power Zone Breakdown" subtitle={`Per-zone distribution planning (${siteVoltage}V 3-phase)`} />
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-sg-600">
                       <th className="text-left py-2 text-text-muted">Zone Name</th>
                       <th className="text-right py-2 text-text-muted">kW</th>
-                      <th className="text-right py-2 text-text-muted">Amps/Phase (480V)</th>
+                      <th className="text-right py-2 text-text-muted">Amps/Phase ({siteVoltage}V)</th>
                       <th className="text-right py-2 text-text-muted">Legs/Phase</th>
                     </tr>
                   </thead>
                   <tbody>
                     {zones.map((z) => {
-                      const ampsPerPhase = (z.kw * 1000) / (SQRT3 * 480 * 0.8)
+                      const ampsPerPhase = (z.kw * 1000) / (SQRT3 * inputs.siteVoltage * 0.8)
                       const legs = Math.ceil(ampsPerPhase / 400)
                       return (
                         <tr key={z.id} className="border-b border-sg-700">

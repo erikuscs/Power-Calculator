@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
+import { SelectField } from '../../components/ui/SelectField'
 import { TabGroup } from '../../components/ui/TabGroup'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { useCalculator } from '../../hooks/useCalculator'
+import { VOLTAGE_OPTIONS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import {
   calcKwAmp,
@@ -82,12 +84,12 @@ export default function KwAmpPage() {
             onChange={setValue}
             min={0}
           />
-          <InputField
+          <SelectField
             label="Voltage"
             unit="V"
             value={voltage}
             onChange={setVoltage}
-            min={0}
+            options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
           />
           <InputField
             label="Power Factor"

@@ -5,6 +5,7 @@ import { SelectField } from '../../components/ui/SelectField'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { Button } from '../../components/ui/Button'
+import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
@@ -28,6 +29,7 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts'
+import { BESS_FLEET, recommendEquipment } from '../../lib/equipmentRecommendations'
 
 export default function BessProjectWizard() {
   const [step, setStep] = useState(1)
@@ -37,7 +39,7 @@ export default function BessProjectWizard() {
   // Step 1 — System Requirements
   const [loadKW, setLoadKW] = useState('500')
   const [durationHours, setDurationHours] = useState('4')
-  const [unitCapacity, setUnitCapacity] = useState('200')
+  const [unitCapacity, setUnitCapacity] = useState('575')
   const [dodPercent, setDodPercent] = useState('80')
   const [lossesPercent, setLossesPercent] = useState('5')
 
@@ -88,6 +90,12 @@ export default function BessProjectWizard() {
   }, [])
 
   const roiResults = useCalculator(roiInputs, roiCalc)
+  const recommendation = sizingResults
+    ? recommendEquipment({
+        peakKw: sizingInputs.loadKW,
+        runtimeHours: sizingInputs.hours,
+      })
+    : null
 
   const chartData = roiResults?.yearlyData.map((d) => ({
     year: d.year,
@@ -142,13 +150,10 @@ export default function BessProjectWizard() {
               unit="kWh"
               value={unitCapacity}
               onChange={setUnitCapacity}
-              options={[
-                { value: '60', label: '60 kWh' },
-                { value: '100', label: '100 kWh' },
-                { value: '200', label: '200 kWh' },
-                { value: '500', label: '500 kWh' },
-                { value: '1000', label: '1,000 kWh' },
-              ]}
+              options={BESS_FLEET.map((unit) => ({
+                value: String(unit.kwh),
+                label: unit.label,
+              }))}
               required
             />
             <InputField label="Depth of Discharge" unit="%" value={dodPercent} onChange={setDodPercent} tooltip="Typical 80% to preserve battery life" />
@@ -202,6 +207,8 @@ export default function BessProjectWizard() {
             </ResultGrid>
             <FormulaBreakdown steps={describeSizing(sizingInputs, sizingResults)} title="Sizing Formulas" />
           </Card>
+
+          {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}
 
           {/* ROI Results */}
           <Card>

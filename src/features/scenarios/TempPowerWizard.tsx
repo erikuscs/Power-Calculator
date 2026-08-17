@@ -9,13 +9,15 @@ import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
 import { FieldRiskReviewPanel } from '../../components/ui/FieldRiskReviewPanel'
+import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { Button } from '../../components/ui/Button'
 import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
 import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
 import { buildFieldRiskReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
-import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS } from '../../lib/constants'
+import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS, VOLTAGE_OPTIONS } from '../../lib/constants'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
 import { fmt, fmtInt, fmtPercent } from '../../lib/formatters'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { ClipboardList, Trash2, AlertTriangle, Info } from 'lucide-react'
@@ -30,6 +32,7 @@ export default function TempPowerWizard() {
   const [targetTemp, setTargetTemp] = useState('72')
   const [durationHours, setDurationHours] = useState('720')
   const [altitude, setAltitude] = useState('0')
+  const [siteVoltage, setSiteVoltage] = useState('480')
   const [powerFactor, setPowerFactor] = useState('0.8')
   const [serviceIntervalDays, setServiceIntervalDays] = useState('10')
   const [technicianCoverage, setTechnicianCoverage] = useState<'none' | 'business_hours' | '24_7'>('business_hours')
@@ -86,6 +89,7 @@ export default function TempPowerWizard() {
     setTargetTemp('72')
     setDurationHours('23376')
     setAltitude('0')
+    setSiteVoltage('480')
     setPowerFactor('0.8')
     setServiceIntervalDays('10')
     setTechnicianCoverage('24_7')
@@ -119,6 +123,7 @@ export default function TempPowerWizard() {
     targetTemp: parseFloat(targetTemp) || 72,
     durationHours: parseFloat(durationHours) || 24,
     altitude: parseFloat(altitude) || 0,
+    siteVoltage: parseFloat(siteVoltage) || 480,
     powerFactor: parseFloat(powerFactor) || 0.8,
     serviceIntervalDays: parseFloat(serviceIntervalDays) || 0,
     technicianCoverage,
@@ -130,6 +135,15 @@ export default function TempPowerWizard() {
   const calculate = useCallback((inp: TempPowerInputs) => calculateTempPower(inp), [])
   const results = useCalculator(inputs, calculate)
   const oneLineDiagram = results ? buildTempPowerOneLineDiagram(inputs, results) : null
+  const recommendation = results
+    ? recommendEquipment({
+        peakKw: results.totalWithCoolingKw,
+        baseKw: results.totalWithCoolingKw * 0.6,
+        runtimeHours: inputs.durationHours,
+        peakHoursPerDay: Math.min(8, inputs.durationHours),
+        powerFactor: inputs.powerFactor,
+      })
+    : null
   const fieldRiskReview = results
     ? buildFieldRiskReview({
         inputs: riskInputs,
@@ -200,6 +214,13 @@ export default function TempPowerWizard() {
           <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />
           <InputField label="Duration" unit="hours" value={durationHours} onChange={setDurationHours} required tooltip="720 hours = 30 days" />
           <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} tooltip="+3% derating per 1,000 ft above 1,000 ft" />
+          <SelectField
+            label="Site Voltage"
+            value={siteVoltage}
+            onChange={setSiteVoltage}
+            options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
+            required
+          />
           <SelectField
             label="Power Factor"
             value={powerFactor}
@@ -303,7 +324,7 @@ export default function TempPowerWizard() {
               <ResultItem label="Total Load (with cooling)" value={fmt(results.totalWithCoolingKw, 1)} unit="kW" />
               <ResultItem label="Generator Size" value={fmt(results.generatorKva, 0)} unit="kVA" highlight beforeMargin={fmt(results.generatorKva / 1.25, 0) + ' kVA'} />
               <ResultItem label="Generator Size" value={fmt(results.generatorKw, 0)} unit="kW" highlight beforeMargin={fmt(results.generatorKw / 1.25, 0) + ' kW'} />
-              <ResultItem label="Amps per Phase (3Φ 480V)" value={fmt(results.ampsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
+              <ResultItem label={`Amps per Phase (3Φ ${siteVoltage}V)`} value={fmt(results.ampsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
               <ResultItem label="Load Factor" value={fmtPercent(results.loadFactor)} />
               <ResultItem label="BSFC" value={fmt(results.bsfcGalPerKwh, 3)} unit="gal/kWh" />
               <ResultItem label="Fuel Rate" value={fmt(results.fuelGallonsPerHour, 1)} unit="gal/hr" />
@@ -330,7 +351,7 @@ export default function TempPowerWizard() {
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-info">
                 <Info size={14} className="mt-0.5 shrink-0" />
-                <span>Your site needs step-down transformers for 480V→240V→120V distribution. Confirm with your electrician.</span>
+                <span>Your site needs step-down transformers for {siteVoltage}V→240V→120V distribution. Confirm with your electrician.</span>
               </div>
               <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-info">
                 <Info size={14} className="mt-0.5 shrink-0" />
@@ -346,6 +367,8 @@ export default function TempPowerWizard() {
               onChange={updateRiskInput}
             />
           )}
+
+          {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}
 
           {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
 

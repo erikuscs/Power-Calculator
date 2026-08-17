@@ -4,9 +4,10 @@ import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { useCalculator } from '../../hooks/useCalculator'
 import { fmt, fmtInt } from '../../lib/formatters'
-import { BESS_UNIT_SIZES } from '../../lib/constants'
+import { BESS_FLEET, recommendEquipment } from '../../lib/equipmentRecommendations'
 import {
   calculateSizing,
   describeSizing,
@@ -14,16 +15,16 @@ import {
   type SizingResults,
 } from './bess.formulas'
 
-const UNIT_CAPACITY_OPTIONS = BESS_UNIT_SIZES.map((size) => ({
-  value: String(size),
-  label: `${size} kWh`,
+const UNIT_CAPACITY_OPTIONS = BESS_FLEET.map((unit) => ({
+  value: String(unit.kwh),
+  label: `${unit.label} (${unit.voltage})`,
 }))
 
 export default function BessSizingPage() {
   const [loadKW, setLoadKW] = useState('100')
   const [hours, setHours] = useState('8')
   const [dodPercent, setDodPercent] = useState('80')
-  const [unitCapacity, setUnitCapacity] = useState('500')
+  const [unitCapacity, setUnitCapacity] = useState('575')
   const [lossesPercent, setLossesPercent] = useState('5')
 
   const inputs: SizingInputs = {
@@ -43,6 +44,12 @@ export default function BessSizingPage() {
   )
 
   const results = useCalculator(inputs, calculate)
+  const recommendation = results
+    ? recommendEquipment({
+        peakKw: inputs.loadKW,
+        runtimeHours: inputs.hours,
+      })
+    : null
 
   const steps = results ? describeSizing(inputs, results) : []
 
@@ -122,6 +129,11 @@ export default function BessSizingPage() {
             </ResultGrid>
 
             <FormulaBreakdown steps={steps} />
+            {recommendation && (
+              <div className="mt-6">
+                <EquipmentRecommendationPanel recommendation={recommendation} />
+              </div>
+            )}
 
             <div className="mt-4 px-4 py-3 bg-sg-800 border border-sg-600 rounded-lg text-sm text-text-muted">
               <span className="text-accent-400 font-medium">Safety note:</span>{' '}

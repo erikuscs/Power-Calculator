@@ -121,9 +121,9 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {zones && zones.length > 0 && (
         <PdfSection title="Power Zone Breakdown">
           <PdfTable
-            headers={['Zone Name', 'kW', 'Amps/Phase (480V)', 'Legs/Phase']}
+            headers={['Zone Name', 'kW', `Amps/Phase (${inputs.siteVoltage}V)`, 'Legs/Phase']}
             rows={zones.map((z) => {
-              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * 480 * 0.8)
+              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * inputs.siteVoltage * 0.8)
               const legs = Math.ceil(ampsPerPhase / 400)
               return [z.name, fi(z.kw), fi(ampsPerPhase), `${legs}`]
             })}

@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
+import { SelectField } from '../../components/ui/SelectField'
 import { TabGroup } from '../../components/ui/TabGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { useCalculator } from '../../hooks/useCalculator'
+import { VOLTAGE_OPTIONS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import {
   calcGeneralPower,
@@ -53,12 +55,12 @@ export default function GeneralPowerPage() {
         <TabGroup tabs={PHASE_TABS} activeTab={phase} onChange={(id) => setPhase(id as 'single' | 'three')} />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <InputField
+          <SelectField
             label="Voltage"
             unit="V"
             value={voltage}
             onChange={setVoltage}
-            min={0}
+            options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             tooltip="Line-to-line voltage for three-phase, line-to-neutral for single-phase"
           />
           <InputField

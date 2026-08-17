@@ -5,6 +5,7 @@ import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
+import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { HistoryDrawer } from '../../components/ui/HistoryDrawer'
 import { BessRuntimePdfDoc } from './BessRuntimePdf'
@@ -12,7 +13,9 @@ import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { useUrlState } from '../../hooks/useUrlState'
 import { useCalculationHistory } from '../../hooks/useCalculationHistory'
+import { LOW_VOLTAGE_OPTIONS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
 import {
   calculateRuntime,
   describeRuntime,
@@ -21,16 +24,6 @@ import {
 } from './bess.formulas'
 
 const ROUTE_KEY = '/bess/runtime'
-
-const VOLTAGE_OPTIONS = [
-  { value: '12', label: '12 V' },
-  { value: '24', label: '24 V' },
-  { value: '48', label: '48 V' },
-  { value: '96', label: '96 V' },
-  { value: '120', label: '120 V' },
-  { value: '240', label: '240 V' },
-  { value: '480', label: '480 V' },
-]
 
 const POWER_FACTOR_OPTIONS = [
   { value: '0.8', label: '0.8 (Typical)' },
@@ -75,6 +68,13 @@ export default function BessRuntimePage() {
   )
 
   const results = useCalculator(inputs, calculate)
+  const recommendation = results
+    ? recommendEquipment({
+        peakKw: (inputs.voltage * inputs.amps * inputs.powerFactor) / 1000,
+        runtimeHours: results.runtime,
+        powerFactor: inputs.powerFactor,
+      })
+    : null
 
   // Auto-save to history when results change
   const prevResultRef = useRef<string | null>(null)
@@ -125,7 +125,7 @@ export default function BessRuntimePage() {
             unit="V"
             value={voltage}
             onChange={setVoltage}
-            options={VOLTAGE_OPTIONS}
+            options={LOW_VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             tooltip="Nominal DC bus voltage"
           />
           <InputField
@@ -161,6 +161,11 @@ export default function BessRuntimePage() {
             </ResultGrid>
 
             <FormulaBreakdown steps={steps} />
+            {recommendation && (
+              <div className="mt-6">
+                <EquipmentRecommendationPanel recommendation={recommendation} />
+              </div>
+            )}
 
             <div className="mt-4 flex justify-end">
               <PdfExportButton

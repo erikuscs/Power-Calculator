@@ -59,6 +59,7 @@ export function OneLineDiagramPanel({ diagram }: { diagram: OneLineDiagram }) {
         }
       />
 
+      <div className="mb-2 text-[11px] text-text-dim lg:hidden">Scroll diagram horizontally to review all stages.</div>
       <div className="overflow-x-auto rounded-lg border border-sg-600/40 bg-sg-900/70 p-4">
         <div
           className="grid min-w-[860px] gap-3"

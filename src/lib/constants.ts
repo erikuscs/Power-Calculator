@@ -1,6 +1,31 @@
 export const SQRT3 = Math.sqrt(3)
 
-export const BESS_UNIT_SIZES = [36, 50, 150, 300, 500, 600] as const
+export const VOLTAGE_OPTIONS = [
+  { value: '120', label: '120 V' },
+  { value: '208', label: '208 V' },
+  { value: '240', label: '240 V' },
+  { value: '277', label: '277 V' },
+  { value: '480', label: '480 V' },
+  { value: '600', label: '600 V' },
+  { value: '4160', label: '4160 V' },
+] as const
+
+export const LOW_VOLTAGE_OPTIONS = [
+  { value: '12', label: '12 V' },
+  { value: '24', label: '24 V' },
+  { value: '48', label: '48 V' },
+  { value: '96', label: '96 V' },
+  ...VOLTAGE_OPTIONS.filter((option) => option.value !== '4160'),
+] as const
+
+export const RATE_PERIOD_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+] as const
+export type RatePeriod = (typeof RATE_PERIOD_OPTIONS)[number]['value']
+
+export const BESS_UNIT_SIZES = [5, 24, 30, 75, 250, 300, 600] as const
 export type BessUnitSize = (typeof BESS_UNIT_SIZES)[number]
 
 export const DIESEL_BSFC: Record<number, number> = {

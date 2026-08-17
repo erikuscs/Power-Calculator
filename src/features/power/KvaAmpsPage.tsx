@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
+import { SelectField } from '../../components/ui/SelectField'
 import { TabGroup } from '../../components/ui/TabGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { useCalculator } from '../../hooks/useCalculator'
+import { VOLTAGE_OPTIONS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import {
   calcKvaAmps,
@@ -59,12 +61,12 @@ export default function KvaAmpsPage() {
             min={0}
             tooltip="Apparent power in kilovolt-amperes"
           />
-          <InputField
+          <SelectField
             label="Voltage"
             unit="V"
             value={voltage}
             onChange={setVoltage}
-            min={0}
+            options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             tooltip="System voltage"
           />
         </div>

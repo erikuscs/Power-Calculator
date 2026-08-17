@@ -40,6 +40,7 @@ export interface TempPowerInputs {
   targetTemp: number
   durationHours: number
   altitude: number
+  siteVoltage?: number
   powerFactor: number
   serviceIntervalDays?: number
   technicianCoverage?: 'none' | 'business_hours' | '24_7'
@@ -139,7 +140,8 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
 
   const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, inputs.durationHours, altitudeDerating, tempDerating)
 
-  const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * 480)
+  const siteVoltage = inputs.siteVoltage ?? 480
+  const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * siteVoltage)
   const parallelRunsNeeded = ampsPerPhase > 400
 
   const hybridFuelSavingsGal = hybrid
@@ -249,7 +251,7 @@ export interface HybridWizardInputs {
   bessUnitSize: BessUnitSize
   peakHoursPerDay: number
   projectDurationDays: number
-  redundancy: 'n' | 'n1' | '2n'
+  redundancy: 'field_verify' | 'n' | 'n1' | '2n'
   siteVoltage: number
   altitude: number
   ambientTemp: number
@@ -300,7 +302,7 @@ export interface HybridWizardResults {
 export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardResults {
   const { peakLoadKw, baseLoadKw, bessUnitSize, peakHoursPerDay, projectDurationDays, redundancy, altitude, ambientTemp, fuelCostPerGallon, bessRentalPerDay, genRentalPerDay } = inputs
 
-  const redundancyFactor = redundancy === '2n' ? 2.0 : redundancy === 'n1' ? 1.25 : 1.0
+  const redundancyFactor = redundancy === '2n' ? 2.0 : redundancy === 'n1' || redundancy === 'field_verify' ? 1.25 : 1.0
   const peakDelta = Math.max(0, peakLoadKw - baseLoadKw)
 
   const bessUnitsForPeak = Math.ceil(peakDelta / bessUnitSize)

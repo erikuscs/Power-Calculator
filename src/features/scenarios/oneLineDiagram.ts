@@ -248,7 +248,7 @@ export function buildHybridOneLineDiagram(
         id: `ZONE_${index + 1}`,
         label: zone.name || `Zone ${index + 1}`,
         detail: `${fi(zone.kw)} kW`,
-        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * 480 * 0.8))} A/phase at 480V`,
+        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * inputs.siteVoltage * 0.8))} A/phase at ${inputs.siteVoltage}V`,
         tone: 'load' as const,
       }))
     : [

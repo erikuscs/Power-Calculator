@@ -16,6 +16,7 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
   const fv = (v: number, d = 1) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const siteVoltage = inputs.siteVoltage ?? 480
   const technicianCoverage =
     inputs.technicianCoverage === '24_7'
       ? '24/7 field technician'
@@ -33,6 +34,7 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
         <PdfKeyValue label="Target Temperature" value={`${inputs.targetTemp} °F`} />
         <PdfKeyValue label="Duration" value={`${fi(inputs.durationHours)} hours (${fv(inputs.durationHours / 24, 0)} days)`} />
         <PdfKeyValue label="Altitude" value={`${fi(inputs.altitude)} ft ASL`} />
+        <PdfKeyValue label="Site Voltage" value={`${siteVoltage} V`} />
         <PdfKeyValue label="Power Factor" value={`${inputs.powerFactor}`} />
         <PdfKeyValue label="PM Service Interval" value={`${fv(inputs.serviceIntervalDays ?? 10, 0)} days`} />
         <PdfKeyValue label="Technician Coverage" value={technicianCoverage} />
@@ -60,7 +62,7 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
           rows={[
             ['Generator Size', fi(results.generatorKva), 'kVA', 'Yes (1.25x)'],
             ['Generator Size', fi(results.generatorKw), 'kW', 'Yes (1.25x)'],
-            ['Amps per Phase (3Φ 480V)', fi(results.ampsPerPhase), 'A', results.parallelRunsNeeded ? 'PARALLEL RUNS NEEDED' : '—'],
+            [`Amps per Phase (3Φ ${siteVoltage}V)`, fi(results.ampsPerPhase), 'A', results.parallelRunsNeeded ? 'PARALLEL RUNS NEEDED' : '—'],
             ['Cooling Tonnage', fv(results.coolingTons), 'tons', 'Yes (1.15x)'],
             ['Fuel Rate', fv(results.fuelGallonsPerHour), 'gal/hr', 'No'],
             ['Total Fuel', fi(results.totalFuelGallons), 'gallons', 'Yes (1.10x contingency)'],
@@ -139,7 +141,7 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
       {/* Electrical Distribution Notes */}
       <PdfSection title="Electrical Distribution Notes">
         <PdfWarning>
-          Your site needs step-down transformers for 480V to 240V to 120V distribution. Confirm with your electrician.
+          {`Your site needs step-down transformers for ${siteVoltage}V to 240V to 120V distribution. Confirm with your electrician.`}
         </PdfWarning>
         <PdfWarning>
           Redundancy requires Automatic Transfer Switch(es) — include in your equipment order.
