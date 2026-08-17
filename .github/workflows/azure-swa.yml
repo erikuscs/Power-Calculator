@@ -24,7 +24,7 @@ jobs:
       - name: Install and Build
         run: |
           npm ci
-          npm install --include=optional
+          npm install --no-save @rolldown/binding-linux-x64-gnu@1.0.3
           npm test
           npx playwright install chromium
           npm run test:e2e
