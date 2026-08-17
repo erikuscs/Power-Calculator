@@ -17,8 +17,14 @@ export interface HybridEnergyPdfDocProps {
 export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, zones }: HybridEnergyPdfDocProps) {
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const fv = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
   const redundancyLabel = inputs.redundancy === '2n' ? '2N (Full Redundancy)' : inputs.redundancy === 'n1' ? 'N+1' : 'N (No Redundancy)'
+  const coverageStatusLabel = {
+    '24_7_ready': '24/7 ready',
+    conditional: 'Conditional',
+    not_feasible: 'Not feasible',
+  } as const
   const diagram = buildHybridOneLineDiagram(inputs, results, zones ?? [])
   const recommendation = recommendEquipment({
     peakKw: inputs.peakLoadKw,
@@ -66,6 +72,32 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
             {`${fi(results.peakAmpsPerPhase)}A per phase — ${Math.ceil(results.peakAmpsPerPhase / 400)} legs per phase required (generator power cable rated 400A per leg).`}
           </PdfWarning>
         )}
+      </PdfSection>
+
+      <PdfSection title="24/7 Hybrid Coverage Scenarios">
+        <PdfTable
+          headers={['Metric', 'Value']}
+          rows={[
+            ['Installed BESS', `${fi(results.coverage.bessInstalledKw)} kW / ${fi(results.coverage.bessInstalledKwh)} kWh`],
+            ['Usable BESS Energy', `${fi(results.coverage.bessUsableKwh)} kWh`],
+            ['Generator Online Capacity', `${fi(results.coverage.generatorOnlineKw)} kW`],
+            ['Generator Recharge Reserve', `${fi(results.coverage.generatorRechargeReserveKw)} kW`],
+            ['Base Battery Runtime', `${fv(results.coverage.baseBatteryHours)} hours`],
+            ['Estimated Full Recharge Window', results.coverage.estimatedRechargeHours === null ? 'No recharge reserve' : `${fv(results.coverage.estimatedRechargeHours)} hours`],
+          ]}
+        />
+        <PdfTable
+          headers={['Scenario', 'Status', 'Coverage Logic', 'Requirement']}
+          rows={results.coverage.scenarios.map((scenario) => [
+            scenario.label,
+            coverageStatusLabel[scenario.status],
+            `${scenario.dispatch} ${scenario.coverage}`,
+            scenario.requirement,
+          ])}
+        />
+        <PdfWarning>
+          24/7 coverage assumes fuel logistics, service access, ATS or parallel gear, verified charge windows, SOC start thresholds, inverter sync, and remote monitoring. Final design requires field verification.
+        </PdfWarning>
       </PdfSection>
 
       <PdfEquipmentRecommendationSection recommendation={recommendation} />

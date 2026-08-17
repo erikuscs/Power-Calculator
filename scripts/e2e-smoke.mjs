@@ -97,6 +97,8 @@ async function run() {
     await page.getByLabel('Generator Rate Period').selectOption('monthly')
     await page.getByLabel('Redundancy Level').selectOption('field_verify')
     await expectText(page, /Field verify uses N\+1 planning capacity/i, 'field-verify redundancy note')
+    await expectText(page, /24\/7 Hybrid Coverage Scenarios/i, 'hybrid 24/7 coverage scenarios')
+    await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
     await expectText(page, /300 kW legacy \/ large-system BESS/i, 'selected legacy BESS recommendation')
 
     await page.goto(`${baseUrl}/scenarios/bess-project`, { waitUntil: 'networkidle' })

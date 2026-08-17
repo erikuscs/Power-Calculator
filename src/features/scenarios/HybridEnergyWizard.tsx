@@ -25,6 +25,18 @@ import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Shield, Fuel, DollarSig
 
 let nextMotorId = 1
 
+const coverageStatusLabel = {
+  '24_7_ready': '24/7 ready',
+  conditional: 'Conditional',
+  not_feasible: 'Not feasible',
+} as const
+
+const coverageStatusClass = {
+  '24_7_ready': 'border-success/35 bg-success/10 text-success',
+  conditional: 'border-warning/35 bg-warning/10 text-warning',
+  not_feasible: 'border-error/35 bg-error/10 text-error',
+} as const
+
 export default function HybridEnergyWizard() {
   const [peakLoadKw, setPeakLoadKw] = useState('800')
   const [baseLoadKw, setBaseLoadKw] = useState('400')
@@ -357,6 +369,51 @@ export default function HybridEnergyWizard() {
                   <Bar dataKey="reserve" name="Redundancy" stackId="a" fill="#6b7280" />
                 </BarChart>
             </ChartFrame>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="24/7 Hybrid Coverage Scenarios"
+              subtitle="Battery-first EMaaS operation with generator dispatch, recharge reserve, and fallback coverage"
+            />
+            <ResultGrid>
+              <ResultItem label="Installed BESS" value={fmtInt(results.coverage.bessInstalledKw)} unit="kW" highlight />
+              <ResultItem label="BESS Energy" value={fmtInt(results.coverage.bessInstalledKwh)} unit="kWh" />
+              <ResultItem label="Usable Energy" value={fmtInt(results.coverage.bessUsableKwh)} unit="kWh" />
+              <ResultItem label="Generator Online" value={fmtInt(results.coverage.generatorOnlineKw)} unit="kW" highlight={results.coverage.canCarryPeakOnGenerator} />
+              <ResultItem label="Recharge Reserve" value={fmtInt(results.coverage.generatorRechargeReserveKw)} unit="kW" highlight={results.coverage.canCarryBaseWhileCharging} />
+              <ResultItem
+                label="Base Battery Runtime"
+                value={fmt(results.coverage.baseBatteryHours, 1)}
+                unit="hrs"
+                highlight={results.coverage.baseBatteryHours >= 8}
+              />
+            </ResultGrid>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {results.coverage.scenarios.map((scenario) => (
+                <div key={scenario.label} className="rounded-lg border border-sg-600/40 bg-sg-800/70 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h3 className="text-sm font-bold text-text">{scenario.label}</h3>
+                    <span className={`rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${coverageStatusClass[scenario.status]}`}>
+                      {coverageStatusLabel[scenario.status]}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-text-muted">{scenario.dispatch}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-text">{scenario.coverage}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-text-dim">{scenario.requirement}</p>
+                </div>
+              ))}
+            </div>
+
+            {results.coverage.estimatedRechargeHours !== null && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-sm text-info">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  Estimated full recharge window is {fmt(results.coverage.estimatedRechargeHours, 1)} hours using available generator reserve. Final dispatch needs field verification of SOC thresholds, charge limits, cable size, and controls.
+                </span>
+              </div>
+            )}
           </Card>
 
           {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}

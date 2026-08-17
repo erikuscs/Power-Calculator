@@ -1,6 +1,16 @@
 import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize } from '../../lib/constants'
 export type { BessUnitSize }
 
+const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
+  5: 7,
+  24: 90,
+  30: 150,
+  75: 600,
+  250: 575,
+  300: 1200,
+  600: 2400,
+}
+
 export function interpolateBSFC(loadFactor: number): number {
   const clamped = Math.max(0.1, Math.min(1, loadFactor))
   const points = [
@@ -295,8 +305,33 @@ export interface HybridWizardResults {
   parallelRunsNeeded: boolean
   co2AvoidedLbs: number
   co2AvoidedTons: number
+  coverage: HybridCoverageResults
   motorAssignments: { id: string; hp: number; method: string; lra: number; assignment: 'bess' | 'generator'; reason: string }[]
   dailyFuelData: { day: number; date: string; allGenGal: number; hybridGal: number; savingsGal: number; cumulativeSavingsGal: number }[]
+}
+
+export interface HybridCoverageResults {
+  bessInstalledKw: number
+  bessInstalledKwh: number
+  bessUsableKwh: number
+  generatorOnlineKw: number
+  generatorRechargeReserveKw: number
+  baseBatteryHours: number
+  peakBatteryHours: number
+  peakShavingHours: number
+  estimatedRechargeHours: number | null
+  canCarryBaseWhileCharging: boolean
+  canCarryPeakOnGenerator: boolean
+  canCoverPeakWithHybrid: boolean
+  scenarios: HybridCoverageScenario[]
+}
+
+export interface HybridCoverageScenario {
+  label: string
+  status: '24_7_ready' | 'conditional' | 'not_feasible'
+  dispatch: string
+  coverage: string
+  requirement: string
 }
 
 export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardResults {
@@ -376,6 +411,11 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 
   const co2AvoidedLbs = totalFuelSavingsGal * CO2_LBS_PER_GALLON_DIESEL
   const co2AvoidedTons = co2AvoidedLbs / 2000
+  const coverage = buildHybridCoverage(inputs, {
+    bessUnits,
+    genUnits,
+    genUnitSizeKw,
+  })
 
   return {
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,
@@ -386,6 +426,103 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     allGenCost30Day, hybridCost30Day, costSavings30Day,
     peakAmpsPerPhase, baseAmpsPerPhase, parallelRunsNeeded,
     co2AvoidedLbs, co2AvoidedTons,
+    coverage,
     motorAssignments, dailyFuelData,
+  }
+}
+
+function buildHybridCoverage(
+  inputs: HybridWizardInputs,
+  sizing: { bessUnits: number; genUnits: number; genUnitSizeKw: number },
+): HybridCoverageResults {
+  const unitKwh = BESS_UNIT_ENERGY_KWH[inputs.bessUnitSize]
+  const bessInstalledKw = sizing.bessUnits * inputs.bessUnitSize
+  const bessInstalledKwh = sizing.bessUnits * unitKwh
+  const bessUsableKwh = bessInstalledKwh * 0.85
+  const generatorOnlineKw = sizing.genUnits * sizing.genUnitSizeKw
+  const baseLoadKw = Math.max(1, inputs.baseLoadKw)
+  const peakLoadKw = Math.max(1, inputs.peakLoadKw)
+  const peakDeltaKw = Math.max(0, inputs.peakLoadKw - inputs.baseLoadKw)
+  const generatorRechargeReserveKw = Math.max(0, generatorOnlineKw - inputs.baseLoadKw)
+  const baseBatteryHours = bessUsableKwh / baseLoadKw
+  const peakBatteryHours = bessUsableKwh / peakLoadKw
+  const peakShavingHours = peakDeltaKw > 0 ? bessUsableKwh / peakDeltaKw : Infinity
+  const estimatedRechargeHours = generatorRechargeReserveKw > 0
+    ? bessUsableKwh / generatorRechargeReserveKw
+    : null
+  const canCarryBaseWhileCharging = generatorOnlineKw >= inputs.baseLoadKw && generatorRechargeReserveKw > 0
+  const canCarryPeakOnGenerator = generatorOnlineKw >= inputs.peakLoadKw
+  const canCoverPeakWithHybrid = generatorOnlineKw + bessInstalledKw >= inputs.peakLoadKw
+  const hasFuelAndServiceWindow = inputs.projectDurationDays >= 1
+
+  const scenarios: HybridCoverageScenario[] = [
+    {
+      label: 'Battery-first hybrid microgrid',
+      status: canCarryBaseWhileCharging && canCoverPeakWithHybrid && hasFuelAndServiceWindow
+        ? '24_7_ready'
+        : canCoverPeakWithHybrid
+          ? 'conditional'
+          : 'not_feasible',
+      dispatch: 'Run BESS first. EMS remote-starts the generator at the low-SOC threshold, carries the customer load, and recharges the BESS.',
+      coverage: canCarryBaseWhileCharging
+        ? `Generator has ${Math.round(generatorRechargeReserveKw)} kW recharge reserve while serving base load.`
+        : 'Generator cannot both serve base load and recharge BESS without reducing customer load.',
+      requirement: 'Needs fuel plan, service window, ATS or parallel gear, charge windows, SOC thresholds, inverter sync, and remote monitoring.',
+    },
+    {
+      label: 'Silent overnight with recharge window',
+      status: baseBatteryHours >= 8
+        ? '24_7_ready'
+        : baseBatteryHours >= 4
+          ? 'conditional'
+          : 'not_feasible',
+      dispatch: 'Use BESS for quiet or emissions-sensitive hours, then recharge from generator before the reserve threshold is reached.',
+      coverage: `${baseBatteryHours.toFixed(1)} hours of base-load battery runtime before generator recharge.`,
+      requirement: baseBatteryHours >= 8
+        ? 'Can support an 8-hour quiet window at base load before recharge.'
+        : 'Increase BESS energy or shorten the quiet window for overnight coverage.',
+    },
+    {
+      label: 'Parallel BESS for peak support',
+      status: sizing.bessUnits > 1 && canCoverPeakWithHybrid
+        ? '24_7_ready'
+        : canCoverPeakWithHybrid
+          ? 'conditional'
+          : 'not_feasible',
+      dispatch: 'Parallel multiple BESS units for peak shaving, voltage support, and staged recharge.',
+      coverage: peakDeltaKw > 0
+        ? `${peakShavingHours === Infinity ? 'Unlimited' : peakShavingHours.toFixed(1)} hours of peak-delta support from usable battery energy.`
+        : 'No peak delta entered; BESS is operating as reserve or power-quality support.',
+      requirement: 'Needs compatible paralleling controls, balanced cable runs, and verified inverter limits for motor starts.',
+    },
+    {
+      label: 'Generator-backed 24/7 fallback',
+      status: canCarryPeakOnGenerator
+        ? '24_7_ready'
+        : canCarryBaseWhileCharging
+          ? 'conditional'
+          : 'not_feasible',
+      dispatch: 'Generator plant stays available as the fallback source while BESS handles silent runtime and transitions.',
+      coverage: canCarryPeakOnGenerator
+        ? 'Generator plant can carry peak load if BESS is depleted or offline.'
+        : 'Generator plant can carry base load, but peak load depends on charged BESS capacity.',
+      requirement: 'For critical 24/7 coverage, size generator fallback to the protected load or define which loads shed during recharge.',
+    },
+  ]
+
+  return {
+    bessInstalledKw,
+    bessInstalledKwh,
+    bessUsableKwh,
+    generatorOnlineKw,
+    generatorRechargeReserveKw,
+    baseBatteryHours,
+    peakBatteryHours,
+    peakShavingHours,
+    estimatedRechargeHours,
+    canCarryBaseWhileCharging,
+    canCarryPeakOnGenerator,
+    canCoverPeakWithHybrid,
+    scenarios,
   }
 }

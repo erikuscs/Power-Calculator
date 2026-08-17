@@ -276,7 +276,7 @@ export function buildHybridOneLineDiagram(
           id: 'BESS',
           label: 'BESS Plant',
           detail: `${results.bessUnits} x ${inputs.bessUnitSize} kW`,
-          meta: `${fi(results.bessEnergyKwh)} kWh peak window`,
+          meta: `${fi(results.coverage.bessInstalledKwh)} kWh installed / ${fi(results.coverage.bessUsableKwh)} kWh usable`,
           tone: 'storage',
         },
       ],
@@ -287,7 +287,7 @@ export function buildHybridOneLineDiagram(
         {
           id: 'EMS',
           label: 'EMaaS Controller',
-          detail: 'SOC reserve / recharge / peak dispatch',
+          detail: 'SOC threshold / remote start / recharge dispatch',
           meta: inputs.redundancy === '2n' ? '2N topology' : inputs.redundancy === 'n1' ? 'N+1 topology' : 'N topology',
           tone: 'control',
         },
@@ -326,9 +326,9 @@ export function buildHybridOneLineDiagram(
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'EMS', label: 'base load' },
-    { from: 'BESS', to: 'EMS', label: 'peak load' },
-    { from: 'EMS', to: 'ATS', label: 'dispatch logic' },
+    { from: 'GEN', to: 'EMS', label: 'remote-start recharge' },
+    { from: 'BESS', to: 'EMS', label: 'battery-first output' },
+    { from: 'EMS', to: 'ATS', label: 'load + recharge dispatch' },
     { from: 'ATS', to: 'SWGR', label: `${inputs.siteVoltage}V 3-phase` },
     { from: 'SWGR', to: 'XFMR', label: 'protected feeders' },
     ...zoneNodes.map((node) => ({ from: 'XFMR', to: node.id, label: 'branch feeder' })),

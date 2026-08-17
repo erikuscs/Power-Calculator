@@ -256,6 +256,59 @@ describe('calculateHybridWizard', () => {
     expect(result.totalFuelSavingsGal).toBeGreaterThan(0)
     expect(result.parallelRunsNeeded).toBe(true)
   })
+
+  it('models battery-first generator recharge coverage for 24/7 hybrid operation', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 2000,
+      baseLoadKw: 800,
+      loadSource: 'measured',
+      bessUnitSize: 30,
+      peakHoursPerDay: 4,
+      projectDurationDays: 30,
+      redundancy: '2n',
+      siteVoltage: 208,
+      altitude: 1400,
+      ambientTemp: 85,
+      fuelCostPerGallon: 4.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-08-17',
+      endDate: '2026-09-16',
+      motors: [],
+    })
+
+    expect(result.coverage.bessInstalledKwh).toBe(6000)
+    expect(result.coverage.canCarryBaseWhileCharging).toBe(true)
+    expect(result.coverage.canCarryPeakOnGenerator).toBe(true)
+    expect(result.coverage.scenarios[0].label).toBe('Battery-first hybrid microgrid')
+    expect(result.coverage.scenarios[0].status).toBe('24_7_ready')
+    expect(result.coverage.scenarios[0].dispatch).toContain('remote-starts the generator')
+  })
+
+  it('flags peak coverage as conditional when generator cannot carry peak without charged BESS', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 800,
+      baseLoadKw: 400,
+      loadSource: 'measured',
+      bessUnitSize: 300,
+      peakHoursPerDay: 8,
+      projectDurationDays: 30,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 4.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+      motors: [],
+    })
+
+    expect(result.coverage.canCoverPeakWithHybrid).toBe(true)
+    expect(result.coverage.canCarryPeakOnGenerator).toBe(false)
+    expect(result.coverage.scenarios.find((scenario) => scenario.label === 'Generator-backed 24/7 fallback')?.status).toBe('conditional')
+  })
 })
 
 describe('data-center source-load power smoke checks', () => {
