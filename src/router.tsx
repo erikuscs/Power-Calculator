@@ -2,6 +2,7 @@
 import { lazy, type ReactNode } from 'react'
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'))
+const LearnHubPage = lazy(() => import('./features/learn/LearnHubPage'))
 const BessRuntimePage = lazy(() => import('./features/bess/BessRuntimePage'))
 const BessSizingPage = lazy(() => import('./features/bess/BessSizingPage'))
 const BessRoiPage = lazy(() => import('./features/bess/BessRoiPage'))
@@ -35,6 +36,7 @@ interface AppRoute {
 
 export const routes: AppRoute[] = [
   { path: '/', element: <DashboardPage />, label: 'Dashboard' },
+  { path: '/learn', element: <LearnHubPage />, label: 'Start Here', group: 'Overview' },
   { path: '/bess/runtime', element: <BessRuntimePage />, label: 'BESS Runtime', group: 'BESS' },
   { path: '/bess/sizing', element: <BessSizingPage />, label: 'Multi-Unit Sizing', group: 'BESS' },
   { path: '/bess/roi', element: <BessRoiPage />, label: 'Revenue / ROI', group: 'BESS' },

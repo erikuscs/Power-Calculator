@@ -73,14 +73,18 @@ async function run() {
     })
     page.on('pageerror', (error) => errors.push(error.message))
 
-    await page.goto(`${baseUrl}/power/generator`, { waitUntil: 'networkidle' })
-    await clearDisclaimer(page)
-    await page.getByLabel('Voltage').selectOption('208')
-    await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
+  await page.goto(`${baseUrl}/power/generator`, { waitUntil: 'networkidle' })
+  await clearDisclaimer(page)
+  await page.getByLabel('Voltage').selectOption('208')
+  await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
 
-    await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
-    await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
-    await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
+  await page.goto(`${baseUrl}/learn`, { waitUntil: 'networkidle' })
+  await expectText(page, /EMaaS\.pro Tutorial/i, 'start-here tutorial')
+  await expectText(page, /Basic operating path/i, 'tutorial operating path')
+
+  await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
+  await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
+  await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
     await page.getByLabel('Site Voltage').selectOption('208')

@@ -5,7 +5,10 @@ const navGroups = [
   {
     label: 'Overview',
     icon: LayoutDashboard,
-    items: [{ to: '/', label: 'EMaaS Dashboard' }],
+    items: [
+      { to: '/', label: 'EMaaS Dashboard' },
+      { to: '/learn', label: 'Start Here' },
+    ],
   },
   {
     label: 'EMaaS Workflows',

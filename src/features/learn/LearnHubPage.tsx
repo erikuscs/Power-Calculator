@@ -1,50 +1,189 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { Battery, Plug, Thermometer, BookOpen } from 'lucide-react'
+import {
+  ArrowRight,
+  Battery,
+  BookOpen,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Plug,
+  Thermometer,
+  Workflow,
+  Zap,
+} from 'lucide-react'
 
-const tutorials = [
-  { group: 'BESS', icon: Battery, items: [
-    { to: '/bess/runtime', label: 'BESS Runtime', desc: 'Why power factor matters — reactive vs real power, 0.8 vs 1.0' },
-    { to: '/bess/sizing', label: 'Multi-Unit Sizing', desc: 'How battery capacity degrades over time and what DoD means in practice' },
-    { to: '/bess/roi', label: 'Revenue / ROI', desc: 'Energy arbitrage explained — buying low, selling high, when it\'s profitable' },
-  ]},
-  { group: 'Electrical Power', icon: Plug, items: [
-    { to: '/power/general', label: 'General Power', desc: 'Single-phase vs three-phase — when and why' },
-    { to: '/power/kw-kva', label: 'kW vs kVA', desc: 'The power triangle explained — kW, kVA, kVAR' },
-    { to: '/power/generator', label: 'Generator Sizing', desc: 'Why you need 125% margin above your load' },
-    { to: '/power/fuel', label: 'Fuel Consumption', desc: 'Load-dependent fuel rates — why flat-rate estimates are wrong' },
-  ]},
-  { group: 'HVAC', icon: Thermometer, items: [
-    { to: '/hvac/cooling', label: 'Cooling Load', desc: 'Why occupancy is critical — 450 BTU/hr per person' },
-    { to: '/hvac/chiller', label: 'Chiller Sizing', desc: 'Why 2.4 GPM/Ton and when you need a heat exchanger' },
-    { to: '/hvac/psychrometrics', label: 'Psychrometrics', desc: 'Dry bulb, wet bulb, dew point — what they actually mean' },
-  ]},
+const startSteps = [
+  {
+    title: 'Define the job',
+    body: 'Start with the real field problem: temporary power, hybrid energy, BESS economics, or cooling load.',
+  },
+  {
+    title: 'Enter known site data',
+    body: 'Use measured values when you have them. When a field value is unknown, choose the neutral or field-verify option.',
+  },
+  {
+    title: 'Review calculated demand',
+    body: 'Confirm voltage, phase, power factor, runtime, redundancy, and cooling assumptions before trusting the output.',
+  },
+  {
+    title: 'Check the suggested setup',
+    body: 'Use the generator, BESS, hybrid, fuel-cell, and footprint recommendation as a planning baseline.',
+  },
+  {
+    title: 'Export for review',
+    body: 'Generate the report after the assumptions are clean, then send it for engineering or commercial review.',
+  },
+]
+
+const primaryWorkflows = [
+  {
+    to: '/scenarios/temp-power',
+    icon: Zap,
+    title: 'Temp Power & Cooling',
+    desc: 'Best first stop for urgent site support, load capture, generator sizing, cooling, and report output.',
+  },
+  {
+    to: '/scenarios/hybrid-energy',
+    icon: Workflow,
+    title: 'Hybrid EMaaS Strategy',
+    desc: 'Use when the answer may combine generators, BESS, redundancy, and rate-period planning.',
+  },
+  {
+    to: '/scenarios/bess-project',
+    icon: Battery,
+    title: 'BESS Project Evaluation',
+    desc: 'Use for standalone BESS sizing, economics, revenue, payback, and footprint planning.',
+  },
+  {
+    to: '/scenarios/hvac-assessment',
+    icon: Thermometer,
+    title: 'HVAC Load Assessment',
+    desc: 'Use when cooling load, airflow, chiller sizing, and heat rejection are the main questions.',
+  },
+]
+
+const referenceGroups = [
+  {
+    group: 'Electrical Power',
+    icon: Plug,
+    intro: 'Use these when you need to convert or verify the load before sizing equipment.',
+    items: [
+      { to: '/power/general', label: 'General Power', desc: 'Single-phase and three-phase power from voltage, current, and power factor.' },
+      { to: '/power/kw-kva', label: 'kW vs kVA', desc: 'Real power, apparent power, and why power factor changes generator sizing.' },
+      { to: '/power/generator', label: 'Generator Sizing', desc: 'Generator planning with margin, voltage, phase, and recommended equipment.' },
+      { to: '/power/fuel', label: 'Fuel Consumption', desc: 'Fuel burn estimates adjusted for load, altitude, and temperature.' },
+    ],
+  },
+  {
+    group: 'BESS',
+    icon: Battery,
+    intro: 'Use these when runtime, capacity, degradation, or project value drives the decision.',
+    items: [
+      { to: '/bess/runtime', label: 'BESS Runtime', desc: 'Runtime from usable energy, load, voltage, amps, and power factor.' },
+      { to: '/bess/sizing', label: 'Multi-Unit Sizing', desc: 'Unit count, usable capacity, reserve, and Sunbelt-style BESS selections.' },
+      { to: '/bess/roi', label: 'Revenue / ROI', desc: 'Arbitrage, demand reduction, payback, and net present value.' },
+    ],
+  },
+  {
+    group: 'HVAC',
+    icon: Thermometer,
+    intro: 'Use these when the site problem is heat, airflow, water flow, or chiller capacity.',
+    items: [
+      { to: '/hvac/cooling', label: 'Cooling Load', desc: 'Equipment, envelope, occupancy, and safety factor translated to tons.' },
+      { to: '/hvac/chiller', label: 'Chiller Sizing', desc: 'Flow rate, temperature change, and chiller tonnage planning.' },
+      { to: '/hvac/psychrometrics', label: 'Psychrometrics', desc: 'Dry bulb, wet bulb, dew point, sensible load, and latent load.' },
+    ],
+  },
 ]
 
 export default function LearnHubPage() {
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-text flex items-center gap-2"><BookOpen size={24} className="text-accent-500" /> Learn Hub</h1>
-        <p className="text-text-muted mt-1">How & why behind every calculator — formulas, worked examples, and field tips</p>
-      </div>
-      {tutorials.map((group) => (
-        <div key={group.group}>
-          <div className="flex items-center gap-2 mb-3">
+    <div className="mx-auto max-w-5xl space-y-8">
+      <section className="rounded-lg border border-sg-600/40 bg-sg-800/70 p-6 md:p-7">
+        <div className="flex items-center gap-2">
+          <BookOpen size={22} className="text-accent-500" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-accent-400">Start here</p>
+        </div>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-text">EMaaS.pro Tutorial</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-text-muted">
+          Use this page as the starting point. Begin with the field workflow that matches the job, enter known site data, review the assumptions, then use the calculators only when you need to verify a specific number.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            to="/scenarios/temp-power"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-semibold text-sg-900 no-underline hover:bg-accent-400"
+          >
+            Start a field workflow <ArrowRight size={16} />
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-lg border border-sg-600/50 bg-sg-700 px-4 py-2 text-sm font-semibold text-text no-underline hover:bg-sg-600"
+          >
+            View dashboard
+          </Link>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <ClipboardList size={16} className="text-accent-500" />
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-dim">Basic operating path</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-5">
+          {startSteps.map((step, index) => (
+            <div key={step.title} className="rounded-lg border border-sg-600/40 bg-sg-800/65 p-4">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-accent-500/40 bg-accent-500/10 text-xs font-bold text-accent-300">
+                {index + 1}
+              </div>
+              <h3 className="mt-4 text-sm font-bold text-text">{step.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-accent-500" />
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-dim">Choose the workflow first</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {primaryWorkflows.map((item) => (
+            <Link key={item.to} to={item.to} className="no-underline">
+              <Card className="h-full border-l-3 border-l-accent-500 transition-colors hover:border-accent-500/50">
+                <item.icon size={20} className="mb-3 text-accent-500" />
+                <h3 className="text-sm font-bold text-text">{item.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">{item.desc}</p>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {referenceGroups.map((group) => (
+        <section key={group.group}>
+          <div className="mb-3 flex items-center gap-2">
             <group.icon size={16} className="text-accent-500" />
-            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider">{group.group}</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-dim">{group.group} references</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p className="mb-4 max-w-2xl text-xs leading-relaxed text-text-muted">{group.intro}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {group.items.map((item) => (
               <Link key={item.to} to={item.to} className="no-underline">
-                <Card className="hover:border-accent-500/50 transition-colors">
-                  <h3 className="text-sm font-semibold text-text mb-1">{item.label}</h3>
-                  <p className="text-xs text-text-muted">{item.desc}</p>
+                <Card className="h-full transition-colors hover:border-accent-500/50">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-text">{item.label}</h3>
+                      <p className="mt-2 text-xs leading-relaxed text-text-muted">{item.desc}</p>
+                    </div>
+                    <FileText size={16} className="mt-0.5 shrink-0 text-text-dim" />
+                  </div>
                 </Card>
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   )
