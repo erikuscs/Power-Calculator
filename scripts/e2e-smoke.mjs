@@ -8,7 +8,7 @@ const baseUrl = `http://127.0.0.1:${port}`
 const server = spawn(
   'npm',
   ['run', 'dev', '--', '--host', '127.0.0.1', '--port', port, '--strictPort'],
-  { stdio: ['ignore', 'pipe', 'pipe'] },
+  { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' },
 )
 
 let serverOutput = ''
@@ -18,6 +18,20 @@ server.stdout.on('data', (chunk) => {
 server.stderr.on('data', (chunk) => {
   serverOutput += chunk.toString()
 })
+
+function stopServer() {
+  if (server.killed) return
+
+  try {
+    if (process.platform === 'win32') {
+      server.kill('SIGTERM')
+    } else {
+      process.kill(-server.pid, 'SIGTERM')
+    }
+  } catch {
+    server.kill('SIGTERM')
+  }
+}
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -49,53 +63,56 @@ async function run() {
   await waitForServer()
 
   const browser = await chromium.launch({ headless: true })
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
   const errors = []
 
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
-  page.on('pageerror', (error) => errors.push(error.message))
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 
-  await page.goto(`${baseUrl}/power/generator`, { waitUntil: 'networkidle' })
-  await clearDisclaimer(page)
-  await page.getByLabel('Voltage').selectOption('208')
-  await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
+    })
+    page.on('pageerror', (error) => errors.push(error.message))
 
-  await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
-  await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
-  await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
+    await page.goto(`${baseUrl}/power/generator`, { waitUntil: 'networkidle' })
+    await clearDisclaimer(page)
+    await page.getByLabel('Voltage').selectOption('208')
+    await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
 
-  await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
-  await page.getByLabel('Site Voltage').selectOption('208')
-  await expectText(page, /Unknown \/ add contingency/i, 'clear risk posture wording')
-  await expectText(page, /Suggested Equipment Setup/i, 'temp power suggested setup')
+    await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
+    await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
+    await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
-  await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
-  await page.getByLabel('Site Voltage').selectOption('208')
-  await page.getByLabel('BESS Rate Period').selectOption('weekly')
-  await page.getByLabel('Generator Rate Period').selectOption('monthly')
-  await page.getByLabel('Redundancy Level').selectOption('field_verify')
-  await expectText(page, /Field verify uses N\+1 planning capacity/i, 'field-verify redundancy note')
-  await expectText(page, /300 kW legacy \/ large-system BESS/i, 'selected legacy BESS recommendation')
+    await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
+    await page.getByLabel('Site Voltage').selectOption('208')
+    await expectText(page, /Unknown \/ add contingency/i, 'clear risk posture wording')
+    await expectText(page, /Suggested Equipment Setup/i, 'temp power suggested setup')
 
-  await page.goto(`${baseUrl}/scenarios/bess-project`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: /Next: Financial Parameters/i }).click()
-  await page.getByRole('button', { name: /Next: View Results/i }).click()
-  await expectText(page, /Suggested Equipment Setup/i, 'BESS project suggested setup')
-  await expectText(page, /Fuel-cell|Fuel cell/i, 'fuel-cell guidance')
+    await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
+    await page.getByLabel('Site Voltage').selectOption('208')
+    await page.getByLabel('BESS Rate Period').selectOption('weekly')
+    await page.getByLabel('Generator Rate Period').selectOption('monthly')
+    await page.getByLabel('Redundancy Level').selectOption('field_verify')
+    await expectText(page, /Field verify uses N\+1 planning capacity/i, 'field-verify redundancy note')
+    await expectText(page, /300 kW legacy \/ large-system BESS/i, 'selected legacy BESS recommendation')
 
-  await page.goto(`${baseUrl}/privacy`, { waitUntil: 'networkidle' })
-  await expectText(page, /does not collect, store, or transmit any personal data/i, 'privacy policy content')
+    await page.goto(`${baseUrl}/scenarios/bess-project`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /Next: Financial Parameters/i }).click()
+    await page.getByRole('button', { name: /Next: View Results/i }).click()
+    await expectText(page, /Suggested Equipment Setup/i, 'BESS project suggested setup')
+    await expectText(page, /Fuel-cell|Fuel cell/i, 'fuel-cell guidance')
 
-  await page.setViewportSize({ width: 390, height: 900 })
-  await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
-  await expectText(page, /Scroll diagram horizontally/i, 'mobile diagram scroll hint')
+    await page.goto(`${baseUrl}/privacy`, { waitUntil: 'networkidle' })
+    await expectText(page, /does not collect, store, or transmit any personal data/i, 'privacy policy content')
 
-  await browser.close()
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
+    await expectText(page, /Scroll diagram horizontally/i, 'mobile diagram scroll hint')
 
-  if (errors.length > 0) {
-    throw new Error(`Browser errors detected:\n${errors.join('\n')}`)
+    if (errors.length > 0) {
+      throw new Error(`Browser errors detected:\n${errors.join('\n')}`)
+    }
+  } finally {
+    await browser.close()
   }
 }
 
@@ -103,5 +120,5 @@ try {
   await run()
   console.log('E2E smoke checks passed')
 } finally {
-  server.kill('SIGTERM')
+  stopServer()
 }
