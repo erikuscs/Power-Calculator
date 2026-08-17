@@ -1,8 +1,10 @@
 import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
 import { Text } from '@react-pdf/renderer'
 import { SQRT3 } from '../../lib/constants'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
 import type { HybridWizardInputs, HybridWizardResults } from './scenario.formulas'
 import { buildHybridOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
+import { PdfEquipmentRecommendationSection } from './pdfRecommendations'
 
 export interface HybridEnergyPdfDocProps {
   inputs: HybridWizardInputs
@@ -18,6 +20,13 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
 
   const redundancyLabel = inputs.redundancy === '2n' ? '2N (Full Redundancy)' : inputs.redundancy === 'n1' ? 'N+1' : 'N (No Redundancy)'
   const diagram = buildHybridOneLineDiagram(inputs, results, zones ?? [])
+  const recommendation = recommendEquipment({
+    peakKw: inputs.peakLoadKw,
+    baseKw: inputs.baseLoadKw,
+    runtimeHours: inputs.projectDurationDays * 24,
+    peakHoursPerDay: inputs.peakHoursPerDay,
+    preferredBessKw: inputs.bessUnitSize,
+  })
 
   return (
     <PdfDocument title="EMaaS Hybrid Energy Report" clientName={clientName} projectName={projectName}>
@@ -55,6 +64,8 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           </PdfWarning>
         )}
       </PdfSection>
+
+      <PdfEquipmentRecommendationSection recommendation={recommendation} />
 
       <PdfSection title="One-Line Diagram">
         <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6 }}>

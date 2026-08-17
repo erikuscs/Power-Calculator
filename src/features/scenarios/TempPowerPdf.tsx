@@ -3,6 +3,8 @@ import { Text } from '@react-pdf/renderer'
 import type { TempPowerInputs, TempPowerResults } from './scenario.formulas'
 import { buildTempPowerOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
 import type { FieldRiskReview } from './fieldRiskReview'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
+import { PdfEquipmentRecommendationSection } from './pdfRecommendations'
 
 export interface TempPowerPdfDocProps {
   inputs: TempPowerInputs
@@ -24,6 +26,13 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
         ? 'None / customer managed'
         : 'Business hours'
   const diagram = buildTempPowerOneLineDiagram(inputs, results)
+  const recommendation = recommendEquipment({
+    peakKw: results.totalWithCoolingKw,
+    baseKw: results.totalWithCoolingKw * 0.6,
+    runtimeHours: inputs.durationHours,
+    peakHoursPerDay: Math.min(8, inputs.durationHours),
+    powerFactor: inputs.powerFactor,
+  })
 
   return (
     <PdfDocument title="EMaaS Temporary Power & Cooling Report" clientName={clientName} projectName={projectName}>
@@ -81,6 +90,8 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
           </PdfWarning>
         )}
       </PdfSection>
+
+      <PdfEquipmentRecommendationSection recommendation={recommendation} />
 
       {riskReview && (
         <PdfSection title="Field Risk Review">

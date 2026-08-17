@@ -173,7 +173,7 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
       nodes: [
         {
           id: 'SWGR',
-          label: '480V Switchgear',
+          label: `${inputs.siteVoltage ?? 480}V Switchgear`,
           detail: `${fi(results.ampsPerPhase)} A/phase`,
           meta: results.parallelRunsNeeded ? `${legsPerPhase} cable legs per phase` : 'single cable set check',
           tone: 'distribution',
@@ -181,7 +181,7 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
         {
           id: 'XFMR',
           label: 'Step-Down Transformers',
-          detail: '480V to 120/208V',
+          detail: `${inputs.siteVoltage ?? 480}V to 120/208V`,
           meta: inputs.containmentRequired === false ? 'confirm containment spec' : '110% contained equipment',
           tone: 'distribution',
         },
@@ -213,7 +213,7 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'ATS', label: '480V 3-phase' },
+    { from: 'GEN', to: 'ATS', label: `${inputs.siteVoltage ?? 480}V 3-phase` },
     ...(hybridRecommended ? [{ from: 'BESS', to: 'ATS', label: 'DC/AC inverter' }] : []),
     { from: 'ATS', to: 'SWGR', label: 'protected feeder' },
     { from: 'SWGR', to: 'XFMR', label: 'distribution' },

@@ -1,6 +1,8 @@
 import { Text } from '@react-pdf/renderer'
 import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
 import type { SizingInputs, SizingResults, ROIInputs, ROIResults } from '../bess/bess.formulas'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
+import { PdfEquipmentRecommendationSection } from './pdfRecommendations'
 
 export interface BessProjectPdfDocProps {
   sizingInputs: SizingInputs
@@ -24,6 +26,10 @@ export function BessProjectPdfDoc({
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
   const fc = (v: number, d = 0) =>
     v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d })
+  const recommendation = recommendEquipment({
+    peakKw: sizingInputs.loadKW,
+    runtimeHours: sizingInputs.hours,
+  })
 
   return (
     <PdfDocument title="EMaaS BESS Project Economics Report" clientName={clientName} projectName={projectName}>
@@ -52,6 +58,8 @@ export function BessProjectPdfDoc({
         <PdfKeyValue label="Usable per Unit" value={`${fv(sizingResults.usablePerUnit)} kWh`} />
         <PdfKeyValue label="Units Required" value={`${sizingResults.unitsRequired} units`} />
       </PdfSection>
+
+      <PdfEquipmentRecommendationSection recommendation={recommendation} />
 
       {/* Financial Analysis */}
       <PdfSection title="Financial Analysis">
