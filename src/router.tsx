@@ -55,7 +55,7 @@ export const routes: AppRoute[] = [
   { path: '/hvac/cooling', element: <CoolingPage />, label: 'Cooling Load', group: 'HVAC' },
   { path: '/hvac/chiller', element: <ChillerPage />, label: 'Chiller Sizing', group: 'HVAC' },
   { path: '/hvac/psychrometrics', element: <PsychrometricsPage />, label: 'Psychrometrics', group: 'HVAC' },
-  { path: '/scenarios/temp-power', element: <TempPowerWizard />, label: 'Temp Power & Cooling', group: 'EMaaS Workflows' },
+  { path: '/scenarios/temp-power', element: <TempPowerWizard />, label: 'Temporary Power', group: 'EMaaS Workflows' },
   { path: '/scenarios/hybrid-energy', element: <HybridEnergyWizard />, label: 'Hybrid EMaaS Strategy', group: 'EMaaS Workflows' },
   { path: '/scenarios/bess-project', element: <BessProjectWizard />, label: 'BESS Project Economics', group: 'EMaaS Workflows' },
   { path: '/scenarios/hvac-assessment', element: <HvacAssessmentWizard />, label: 'Cooling Load Strategy', group: 'EMaaS Workflows' },

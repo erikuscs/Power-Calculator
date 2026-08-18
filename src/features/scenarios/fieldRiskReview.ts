@@ -18,6 +18,7 @@ export interface FieldRiskReviewContext {
   coolingKw: number
   totalWithCoolingKw: number
   powerFactor?: number
+  includeCooling?: boolean
 }
 
 export interface FieldRiskItem {
@@ -88,6 +89,7 @@ export function buildFieldRiskReview({
   coolingKw,
   totalWithCoolingKw,
   powerFactor = 0.8,
+  includeCooling = coolingKw > 0,
 }: FieldRiskReviewContext): FieldRiskReview {
   const items: FieldRiskItem[] = []
   const rfis: string[] = []
@@ -164,9 +166,9 @@ export function buildFieldRiskReview({
     'Motor and compressor starting',
     motorPenalty,
     postureStatus(inputs.motorStarting),
-    'Pump or compressor inrush can create generator transient, voltage sag, and BESS assignment risk.',
+    'Pump or compressor inrush can create generator transient, voltage sag, and starter-sequencing risk.',
     inputs.motorStarting === 'known' ? undefined : 'Confirm compressor and pump horsepower, LRA, start method, and whether starts can be sequenced.',
-    inputs.motorStarting === 'known' ? undefined : 'Motor starting should be reviewed before treating BESS or small generators as acceptable sources.',
+    inputs.motorStarting === 'known' ? undefined : 'Motor starting should be reviewed before treating a smaller generator or across-the-line start as acceptable.',
   )
 
   const occupancyPenalty = posturePenalty(inputs.occupancyVariance)
@@ -180,17 +182,19 @@ export function buildFieldRiskReview({
     inputs.occupancyVariance === 'known' ? undefined : 'Confirm expected occupancy, max shift overlap, and whether the camp can exceed the planned headcount.',
   )
 
-  const airPenalty = posturePenalty(inputs.airDistribution)
-  coolingContingencyPct += postureLoadAdder(inputs.airDistribution, 0.10, 0.04)
-  addItem(
-    'airDistribution',
-    'Tent and air distribution',
-    airPenalty,
-    postureStatus(inputs.airDistribution),
-    'Poor supply/return placement can leave one end of a long tent hot even when tonnage looks adequate.',
-    inputs.airDistribution === 'known' ? undefined : 'Confirm tent length, duct layout, supply/return locations, door openings, and whether air distribution is balanced across the full space.',
-    inputs.airDistribution === 'known' ? undefined : 'Cooling risk is carried separately from connected electrical load because distribution can fail even when tonnage is adequate.',
-  )
+  if (includeCooling) {
+    const airPenalty = posturePenalty(inputs.airDistribution)
+    coolingContingencyPct += postureLoadAdder(inputs.airDistribution, 0.10, 0.04)
+    addItem(
+      'airDistribution',
+      'Tent and air distribution',
+      airPenalty,
+      postureStatus(inputs.airDistribution),
+      'Poor supply/return placement can leave one end of a long tent hot even when tonnage looks adequate.',
+      inputs.airDistribution === 'known' ? undefined : 'Confirm tent length, duct layout, supply/return locations, door openings, and whether air distribution is balanced across the full space.',
+      inputs.airDistribution === 'known' ? undefined : 'Cooling risk is carried separately from connected electrical load because distribution can fail even when tonnage is adequate.',
+    )
+  }
 
   const winterPenalty = posturePenalty(inputs.winterHeat)
   loadContingencyPct += postureLoadAdder(inputs.winterHeat, 0.06, 0.03)

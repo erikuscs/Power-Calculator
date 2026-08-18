@@ -87,10 +87,25 @@ async function run() {
   await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /edit requirements/i }).click()
     await page.getByLabel('Site Voltage').selectOption('208')
+    await page.getByLabel('Rental Period', { exact: true }).selectOption('weekly')
+    await page.getByLabel('Number of Rental Periods').fill('2')
+    await page.getByLabel('Operating Schedule').selectOption('shift_8')
+    await expectText(page, /112 operating hours/i, 'rental-derived operating hours')
+    if (await page.getByLabel('Target Temperature').count()) {
+      throw new Error('Cooling fields should be hidden for the generator-only scope')
+    }
+    await page.getByRole('button', { name: 'Add Temporary Cooling' }).click()
+    await page.getByLabel('Target Temperature').fill('72')
+    await page.getByRole('button', { name: /Apply Requirements/i }).click()
     await expectText(page, /Unknown \/ add contingency/i, 'clear risk posture wording')
-    await expectText(page, /Streamlined Temp Power Spec/i, 'streamlined temp power spec summary')
-    await expectText(page, /Suggested Equipment Setup/i, 'temp power suggested setup')
+    await expectText(page, /Recommended Energy Plan/i, 'decision-first temp power recommendation')
+    await expectText(page, /Why this fits/i, 'plain-language recommendation rationale')
+    await expectText(page, /Standalone generator with temporary cooling/i, 'generator-first selected scope')
+    await expectText(page, /Both views show only the equipment included in this scope/i, 'scope-matched visuals')
+    await expectText(page, /Save PDF/i, 'PDF save action')
+    await expectText(page, /Share PDF/i, 'PDF share action')
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.getByLabel('Site Voltage').selectOption('208')
@@ -117,7 +132,9 @@ async function run() {
 
     await page.setViewportSize({ width: 390, height: 900 })
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
-    await expectText(page, /Scroll diagram horizontally/i, 'mobile diagram scroll hint')
+    await expectText(page, /Recommended Energy Plan/i, 'mobile recommendation view')
+    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+    if (hasHorizontalOverflow) throw new Error('Temporary power recommendation overflows the mobile viewport')
 
     if (errors.length > 0) {
       throw new Error(`Browser errors detected:\n${errors.join('\n')}`)

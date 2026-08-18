@@ -1,33 +1,27 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
-import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
-import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
-import { ChartFrame } from '../../components/ui/ChartFrame'
-import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
-import { FieldRiskReviewPanel } from '../../components/ui/FieldRiskReviewPanel'
-import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { Button } from '../../components/ui/Button'
-import { SpecSummaryPanel, type SpecSummaryTone } from '../../components/ui/SpecSummaryPanel'
-import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
-import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
+import {
+  calculateTempPower,
+  calculateTempPowerSchedule,
+  type FacilityEntry,
+  type RentalPeriod,
+  type RuntimeSchedule,
+  type TempPowerInputs,
+} from './scenario.formulas'
 import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
 import { buildFieldRiskReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
 import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS, VOLTAGE_OPTIONS } from '../../lib/constants'
-import { recommendEquipment, type EquipmentRecommendation } from '../../lib/equipmentRecommendations'
-import { fmt, fmtInt, fmtPercent } from '../../lib/formatters'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
-import { ClipboardList, Trash2, AlertTriangle, Info } from 'lucide-react'
+import { recommendEquipment } from '../../lib/equipmentRecommendations'
+import { ClipboardList, Trash2, X } from 'lucide-react'
+import { TempPowerReviewPlan } from './TempPowerReviewPlan'
 
 let nextId = 1
-
-function preferredOption(recommendation: EquipmentRecommendation) {
-  return recommendation[recommendation.preferred]
-}
 
 export default function TempPowerWizard() {
   const [mode, setMode] = useState<'single' | 'basecamp'>('single')
@@ -35,7 +29,10 @@ export default function TempPowerWizard() {
   const [sqFt, setSqFt] = useState('2000')
   const [ambientTemp, setAmbientTemp] = useState('95')
   const [targetTemp, setTargetTemp] = useState('72')
-  const [durationHours, setDurationHours] = useState('720')
+  const [rentalPeriod, setRentalPeriod] = useState<RentalPeriod>('monthly')
+  const [rentalPeriodCount, setRentalPeriodCount] = useState('1')
+  const [runtimeSchedule, setRuntimeSchedule] = useState<RuntimeSchedule>('shift_8')
+  const [includeCooling, setIncludeCooling] = useState(false)
   const [altitude, setAltitude] = useState('0')
   const [siteVoltage, setSiteVoltage] = useState('480')
   const [powerFactor, setPowerFactor] = useState('0.8')
@@ -47,6 +44,24 @@ export default function TempPowerWizard() {
   const [projectName, setProjectName] = useState('')
   const [facilities, setFacilities] = useState<FacilityEntry[]>([])
   const [riskInputs, setRiskInputs] = useState<TempPowerRiskInputs>(defaultTempPowerRiskInputs)
+  const [requirementsOpen, setRequirementsOpen] = useState(false)
+
+  useEffect(() => {
+    if (!requirementsOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setRequirementsOpen(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [requirementsOpen])
 
   const addFacility = (type: string) => {
     const preset = FACILITY_PRESETS[type]
@@ -92,7 +107,10 @@ export default function TempPowerWizard() {
     setSqFt('0')
     setAmbientTemp('95')
     setTargetTemp('72')
-    setDurationHours('23376')
+    setRentalPeriod('monthly')
+    setRentalPeriodCount('33')
+    setRuntimeSchedule('continuous_24_7')
+    setIncludeCooling(true)
     setAltitude('0')
     setSiteVoltage('480')
     setPowerFactor('0.8')
@@ -120,13 +138,23 @@ export default function TempPowerWizard() {
     })
   }
 
+  const schedule = calculateTempPowerSchedule(
+    rentalPeriod,
+    parseFloat(rentalPeriodCount) || 1,
+    runtimeSchedule,
+  )
+
   const inputs: TempPowerInputs = {
     mode,
     loadKw: parseFloat(loadKw) || 0,
     sqFt: parseFloat(sqFt) || 0,
     ambientTemp: parseFloat(ambientTemp) || 95,
     targetTemp: parseFloat(targetTemp) || 72,
-    durationHours: parseFloat(durationHours) || 24,
+    durationHours: schedule.operatingHours,
+    rentalPeriod,
+    rentalPeriodCount: parseFloat(rentalPeriodCount) || 1,
+    runtimeSchedule,
+    includeCooling,
     altitude: parseFloat(altitude) || 0,
     siteVoltage: parseFloat(siteVoltage) || 480,
     powerFactor: parseFloat(powerFactor) || 0.8,
@@ -140,16 +168,19 @@ export default function TempPowerWizard() {
   const calculate = useCallback((inp: TempPowerInputs) => calculateTempPower(inp), [])
   const results = useCalculator(inputs, calculate)
   const oneLineDiagram = results ? buildTempPowerOneLineDiagram(inputs, results) : null
-  const recommendation = results
+  const equipmentRecommendation = results
     ? recommendEquipment({
         peakKw: results.totalWithCoolingKw,
         baseKw: results.totalWithCoolingKw * 0.6,
-        runtimeHours: Math.min(8, inputs.durationHours),
-        projectDurationHours: inputs.durationHours,
-        peakHoursPerDay: Math.min(8, inputs.durationHours),
+        runtimeHours: results.dailyRuntimeHours,
+        projectDurationHours: results.operatingHours,
+        peakHoursPerDay: results.dailyRuntimeHours,
         powerFactor: inputs.powerFactor,
         siteVoltage: inputs.siteVoltage,
       })
+    : null
+  const recommendation = equipmentRecommendation
+    ? { ...equipmentRecommendation, preferred: 'generator' as const }
     : null
   const fieldRiskReview = results
     ? buildFieldRiskReview({
@@ -158,8 +189,10 @@ export default function TempPowerWizard() {
         coolingKw: results.coolingKw,
         totalWithCoolingKw: results.totalWithCoolingKw,
         powerFactor: inputs.powerFactor,
+        includeCooling,
       })
     : null
+  const hasRecommendation = Boolean(results && results.totalLoadKw > 0 && recommendation && fieldRiskReview && oneLineDiagram)
 
   const structureOptions = Object.entries(STRUCTURE_COOLING_MULTIPLIERS).map(([value, { label, multiplier }]) => ({
     value,
@@ -171,115 +204,61 @@ export default function TempPowerWizard() {
     label: `${label} — ${defaultKw} kW ${unit}`,
   }))
 
-  const fuelComparisonData = useMemo(() => {
-    if (!results?.hybrid) return []
-    return [
-      { name: 'Daily Fuel (gal)', 'All Generator': Math.round(results.hybrid.allGen.fuelPerDay), 'Hybrid (Gen + BESS)': Math.round(results.hybrid.hybrid.fuelPerDay) },
-      { name: '30-Day Fuel (gal)', 'All Generator': Math.round(results.hybrid.allGen.fuel30Day), 'Hybrid (Gen + BESS)': Math.round(results.hybrid.hybrid.fuel30Day) },
-    ]
-  }, [results])
-
-  const tempSpecSummary = results && recommendation && fieldRiskReview
-    ? (() => {
-        const recommended = preferredOption(recommendation)
-        const cableLegs = Math.max(1, Math.ceil(results.ampsPerPhase / 400))
-        const effectiveSiteVoltage = inputs.siteVoltage ?? 480
-        const confidenceTone: SpecSummaryTone = fieldRiskReview.confidenceBand === 'high'
-          ? 'success'
-          : fieldRiskReview.confidenceBand === 'medium' ? 'info' : 'warning'
-        const confidenceLabel = `${fieldRiskReview.confidenceBand.charAt(0).toUpperCase()}${fieldRiskReview.confidenceBand.slice(1)} confidence`
-        const statusLabel = `${confidenceLabel} - ${fieldRiskReview.confidenceScore}/100`
-
-        return {
-          statusLabel,
-          statusTone: confidenceTone,
-          metrics: [
-            {
-              label: 'Recommended Package',
-              value: recommended.units,
-              detail: `${recommended.label} using rental-fleet planning classes`,
-            },
-            {
-              label: 'Planning Load',
-              value: `${fmt(fieldRiskReview.adjustedPlanningKw, 1)} kW`,
-              detail: `${fmt(results.totalWithCoolingKw, 1)} kW calculated before field contingency`,
-            },
-            {
-              label: 'Generator Spec',
-              value: `${fmt(results.generatorKva, 0)} kVA`,
-              detail: `${fmt(results.generatorKw, 0)} kW after margin`,
-            },
-            {
-              label: 'Cooling Spec',
-              value: `${fmt(results.coolingTons, 1)} tons`,
-              detail: `${fmt(results.coolingKw, 1)} kW cooling load`,
-            },
-            {
-              label: 'Distribution',
-              value: `${effectiveSiteVoltage} V, ${cableLegs} leg${cableLegs === 1 ? '' : 's'}/phase`,
-              detail: `${fmt(results.ampsPerPhase, 0)} A/phase at ${inputs.powerFactor} PF`,
-            },
-            {
-              label: 'Runtime / Service',
-              value: `${fmt(results.operatingDays, 1)} days`,
-              detail: `${fmtInt(results.serviceEvents)} PM events at ${inputs.serviceIntervalDays || 0}-day cadence`,
-            },
-            {
-              label: 'Footprint',
-              value: `~${fmtInt(recommended.footprintSqFt)} sq ft`,
-              detail: 'Planning space before cable, fuel, and service clearances',
-            },
-            {
-              label: 'Risk Contingency',
-              value: `${fmt(fieldRiskReview.contingencyKw, 1)} kW`,
-              detail: `${fmtPercent(fieldRiskReview.loadContingencyPct)} load / ${fmtPercent(fieldRiskReview.coolingContingencyPct)} cooling`,
-            },
-          ],
-          steps: [
-            {
-              label: 'Confirm load',
-              detail: mode === 'basecamp' ? 'Build the facility schedule and confirm hidden trailer, RV, shower, and concession loads.' : 'Confirm measured kW, operating schedule, and any hidden plug or motor loads.',
-            },
-            {
-              label: 'Size source',
-              detail: 'Generator package covers calculated load, cooling, altitude, power factor, and risk contingency.',
-            },
-            {
-              label: 'Set control point',
-              detail: 'ATS/controller handles dispatch, transfer logic, and any hybrid BESS peak-support strategy.',
-            },
-            {
-              label: 'Place distribution',
-              detail: 'Switchgear, transformers, branch panels, cable legs, and grounding follow the printable one-line.',
-            },
-            {
-              label: 'Schedule service',
-              detail: 'Fuel, containment, PM visits, technician coverage, and noise limits stay in the report package.',
-            },
-          ],
-          notes: [
-            fieldRiskReview.rfis.length > 0
-              ? `${fieldRiskReview.rfis.length} field RFI${fieldRiskReview.rfis.length === 1 ? '' : 's'} need answers before release; review the field-risk panel below.`
-              : 'Confirm final load schedule, voltage, phase, cable distance, and operating windows before release.',
-            'Verify step-down transformer placement, voltage drop, OCPD ratings, grounding, and final conductor sizes.',
-            effectiveSiteVoltage <= 240 && results.totalWithCoolingKw >= 500
-              ? 'High current at low voltage may justify 480 V distribution with local step-down transformers.'
-              : 'Keep the printable one-line with the field layout and cable schedule.',
-          ],
-        }
-      })()
-    : null
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 lg:-mt-6">
+      {results && results.totalLoadKw > 0 && recommendation && fieldRiskReview && oneLineDiagram && (
+        <TempPowerReviewPlan
+          inputs={inputs}
+          results={results}
+          recommendation={recommendation}
+          fieldRiskReview={fieldRiskReview}
+          riskInputs={riskInputs}
+          onRiskChange={(field, value) => updateRiskInput(field, value as never)}
+          oneLineDiagram={oneLineDiagram}
+          clientName={clientName}
+          projectName={projectName}
+          onEditRequirements={() => setRequirementsOpen(true)}
+        />
+      )}
+
+      {(!hasRecommendation || requirementsOpen) && (
+        <div
+          role={hasRecommendation ? 'dialog' : undefined}
+          aria-modal={hasRecommendation ? true : undefined}
+          aria-label={hasRecommendation ? 'Edit temporary power requirements' : undefined}
+          className={hasRecommendation ? 'fixed inset-0 z-[70] overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-6' : ''}
+        >
+          <div className={hasRecommendation ? 'mx-auto max-w-6xl space-y-4 rounded-2xl border border-sg-600/60 bg-sg-900 p-3 shadow-2xl sm:p-5' : 'space-y-6'}>
+            {hasRecommendation && (
+              <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sg-600/50 bg-sg-900/95 px-4 py-3 shadow-lg backdrop-blur">
+                <div>
+                  <h2 className="text-lg font-bold text-text">Edit Requirements</h2>
+                  <p className="mt-0.5 text-xs text-text-muted">Changes update the recommended package immediately.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" onClick={() => setRequirementsOpen(false)} disabled={!hasRecommendation}>
+                    Apply Requirements
+                  </Button>
+                  <button
+                    type="button"
+                    aria-label="Close requirements"
+                    onClick={() => setRequirementsOpen(false)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-sg-600/55 text-text-muted transition-colors hover:border-accent-500/50 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70"
+                  >
+                    <X size={17} />
+                  </button>
+                </div>
+              </div>
+            )}
+
       <Card>
         <CardHeader
-          title="Temporary Power & Cooling"
-          subtitle="EMaaS load capture, equipment planning, service cadence, and report generation"
+          title="Temporary Power Requirements"
+          subtitle="Start with a standalone generator plan, then add cooling only when the job requires it"
           action={
             <Button type="button" variant="secondary" size="sm" onClick={loadTempHousingScenario}>
               <ClipboardList size={14} />
-              Load Temp Housing Scenario
+              Use Example Scenario
             </Button>
           }
         />
@@ -301,16 +280,67 @@ export default function TempPowerWizard() {
           ]}
         />
 
+        <div className="mt-5 border-t border-sg-600/40 pt-5">
+          <RadioGroup
+            label="Solution Scope"
+            value={includeCooling ? 'power_cooling' : 'power_only'}
+            onChange={(value) => setIncludeCooling(value === 'power_cooling')}
+            options={[
+              { value: 'power_only', label: 'Generator Only' },
+              { value: 'power_cooling', label: 'Add Temporary Cooling' },
+            ]}
+          />
+          <p className="mt-2 text-xs leading-relaxed text-text-dim">
+            The generator remains the base solution. Cooling is sized and added to the package only when selected.
+          </p>
+        </div>
+
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {mode === 'single' && (
             <>
               <InputField label="Equipment Load" unit="kW (real power)" value={loadKw} onChange={setLoadKw} required tooltip="Total electrical load — kW, not kVA" />
-              <InputField label="Facility Size" unit="sq ft" value={sqFt} onChange={setSqFt} tooltip="Floor area for envelope heat gain" />
+              {includeCooling && <InputField label="Conditioned Area" unit="sq ft" value={sqFt} onChange={setSqFt} tooltip="Floor area used only for the optional cooling calculation" />}
             </>
           )}
           <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} required />
-          <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />
-          <InputField label="Duration" unit="hours" value={durationHours} onChange={setDurationHours} required tooltip="720 hours = 30 days" />
+          {includeCooling && <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />}
+          <SelectField
+            label="Rental Period"
+            value={rentalPeriod}
+            onChange={(value) => setRentalPeriod(value as RentalPeriod)}
+            options={[
+              { value: 'daily', label: 'Daily' },
+              { value: 'weekly', label: 'Weekly' },
+              { value: 'monthly', label: 'Monthly (30 days)' },
+            ]}
+            required
+          />
+          <InputField
+            label="Number of Rental Periods"
+            unit={rentalPeriod === 'daily' ? 'days' : rentalPeriod === 'weekly' ? 'weeks' : 'months'}
+            value={rentalPeriodCount}
+            onChange={setRentalPeriodCount}
+            min={1}
+            step={1}
+            required
+          />
+          <SelectField
+            label="Operating Schedule"
+            value={runtimeSchedule}
+            onChange={(value) => setRuntimeSchedule(value as RuntimeSchedule)}
+            options={[
+              { value: 'shift_8', label: '8-hour shift' },
+              { value: 'continuous_24_7', label: '24/7 continuous' },
+            ]}
+            required
+          />
+          <div aria-live="polite" className="rounded-lg border border-accent-500/30 bg-accent-500/8 px-4 py-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-accent-300">Calculated Runtime</div>
+            <div className="mt-1 text-sm font-bold text-text">{schedule.operatingHours.toLocaleString()} operating hours</div>
+            <div className="mt-0.5 text-xs text-text-muted">
+              {schedule.rentalDays.toLocaleString()} rental days × {schedule.dailyRuntimeHours} hours/day
+            </div>
+          </div>
           <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} tooltip="+3% derating per 1,000 ft above 1,000 ft" />
           <SelectField
             label="Site Voltage"
@@ -383,198 +413,18 @@ export default function TempPowerWizard() {
                     <Trash2 size={14} />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className={`grid gap-3 ${includeCooling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
                   <InputField label="Qty" value={f.quantity} onChange={(v) => updateFacility(f.id, 'quantity', v)} />
                   <InputField label="kW/unit" value={f.kwPerUnit} onChange={(v) => updateFacility(f.id, 'kwPerUnit', v)} tooltip="Override if you know better" />
-                  <SelectField label="Structure" value={f.structureType} onChange={(v) => updateFacility(f.id, 'structureType', v)} options={structureOptions} />
+                  {includeCooling && <SelectField label="Structure" value={f.structureType} onChange={(v) => updateFacility(f.id, 'structureType', v)} options={structureOptions} />}
                 </div>
               </div>
             ))}
           </div>
         </Card>
       )}
-
-      {results && (results.totalLoadKw > 0) && (
-        <>
-          {tempSpecSummary && (
-            <SpecSummaryPanel
-              title="Streamlined Temp Power Spec"
-              subtitle="Recommended package, field confidence, distribution path, and report handoff"
-              statusLabel={tempSpecSummary.statusLabel}
-              statusTone={tempSpecSummary.statusTone}
-              metrics={tempSpecSummary.metrics}
-              steps={tempSpecSummary.steps}
-              notes={tempSpecSummary.notes}
-              action={
-                <PdfExportButton
-                  document={<TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />}
-                  filename="emaas-temp-power-report.pdf"
-                  label="Generate Report"
-                />
-              }
-            />
-          )}
-
-          <Card>
-            <CardHeader title="Equipment Sizing Results" subtitle="Safety margins applied — see values before margin in each card" />
-
-            {mode === 'basecamp' && results.facilityBreakdown.length > 0 && (
-              <div className="mb-4 bg-sg-800 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Facility Breakdown</h4>
-                {results.facilityBreakdown.map((f, i) => (
-                  <div key={i} className="flex justify-between text-sm py-0.5">
-                    <span className="text-text-muted">{f.label}</span>
-                    <span className="text-text font-medium">{fmt(f.kw, 1)} kW</span>
-                  </div>
-                ))}
-                <div className="flex justify-between text-sm pt-1 mt-1 border-t border-sg-600 font-semibold">
-                  <span className="text-accent-400">Total Equipment Load</span>
-                  <span className="text-accent-300">{fmt(results.totalLoadKw, 1)} kW</span>
-                </div>
-              </div>
-            )}
-
-            <ResultGrid>
-              <ResultItem label="Total Equipment Load" value={fmt(results.totalLoadKw, 1)} unit="kW" />
-              <ResultItem label="Cooling Tonnage" value={fmt(results.coolingTons, 1)} unit="tons" beforeMargin={fmt(results.coolingTons / 1.15, 1) + ' tons'} />
-              <ResultItem label="Cooling Electrical Load" value={fmt(results.coolingKw, 1)} unit="kW" />
-              <ResultItem label="Total Load (with cooling)" value={fmt(results.totalWithCoolingKw, 1)} unit="kW" />
-              <ResultItem label="Generator Size" value={fmt(results.generatorKva, 0)} unit="kVA" highlight beforeMargin={fmt(results.generatorKva / 1.25, 0) + ' kVA'} />
-              <ResultItem label="Generator Size" value={fmt(results.generatorKw, 0)} unit="kW" highlight beforeMargin={fmt(results.generatorKw / 1.25, 0) + ' kW'} />
-              <ResultItem label={`Amps per Phase (3Φ ${siteVoltage}V)`} value={fmt(results.ampsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
-              <ResultItem label="Load Factor" value={fmtPercent(results.loadFactor)} />
-              <ResultItem label="BSFC" value={fmt(results.bsfcGalPerKwh, 3)} unit="gal/kWh" />
-              <ResultItem label="Fuel Rate" value={fmt(results.fuelGallonsPerHour, 1)} unit="gal/hr" />
-              <ResultItem label="Total Fuel" value={fmtInt(results.totalFuelGallons)} unit="gallons" highlight beforeMargin={fmtInt(results.totalFuelGallons / 1.1) + ' gal'} />
-              <ResultItem label="Operating Days" value={fmt(results.operatingDays, 1)} unit="days" />
-              <ResultItem label="PM Service Events" value={fmtInt(results.serviceEvents)} unit="events" />
-              <ResultItem label="Noise Fine Exposure" value={`$${fmtInt(results.noiseFineExposure)}`} highlight={results.noiseFineExposure > 0} />
-            </ResultGrid>
-
-            {results.parallelRunsNeeded && (
-              <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
-                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                <span><strong>{fmt(results.ampsPerPhase, 0)}A per phase — {Math.ceil(results.ampsPerPhase / 400)} legs per phase required</strong> (generator power cable rated 400A per leg).</span>
-              </div>
-            )}
-
-            {results.altitudeDerating > 1 && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-warning">
-                <AlertTriangle size={14} />
-                Altitude derating applied: {fmtPercent(results.altitudeDerating - 1)} increase in fuel consumption at {fmtInt(parseFloat(altitude))} ft
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-info">
-                <Info size={14} className="mt-0.5 shrink-0" />
-                <span>Your site needs step-down transformers for {siteVoltage}V→240V→120V distribution. Confirm with your electrician.</span>
-              </div>
-              <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-info">
-                <Info size={14} className="mt-0.5 shrink-0" />
-                <span>Cable sizing depends on distance. Voltage drop over long runs may require upsizing wire gauge — consult NEC tables.</span>
-              </div>
-            </div>
-          </Card>
-
-          {fieldRiskReview && (
-            <FieldRiskReviewPanel
-              inputs={riskInputs}
-              review={fieldRiskReview}
-              onChange={updateRiskInput}
-            />
-          )}
-
-          {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}
-
-          {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
-
-          {results.hybrid && (
-            <Card>
-              <CardHeader title="BESS + Generator Hybrid Recommendation" subtitle={results.hybrid.reason} />
-
-              {results.hybrid.recommended && (
-                <div className="mb-4 px-3 py-2 bg-success/10 border border-success/30 rounded-lg text-sm text-success font-medium">
-                  Hybrid configuration recommended — {fmt(results.hybrid.hybrid.fuelSavingsPercent, 0)}% fuel savings over 30 days
-                </div>
-              )}
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-sg-600">
-                      <th className="text-left py-2 text-text-muted font-medium">Metric</th>
-                      <th className="text-right py-2 text-text-muted font-medium">All Generator</th>
-                      <th className="text-right py-2 text-accent-400 font-medium">Hybrid (Gen + BESS)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-text">
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2">Generator Units</td>
-                      <td className="text-right">{results.hybrid.allGen.genUnits}</td>
-                      <td className="text-right text-accent-300">{results.hybrid.hybrid.genUnits}</td>
-                    </tr>
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2">BESS Units</td>
-                      <td className="text-right">0</td>
-                      <td className="text-right text-accent-300">{results.hybrid.hybrid.bessUnits} × {results.hybrid.hybrid.bessUnitSize} kW</td>
-                    </tr>
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2">Generator Load Factor</td>
-                      <td className="text-right">{fmtPercent(results.hybrid.allGen.loadFactor)}</td>
-                      <td className="text-right text-accent-300">{fmtPercent(results.hybrid.hybrid.loadFactor)}</td>
-                    </tr>
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2">Daily Fuel</td>
-                      <td className="text-right">{fmtInt(results.hybrid.allGen.fuelPerDay)} gal</td>
-                      <td className="text-right text-accent-300">{fmtInt(results.hybrid.hybrid.fuelPerDay)} gal</td>
-                    </tr>
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2 font-medium">30-Day Fuel</td>
-                      <td className="text-right font-medium">{fmtInt(results.hybrid.allGen.fuel30Day)} gal</td>
-                      <td className="text-right font-medium text-success">{fmtInt(results.hybrid.hybrid.fuel30Day)} gal</td>
-                    </tr>
-                    <tr className="border-b border-sg-700">
-                      <td className="py-2 font-semibold">Fuel Savings</td>
-                      <td className="text-right">—</td>
-                      <td className="text-right font-semibold text-success">{fmt(results.hybrid.hybrid.fuelSavingsPercent, 0)}%</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2">CO2 Avoided</td>
-                      <td className="text-right">—</td>
-                      <td className="text-right text-success">{fmtInt(results.co2AvoidedLbs)} lbs ({fmt(results.co2AvoidedTons, 1)} tons)</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {fuelComparisonData.length > 0 && (
-                <ChartFrame className="mt-4" height={250}>
-                  <BarChart data={fuelComparisonData} barGap={8}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
-                      <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                      <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
-                      <Legend />
-                      <Bar dataKey="All Generator" fill="#e07460" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Hybrid (Gen + BESS)" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ChartFrame>
-              )}
-
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-warning">
-                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                  <span>Redundancy requires Automatic Transfer Switch(es) — include in your equipment order.</span>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          <div className="text-center text-xs text-text-dim py-2">
-            These are emergency estimates. Final sizing must be verified by a licensed engineer.
           </div>
-        </>
+        </div>
       )}
     </div>
   )

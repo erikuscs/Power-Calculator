@@ -134,12 +134,12 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {/* Financial Comparison */}
       <PdfSection title="Financial Comparison">
         <PdfTable
-          headers={['Metric', 'All Generator', 'Hybrid', 'Savings']}
+          headers={['Metric', 'All Generator', 'Hybrid', 'Cost Reduction']}
           rows={[
             ['Daily Fuel', `${fi(results.allGenFuelPerDay)} gal`, `${fi(results.hybridFuelPerDay)} gal`, `${fi(results.dailyFuelReduction)} gal/day`],
             ['30-Day Fuel', `${fi(results.allGenFuel30Day)} gal`, `${fi(results.hybridFuelPerDay * 30)} gal`, `${fi(results.dailyFuelReduction * 30)} gal`],
             ['30-Day Total Cost', fc(results.allGenCost30Day), fc(results.hybridCost30Day), fc(results.costSavings30Day)],
-            ['Project Fuel Savings', '--', `${fi(results.totalFuelSavingsGal)} gal`, fc(results.totalFuelSavingsDollars)],
+            ['Estimated Fuel Cost Reduction', '-', `${fi(results.totalFuelSavingsGal)} gal reduction`, fc(results.totalFuelSavingsDollars)],
             ['CO2 Avoided', '--', `${fi(results.co2AvoidedLbs)} lbs`, '--'],
             ['CO2 Avoided', '--', `${(results.co2AvoidedTons).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tons`, '--'],
           ]}
@@ -149,10 +149,10 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {/* Fuel Projection — first 30 days */}
       <PdfSection title="Fuel Projection (First 30 Days)">
         <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 4 }}>
-          Daily fuel consumption comparison and cumulative savings over the project.
+          Daily fuel consumption comparison and cumulative fuel reduction over the project.
         </Text>
         <PdfTable
-          headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'Cumulative Savings (gal)']}
+          headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'Cumulative Reduction (gal)']}
           rows={results.dailyFuelData.slice(0, 30).map((d) => [
             `${d.day}`,
             d.date,

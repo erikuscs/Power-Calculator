@@ -35,34 +35,59 @@ describe('EMaaS workflow field smoke tests', () => {
   it('renders temporary power commercial fields used in EMaaS reports', () => {
     render(<TempPowerWizard />)
 
+    expect(screen.queryByText('Client / Account')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Requirements selected/i }))
+
     expect(screen.getByText('Client / Account')).toBeInTheDocument()
     expect(screen.getByText('Project / Phase')).toBeInTheDocument()
     expect(screen.getByText('PM Service Interval')).toBeInTheDocument()
     expect(screen.getByText('Technician Coverage')).toBeInTheDocument()
     expect(screen.getByText('Containment Required')).toBeInTheDocument()
     expect(screen.getByText('Night Noise Fine')).toBeInTheDocument()
-    expect(screen.getByText('Streamlined Temp Power Spec')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rental Period')).toBeInTheDocument()
+    expect(screen.getByLabelText('Operating Schedule')).toBeInTheDocument()
+    expect(screen.getAllByText('240 operating hours').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('heading', { name: 'Recommended Energy Plan' })).toBeInTheDocument()
     expect(screen.getByText('Recommended Package')).toBeInTheDocument()
-    expect(screen.getByText('PM Service Events')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Temporary Power One-Line Diagram' })).toBeInTheDocument()
-    expect(screen.getByText('Printable Electrical One-Line')).toBeInTheDocument()
-    expect(screen.getByText('Print One-Line')).toBeInTheDocument()
-    expect(screen.getByText('Copy Mermaid')).toBeInTheDocument()
-    expect(screen.getByLabelText('Mermaid one-line diagram source')).toBeInTheDocument()
+    expect(screen.getByText('Why this fits')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Temporary Power One-Line Diagram printable electrical one-line diagram/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Share PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '3D Site Layout' })).toBeInTheDocument()
+    expect(screen.getByText('Why Not Size to the Breaker Panel?')).toBeInTheDocument()
+    expect(screen.queryByText('Copy Mermaid')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Mermaid one-line diagram source')).not.toBeInTheDocument()
+  })
+
+  it('maps rental duration to runtime and reveals cooling only when selected', () => {
+    render(<TempPowerWizard />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Requirements selected/i }))
+    expect(screen.queryByLabelText('Target Temperature')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Rental Period'), { target: { value: 'weekly' } })
+    fireEvent.change(screen.getByLabelText('Number of Rental Periods'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Operating Schedule'), { target: { value: 'shift_8' } })
+    expect(screen.getAllByText('112 operating hours').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('14 rental days × 8 hours/day')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Temporary Cooling' }))
+    expect(screen.getByLabelText('Target Temperature')).toBeInTheDocument()
+    expect(screen.getByLabelText('Conditioned Area')).toBeInTheDocument()
   })
 
   it('loads the temporary housing workshop scenario with field risk review outputs', () => {
     render(<TempPowerWizard />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Load Temp Housing Scenario' }))
+    fireEvent.click(screen.getByRole('button', { name: /Requirements selected/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use Example Scenario' }))
 
-    expect(screen.getByText('Field Risk Review')).toBeInTheDocument()
-    expect(screen.getByText('Low confidence')).toBeInTheDocument()
-    expect(screen.getByText('Adjusted Planning Load')).toBeInTheDocument()
-    expect(screen.getByText('Risk-Adjusted Generator')).toBeInTheDocument()
-    expect(screen.getByText('Field Risk Contingency')).toBeInTheDocument()
-    expect(screen.getByText('Confirm RV pedestal mix: 30A, 50A, mixed, and whether true 120/240V service is required.')).toBeInTheDocument()
-    expect(screen.getByText('Confirm compressor and pump horsepower, LRA, start method, and whether starts can be sequenced.')).toBeInTheDocument()
+    expect(screen.getByText(/Low confidence -/)).toBeInTheDocument()
+    expect(screen.getByText('Field Verification')).toBeInTheDocument()
+    expect(screen.getByText('RV Service')).toBeInTheDocument()
+    expect(screen.getByText('Motor / Compressor Starting')).toBeInTheDocument()
+    expect(screen.getByText(/field checks remain open/i)).toBeInTheDocument()
   })
 
   it('renders hybrid energy fields at commissioning scale', () => {

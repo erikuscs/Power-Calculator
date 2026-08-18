@@ -42,6 +42,50 @@ export interface FacilityEntry {
   structureMultiplier: number
 }
 
+export type RentalPeriod = 'daily' | 'weekly' | 'monthly'
+export type RuntimeSchedule = 'shift_8' | 'continuous_24_7'
+
+const RENTAL_PERIOD_DAYS: Record<RentalPeriod, number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: 30,
+}
+
+export interface TempPowerSchedule {
+  rentalDays: number
+  dailyRuntimeHours: number
+  operatingHours: number
+}
+
+export function calculateTempPowerSchedule(
+  rentalPeriod: RentalPeriod,
+  rentalPeriodCount: number,
+  runtimeSchedule: RuntimeSchedule,
+): TempPowerSchedule {
+  const periodCount = Math.max(1, rentalPeriodCount || 1)
+  const rentalDays = RENTAL_PERIOD_DAYS[rentalPeriod] * periodCount
+  const dailyRuntimeHours = runtimeSchedule === 'continuous_24_7' ? 24 : 8
+
+  return {
+    rentalDays,
+    dailyRuntimeHours,
+    operatingHours: rentalDays * dailyRuntimeHours,
+  }
+}
+
+export function resolveTempPowerSchedule(inputs: Pick<TempPowerInputs, 'durationHours' | 'rentalPeriod' | 'rentalPeriodCount' | 'runtimeSchedule'>): TempPowerSchedule {
+  if (inputs.rentalPeriod && inputs.runtimeSchedule) {
+    return calculateTempPowerSchedule(inputs.rentalPeriod, inputs.rentalPeriodCount ?? 1, inputs.runtimeSchedule)
+  }
+
+  const operatingHours = Math.max(0, inputs.durationHours)
+  return {
+    rentalDays: operatingHours / 24,
+    dailyRuntimeHours: 24,
+    operatingHours,
+  }
+}
+
 export interface TempPowerInputs {
   mode: 'single' | 'basecamp'
   loadKw: number
@@ -49,6 +93,10 @@ export interface TempPowerInputs {
   ambientTemp: number
   targetTemp: number
   durationHours: number
+  rentalPeriod?: RentalPeriod
+  rentalPeriodCount?: number
+  runtimeSchedule?: RuntimeSchedule
+  includeCooling?: boolean
   altitude: number
   siteVoltage?: number
   powerFactor: number
@@ -70,6 +118,9 @@ export interface TempPowerResults {
   bsfcGalPerKwh: number
   fuelGallonsPerHour: number
   totalFuelGallons: number
+  rentalDays: number
+  dailyRuntimeHours: number
+  operatingHours: number
   operatingDays: number
   serviceEvents: number
   noiseFineExposure: number
@@ -127,9 +178,12 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
     ? inputs.facilities.reduce((sum, f) => sum + f.structureMultiplier * f.quantity, 0) / Math.max(1, inputs.facilities.reduce((s, f) => s + f.quantity, 0))
     : 1.0
 
-  const coolingBtu = totalLoadKw * 3412.14 + sqFt * deltaT * 0.5 * avgMultiplier
-  const coolingTons = (coolingBtu / 12000) * SAFETY_MARGINS.cooling_emergency
-  const coolingKw = coolingTons * 3.517
+  const includeCooling = inputs.includeCooling !== false
+  const coolingBtu = includeCooling
+    ? totalLoadKw * 3412.14 + sqFt * deltaT * 0.5 * avgMultiplier
+    : 0
+  const coolingTons = includeCooling ? (coolingBtu / 12000) * SAFETY_MARGINS.cooling_emergency : 0
+  const coolingKw = includeCooling ? coolingTons * 3.517 : 0
 
   const totalWithCoolingKw = totalLoadKw + coolingKw
   const generatorKw = totalWithCoolingKw * SAFETY_MARGINS.generator
@@ -140,15 +194,16 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const loadFactor = totalWithCoolingKw / generatorKw
   const bsfcGalPerKwh = interpolateBSFC(loadFactor)
   const fuelGallonsPerHour = totalWithCoolingKw * bsfcGalPerKwh * altitudeDerating * tempDerating
-  const totalFuelGallons = fuelGallonsPerHour * inputs.durationHours * 1.1
-  const operatingDays = inputs.durationHours / 24
+  const schedule = resolveTempPowerSchedule(inputs)
+  const totalFuelGallons = fuelGallonsPerHour * schedule.operatingHours * 1.1
+  const operatingDays = schedule.rentalDays
   const serviceIntervalDays = Math.max(0, inputs.serviceIntervalDays ?? 10)
   const serviceEvents = serviceIntervalDays > 0
     ? Math.ceil(operatingDays / serviceIntervalDays)
     : 0
   const noiseFineExposure = Math.max(0, inputs.noiseFinePerDay ?? 0) * Math.ceil(operatingDays)
 
-  const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, inputs.durationHours, altitudeDerating, tempDerating)
+  const hybrid = evaluateHybrid(totalWithCoolingKw, totalWithCoolingKw * 0.6, schedule.operatingHours, altitudeDerating, tempDerating)
 
   const siteVoltage = inputs.siteVoltage ?? 480
   const ampsPerPhase = (generatorKva * 1000) / (SQRT3 * siteVoltage)
@@ -171,6 +226,9 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
     bsfcGalPerKwh,
     fuelGallonsPerHour,
     totalFuelGallons,
+    rentalDays: schedule.rentalDays,
+    dailyRuntimeHours: schedule.dailyRuntimeHours,
+    operatingHours: schedule.operatingHours,
     operatingDays,
     serviceEvents,
     noiseFineExposure,
@@ -202,7 +260,7 @@ export function evaluateHybrid(
   const reason = peakBaseRatio > 1.5
     ? `Peak-to-base ratio is ${peakBaseRatio.toFixed(1)}:1 — BESS handles peaks while generators run at optimal load`
     : durationDays > 7
-      ? `${durationDays.toFixed(0)}-day duration — fuel savings compound over time`
+      ? `${durationDays.toFixed(0)}-day duration - fuel-consumption reduction increases over time`
       : 'Hybrid configuration available for comparison'
 
   const genSizeAllGen = peakKw * SAFETY_MARGINS.generator

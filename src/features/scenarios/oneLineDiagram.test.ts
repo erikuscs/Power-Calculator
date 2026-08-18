@@ -3,6 +3,31 @@ import { buildHybridOneLineDiagram, buildTempPowerOneLineDiagram, flattenDiagram
 import { calculateHybridWizard, calculateTempPower, type HybridWizardInputs, type TempPowerInputs } from './scenario.formulas'
 
 describe('one-line diagram builders', () => {
+  it('keeps the generator-only one-line free of unselected cooling and battery equipment', () => {
+    const inputs: TempPowerInputs = {
+      mode: 'single',
+      loadKw: 200,
+      sqFt: 2000,
+      ambientTemp: 95,
+      targetTemp: 72,
+      durationHours: 240,
+      rentalPeriod: 'monthly',
+      rentalPeriodCount: 1,
+      runtimeSchedule: 'shift_8',
+      includeCooling: false,
+      altitude: 0,
+      siteVoltage: 480,
+      powerFactor: 0.8,
+      facilities: [],
+    }
+    const diagram = buildTempPowerOneLineDiagram(inputs, calculateTempPower(inputs))
+
+    expect(diagram.mermaid).toContain('Generator Plant')
+    expect(diagram.mermaid).not.toContain('BESS')
+    expect(diagram.mermaid).not.toContain('Cooling')
+    expect(diagram.edges.some((edge) => edge.to === 'COOLING')).toBe(false)
+  })
+
   it('builds a temporary housing style one-line with distribution, loads, service cadence, and Mermaid source', () => {
     const inputs: TempPowerInputs = {
       mode: 'basecamp',

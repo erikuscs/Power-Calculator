@@ -47,10 +47,10 @@ function classifySymbol(node: SymbolPlacement['node']) {
   const id = node.id.toUpperCase()
   const label = node.label.toUpperCase()
 
-  if (id.includes('GEN') || label.includes('GENERATOR')) return 'generator'
   if (id.includes('BESS') || label.includes('BESS')) return 'bess'
-  if (id.includes('EMS') || label.includes('CONTROLLER')) return 'controller'
   if (id.includes('ATS') || label.includes('PARALLEL') || label.includes('TRANSFER')) return 'transfer'
+  if (id.includes('EMS') || label.includes('CONTROLLER')) return 'controller'
+  if (id.includes('GEN') || label.includes('GENERATOR')) return 'generator'
   if (id.includes('SWGR') || label.includes('SWITCHGEAR')) return 'switchgear'
   if (id.includes('XFMR') || label.includes('TRANSFORMER')) return 'transformer'
   if (id.includes('PANEL') || label.includes('PANEL')) return 'panel'
@@ -185,14 +185,22 @@ export function OneLineDiagramPanel({ diagram }: { diagram: OneLineDiagram }) {
   )
 }
 
-function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
-  const columnWidth = 210
-  const topPad = 92
-  const rowGap = 120
-  const leftPad = 90
+export function PrintableOneLine({
+  diagram,
+  compact = false,
+  showNotes = true,
+}: {
+  diagram: OneLineDiagram
+  compact?: boolean
+  showNotes?: boolean
+}) {
+  const columnWidth = compact ? 145 : 210
+  const topPad = compact ? 90 : 92
+  const rowGap = compact ? 105 : 120
+  const leftPad = compact ? 55 : 90
   const maxNodes = Math.max(...diagram.stages.map((stage) => stage.nodes.length), 1)
-  const width = Math.max(1080, leftPad * 2 + (diagram.stages.length - 1) * columnWidth + 120)
-  const height = Math.max(520, topPad + maxNodes * rowGap + 130)
+  const width = Math.max(compact ? 880 : 1080, leftPad * 2 + (diagram.stages.length - 1) * columnWidth + 120)
+  const height = compact ? Math.max(300, topPad + maxNodes * rowGap + 8) : Math.max(520, topPad + maxNodes * rowGap + 130)
   const placements: SymbolPlacement[] = diagram.stages.flatMap((stage, stageIndex) =>
     stage.nodes.map((node, nodeIndex) => ({
       node,
@@ -204,23 +212,25 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
   const placementById = new Map(placements.map((placement) => [placement.node.id, placement]))
 
   return (
-    <section className="printable-one-line rounded-lg border border-sg-600/40 bg-white p-4 text-sg-900">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-sg-900">Printable Electrical One-Line</h3>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-sg-600">
-            Industry-standard style planning schematic. Uses conventional one-line symbols and ANSI/IEEE-style device tags for equipment placement review.
-          </p>
+    <section className={`printable-one-line bg-white text-sg-900 ${compact ? 'p-2' : 'rounded-lg border border-sg-600/40 p-4'}`}>
+      {showNotes && (
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-sg-900">Printable Electrical One-Line</h3>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-sg-600">
+              Industry-standard style planning schematic. Uses conventional one-line symbols and ANSI/IEEE-style device tags for equipment placement review.
+            </p>
+          </div>
+          <div className="rounded border border-sg-600/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sg-700">
+            For engineering review
+          </div>
         </div>
-        <div className="rounded border border-sg-600/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sg-700">
-          For engineering review
-        </div>
-      </div>
+      )}
 
       <div className="overflow-x-auto rounded border border-sg-600/25 bg-white">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="block min-w-[980px] text-sg-900"
+          className={`block text-sg-900 ${compact ? 'w-full min-w-0' : 'min-w-[980px]'}`}
           role="img"
           aria-label={`${diagram.title} printable electrical one-line diagram`}
         >
@@ -232,14 +242,14 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
 
           <rect x="0" y="0" width={width} height={height} fill="#ffffff" />
 
-          <text x="28" y="34" fontSize="18" fontWeight="700" fill="#111827">{diagram.title}</text>
-          <text x="28" y="56" fontSize="10" fill="#4b5563">{clampText(diagram.caption, 140)}</text>
+          <text x="28" y={compact ? 27 : 34} fontSize="18" fontWeight="700" fill="#111827">{diagram.title}</text>
+          {!compact && <text x="28" y="56" fontSize="10" fill="#4b5563">{clampText(diagram.caption, 140)}</text>}
 
-          {diagram.stages.map((stage, index) => (
+          {!compact && diagram.stages.map((stage, index) => (
             <g key={stage.label}>
               <text
                 x={leftPad + index * columnWidth}
-                y="76"
+                y={compact ? 52 : 76}
                 textAnchor="middle"
                 fontSize="10"
                 fontWeight="700"
@@ -250,9 +260,9 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
               </text>
               <line
                 x1={leftPad + index * columnWidth - 70}
-                y1="82"
+                y1={compact ? 58 : 82}
                 x2={leftPad + index * columnWidth + 70}
-                y2="82"
+                y2={compact ? 58 : 82}
                 stroke="#d1d5db"
                 strokeWidth="1"
               />
@@ -279,7 +289,7 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
                   markerStart={isSignal ? undefined : 'url(#one-line-dot)'}
                   markerEnd={isSignal ? undefined : 'url(#one-line-dot)'}
                 />
-                {edge.label && (
+                {edge.label && !compact && (
                   <text
                     x={labelX}
                     y={labelY}
@@ -297,13 +307,13 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
           {placements.map((placement) => (
             <g key={placement.node.id}>
               <StandardSymbol placement={placement} />
-              <text x={placement.x} y={placement.y + 55} textAnchor="middle" fontSize="10" fontWeight="700" fill="#111827">
+              <text x={placement.x} y={placement.y + 52} textAnchor="middle" fontSize={compact ? 12 : 10} fontWeight="700" fill="#111827">
                 {clampText(placement.node.label, 24)}
               </text>
-              <text x={placement.x} y={placement.y + 69} textAnchor="middle" fontSize="8" fill="#4b5563">
+              <text x={placement.x} y={placement.y + 67} textAnchor="middle" fontSize={compact ? 9 : 8} fill="#4b5563">
                 {clampText(placement.node.detail, 34)}
               </text>
-              {placement.node.meta && (
+              {placement.node.meta && !compact && (
                 <text x={placement.x} y={placement.y + 81} textAnchor="middle" fontSize="7" fill="#6b7280">
                   {clampText(placement.node.meta, 38)}
                 </text>
@@ -311,27 +321,31 @@ function PrintableOneLine({ diagram }: { diagram: OneLineDiagram }) {
             </g>
           ))}
 
-          <Legend x={28} y={height - 86} />
-          <text x="28" y={height - 18} fontSize="8" fill="#6b7280">
-            Planning one-line only. Final conductor sizing, OCPD ratings, grounding, fault current, protection settings, selective coordination, and labels require licensed engineering review.
-          </text>
+          {!compact && <Legend x={28} y={height - 86} />}
+          {!compact && (
+            <text x="28" y={height - 18} fontSize="8" fill="#6b7280">
+              Planning one-line only. Final conductor sizing, OCPD ratings, grounding, fault current, protection settings, selective coordination, and labels require licensed engineering review.
+            </text>
+          )}
         </svg>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 text-xs leading-relaxed text-sg-700 md:grid-cols-2">
-        <div className="rounded border border-sg-600/20 bg-sg-900/5 p-3">
-          <div className="font-bold uppercase tracking-[0.12em] text-sg-900">Equipment Placement</div>
-          <p className="mt-1">
-            Source equipment lands left-to-right through disconnects/breakers, ATS or parallel gear, main switchgear bus, transformer, final panels, then protected loads.
-          </p>
+      {showNotes && (
+        <div className="mt-3 grid grid-cols-1 gap-3 text-xs leading-relaxed text-sg-700 md:grid-cols-2">
+          <div className="rounded border border-sg-600/20 bg-sg-900/5 p-3">
+            <div className="font-bold uppercase tracking-[0.12em] text-sg-900">Equipment Placement</div>
+            <p className="mt-1">
+              Source equipment lands left-to-right through disconnects/breakers, ATS or parallel gear, main switchgear bus, transformer, final panels, then protected loads.
+            </p>
+          </div>
+          <div className="rounded border border-sg-600/20 bg-sg-900/5 p-3">
+            <div className="font-bold uppercase tracking-[0.12em] text-sg-900">Print Notes</div>
+            <p className="mt-1">
+              Print in landscape when possible. Keep this diagram with load schedule, cable schedule, grounding plan, and protection/coordination study.
+            </p>
+          </div>
         </div>
-        <div className="rounded border border-sg-600/20 bg-sg-900/5 p-3">
-          <div className="font-bold uppercase tracking-[0.12em] text-sg-900">Print Notes</div>
-          <p className="mt-1">
-            Print in landscape when possible. Keep this diagram with load schedule, cable schedule, grounding plan, and protection/coordination study.
-          </p>
-        </div>
-      </div>
+      )}
     </section>
   )
 }

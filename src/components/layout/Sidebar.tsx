@@ -14,7 +14,7 @@ const navGroups = [
     label: 'EMaaS Workflows',
     icon: Workflow,
     items: [
-      { to: '/scenarios/temp-power', label: 'Temp Power & Cooling' },
+      { to: '/scenarios/temp-power', label: 'Temporary Power' },
       { to: '/scenarios/hybrid-energy', label: 'Hybrid EMaaS Strategy' },
       { to: '/scenarios/bess-project', label: 'BESS Project Evaluation' },
       { to: '/scenarios/hvac-assessment', label: 'HVAC Load Assessment' },

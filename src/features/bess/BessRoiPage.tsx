@@ -83,7 +83,7 @@ export default function BessRoiPage() {
       <Card>
         <CardHeader
           title="BESS Revenue / ROI Analysis"
-          subtitle="Evaluate energy arbitrage revenue, demand charge savings, and investment payback"
+          subtitle="Evaluate energy arbitrage revenue, demand charge reduction, and investment payback"
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">

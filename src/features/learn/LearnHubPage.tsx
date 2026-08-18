@@ -40,8 +40,8 @@ const primaryWorkflows = [
   {
     to: '/scenarios/temp-power',
     icon: Zap,
-    title: 'Temp Power & Cooling',
-    desc: 'Best first stop for urgent site support, load capture, generator sizing, cooling, and report output.',
+    title: 'Temporary Power',
+    desc: 'Start with standalone generator sizing, then add cooling only when the job requires it.',
   },
   {
     to: '/scenarios/hybrid-energy',

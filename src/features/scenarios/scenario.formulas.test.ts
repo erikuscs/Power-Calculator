@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { interpolateBSFC, calculateTempPower, evaluateHybrid, calculateHybridWizard } from './scenario.formulas'
+import { calculateHybridWizard, calculateTempPower, calculateTempPowerSchedule, evaluateHybrid, interpolateBSFC } from './scenario.formulas'
 import { calcGeneralPower } from '../power/power.formulas'
 
 describe('interpolateBSFC', () => {
@@ -21,6 +21,49 @@ describe('interpolateBSFC', () => {
 })
 
 describe('calculateTempPower', () => {
+  it('derives operating hours from rental period and schedule', () => {
+    expect(calculateTempPowerSchedule('daily', 1, 'shift_8')).toEqual({
+      rentalDays: 1,
+      dailyRuntimeHours: 8,
+      operatingHours: 8,
+    })
+    expect(calculateTempPowerSchedule('weekly', 2, 'shift_8')).toEqual({
+      rentalDays: 14,
+      dailyRuntimeHours: 8,
+      operatingHours: 112,
+    })
+    expect(calculateTempPowerSchedule('monthly', 1, 'continuous_24_7')).toEqual({
+      rentalDays: 30,
+      dailyRuntimeHours: 24,
+      operatingHours: 720,
+    })
+  })
+
+  it('keeps generator-only scope separate from optional cooling', () => {
+    const result = calculateTempPower({
+      mode: 'single',
+      loadKw: 200,
+      sqFt: 2000,
+      ambientTemp: 95,
+      targetTemp: 72,
+      durationHours: 240,
+      rentalPeriod: 'monthly',
+      rentalPeriodCount: 1,
+      runtimeSchedule: 'shift_8',
+      includeCooling: false,
+      altitude: 0,
+      powerFactor: 0.8,
+      facilities: [],
+    })
+
+    expect(result.coolingTons).toBe(0)
+    expect(result.coolingKw).toBe(0)
+    expect(result.totalWithCoolingKw).toBe(200)
+    expect(result.rentalDays).toBe(30)
+    expect(result.dailyRuntimeHours).toBe(8)
+    expect(result.operatingHours).toBe(240)
+  })
+
   it('calculates single-load mode correctly', () => {
     const result = calculateTempPower({
       mode: 'single',

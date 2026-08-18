@@ -205,7 +205,7 @@ export default function HybridEnergyWizard() {
             {
               label: 'Fuel Signal',
               value: `${fmtInt(results.dailyFuelReduction)} gal/day`,
-              detail: `${fmtCurrency(results.totalFuelSavingsDollars)} project fuel savings estimate`,
+              detail: `${fmtCurrency(results.totalFuelSavingsDollars)} estimated project fuel cost reduction`,
             },
           ],
           steps: [
@@ -579,7 +579,7 @@ export default function HybridEnergyWizard() {
                     <th className="text-left py-2 text-text-muted">Metric</th>
                     <th className="text-right py-2 text-text-muted">All Generator</th>
                     <th className="text-right py-2 text-accent-400">Hybrid (Gen + BESS)</th>
-                    <th className="text-right py-2 text-success">Savings</th>
+                    <th className="text-right py-2 text-success">Cost Reduction</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -602,7 +602,7 @@ export default function HybridEnergyWizard() {
                     <td className="text-right text-success font-semibold">{fmtCurrency(results.costSavings30Day)}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text font-semibold">Project Fuel Savings</td>
+                    <td className="py-2 text-text font-semibold">Estimated Fuel Cost Reduction</td>
                     <td className="text-right">—</td>
                     <td className="text-right text-accent-300">{fmtInt(results.totalFuelSavingsGal)} gal</td>
                     <td className="text-right text-success font-semibold">{fmtCurrency(results.totalFuelSavingsDollars)}</td>
@@ -640,14 +640,14 @@ export default function HybridEnergyWizard() {
               </div>
 
               <div>
-                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Savings</h4>
+                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Cost Reduction</h4>
                 <ChartFrame height={250}>
                   <AreaChart data={cumulativeSavingsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
                     <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
-                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Savings (gal)" stroke="#c89a3c" fill="#c89a3c" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Reduction (gal)" stroke="#c89a3c" fill="#c89a3c" fillOpacity={0.2} />
                   </AreaChart>
                 </ChartFrame>
               </div>

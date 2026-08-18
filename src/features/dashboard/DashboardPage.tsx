@@ -12,7 +12,7 @@ import {
 } from '../../lib/emaas'
 
 const scenarios = [
-  { to: '/scenarios/temp-power', icon: Zap, title: 'Temp Power & Cooling', desc: 'Emergency EMaaS sizing with load capture and equipment planning', accent: true },
+  { to: '/scenarios/temp-power', icon: Zap, title: 'Temporary Power', desc: 'Generator-first planning with optional cooling, runtime, and report output', accent: true },
   { to: '/scenarios/hybrid-energy', icon: Workflow, title: 'Hybrid EMaaS Strategy', desc: 'Design BESS + generator systems for commissioning blocks and redundant sites', accent: true },
   { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Economics', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
   { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'Cooling Load Strategy', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },

@@ -102,22 +102,15 @@ export function flattenDiagramRows(diagram: OneLineDiagram) {
 export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: TempPowerResults): OneLineDiagram {
   const generatorUnits = Math.max(1, Math.ceil(results.generatorKw / 500))
   const legsPerPhase = Math.max(1, Math.ceil(results.ampsPerPhase / 400))
-  const hybridRecommended = Boolean(results.hybrid?.recommended)
+  const includeCooling = inputs.includeCooling !== false
 
-  const loadNodes: OneLineNode[] = inputs.mode === 'basecamp'
+  const primaryLoadNodes: OneLineNode[] = inputs.mode === 'basecamp'
     ? [
         {
           id: 'LOAD_BASECAMP',
           label: 'Base Camp Loads',
           detail: `${fi(results.totalLoadKw)} kW equipment`,
           meta: results.facilityBreakdown.slice(0, 3).map((f) => f.label).join(', ') || 'facility schedule',
-          tone: 'load',
-        },
-        {
-          id: 'COOLING',
-          label: 'Cooling Plant',
-          detail: `${fv(results.coolingTons)} tons`,
-          meta: `${fi(results.coolingKw)} kW cooling load`,
           tone: 'load',
         },
       ]
@@ -129,14 +122,20 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
           meta: `${fi(inputs.sqFt)} sq ft planning area`,
           tone: 'load',
         },
-        {
+      ]
+
+  const loadNodes: OneLineNode[] = [
+    ...primaryLoadNodes,
+    ...(includeCooling
+      ? [{
           id: 'COOLING',
           label: 'Cooling Plant',
           detail: `${fv(results.coolingTons)} tons`,
           meta: `${fi(results.coolingKw)} kW cooling load`,
-          tone: 'load',
-        },
-      ]
+          tone: 'load' as const,
+        }]
+      : []),
+  ]
 
   const stages: OneLineStage[] = [
     {
@@ -149,15 +148,6 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
           meta: `${fi(results.generatorKva)} kVA / ${fi(results.generatorKw)} kW`,
           tone: 'source',
         },
-        ...(hybridRecommended && results.hybrid
-          ? [{
-              id: 'BESS',
-              label: 'BESS Peak Support',
-              detail: `${results.hybrid.hybrid.bessUnits} x ${results.hybrid.hybrid.bessUnitSize} kW`,
-              meta: 'peak shaving / generator load control',
-              tone: 'storage' as const,
-            }]
-          : []),
       ],
     },
     {
@@ -165,8 +155,8 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
       nodes: [
         {
           id: 'ATS',
-          label: 'ATS / EMaaS Controller',
-          detail: hybridRecommended ? 'hybrid dispatch + transfer logic' : 'generator dispatch + transfer logic',
+          label: 'ATS / Generator Controller',
+          detail: 'generator start + transfer logic',
           meta: inputs.technicianCoverage === '24_7' ? '24/7 tech coverage' : 'remote monitoring ready',
           tone: 'control',
         },
@@ -192,7 +182,9 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
         {
           id: 'PANELS',
           label: 'Branch Panels',
-          detail: inputs.mode === 'basecamp' ? 'RV / trailers / concessions' : 'equipment + cooling feeders',
+          detail: inputs.mode === 'basecamp'
+            ? `RV / trailers / concessions${includeCooling ? ' + cooling' : ''}`
+            : includeCooling ? 'equipment + cooling feeders' : 'equipment feeders',
           meta: 'final distribution shown',
           tone: 'distribution',
         },
@@ -218,12 +210,11 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
 
   const edges: OneLineEdge[] = [
     { from: 'GEN', to: 'ATS', label: `${inputs.siteVoltage ?? 480}V 3-phase` },
-    ...(hybridRecommended ? [{ from: 'BESS', to: 'ATS', label: 'DC/AC inverter' }] : []),
     { from: 'ATS', to: 'SWGR', label: 'protected feeder' },
     { from: 'SWGR', to: 'XFMR', label: 'distribution' },
     { from: 'XFMR', to: 'PANELS', label: '120/208V' },
-    { from: 'PANELS', to: loadNodes[0].id, label: 'branch circuits' },
-    { from: 'PANELS', to: 'COOLING', label: 'cooling feeders' },
+    { from: 'PANELS', to: primaryLoadNodes[0].id, label: 'branch circuits' },
+    ...(includeCooling ? [{ from: 'PANELS', to: 'COOLING', label: 'cooling feeder' }] : []),
     { from: 'GEN', to: 'SERVICE', label: 'fuel / PM', kind: 'service' },
   ]
 
@@ -234,10 +225,10 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
     edges,
     assumptions: [
       'Final conductor sizing, grounding, fault current, protection, and selective coordination require engineering review.',
-      'Workshop-style logic: groups can compare source strategy, distribution topology, service cadence, and load grouping.',
+      `Generator-only source with${includeCooling ? '' : 'out'} the optional temporary-cooling branch.`,
       inputs.mode === 'basecamp'
-        ? 'Base-camp view emphasizes final distribution to trailers, concessions, RV support, and cooling loads.'
-        : 'Single-load view emphasizes the main equipment load plus temporary cooling support.',
+        ? `Base-camp view emphasizes final distribution to trailers, concessions, and RV support${includeCooling ? ', plus the selected cooling load' : ''}.`
+        : `Single-load view emphasizes the main equipment load${includeCooling ? ' plus the selected temporary-cooling add-on' : ''}.`,
     ],
   })
 }

@@ -1,10 +1,19 @@
-import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
-import { Text } from '@react-pdf/renderer'
+import { Image, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { PdfDocument, PdfKeyValue, PdfSection, PdfTable, PdfWarning } from '../../components/pdf/PdfReportShell'
 import type { TempPowerInputs, TempPowerResults } from './scenario.formulas'
-import { buildTempPowerOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
 import type { FieldRiskReview } from './fieldRiskReview'
 import { recommendEquipment } from '../../lib/equipmentRecommendations'
-import { PdfEquipmentRecommendationSection } from './pdfRecommendations'
+import generatorSiteLayout3d from '../../assets/emaas-generator-site-layout-3d-pdf.jpg?inline'
+import generatorCoolingSiteLayout3d from '../../assets/emaas-generator-cooling-site-layout-3d-pdf.jpg?inline'
+import { TempPowerOneLinePdf } from './TempPowerOneLinePdf'
+import {
+  buildTempPowerPlainLanguageReason,
+  compactEquipmentLabel,
+  panelSizingExplanation,
+  rentalPeriodLabel,
+  runtimeScheduleLabel,
+  sizingTradeoffs,
+} from './tempPowerPresentation'
 
 export interface TempPowerPdfDocProps {
   inputs: TempPowerInputs
@@ -13,6 +22,98 @@ export interface TempPowerPdfDocProps {
   clientName?: string
   projectName?: string
 }
+
+const styles = StyleSheet.create({
+  confidence: {
+    borderWidth: 1,
+    borderColor: '#c89a3c',
+    backgroundColor: '#44300a',
+    borderRadius: 5,
+    padding: 8,
+    marginBottom: 10,
+  },
+  confidenceTitle: {
+    color: '#e8c66a',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 9,
+    textTransform: 'uppercase',
+  },
+  confidenceBody: {
+    color: '#d1d5db',
+    fontSize: 8,
+    marginTop: 3,
+  },
+  packageLabel: {
+    color: '#9ca3af',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    textTransform: 'uppercase',
+    marginBottom: 3,
+  },
+  packageTitle: {
+    color: '#f1f5f9',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 17,
+    lineHeight: 1.2,
+    marginBottom: 4,
+  },
+  packageMeta: {
+    color: '#9ca3af',
+    fontSize: 8,
+    marginBottom: 10,
+  },
+  reasonBox: {
+    borderWidth: 1,
+    borderColor: '#6d5524',
+    backgroundColor: '#242315',
+    borderRadius: 5,
+    padding: 9,
+    marginBottom: 10,
+  },
+  reasonLabel: {
+    color: '#e8c66a',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  body: {
+    color: '#d1d5db',
+    fontSize: 8.5,
+    lineHeight: 1.45,
+  },
+  visual: {
+    width: '100%',
+    height: 292,
+    objectFit: 'cover',
+    borderRadius: 4,
+  },
+  caption: {
+    color: '#9ca3af',
+    fontSize: 7,
+    lineHeight: 1.35,
+    marginTop: 5,
+  },
+  optionCard: {
+    borderWidth: 1,
+    borderColor: '#374151',
+    backgroundColor: '#1f2535',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 6,
+  },
+  optionTitle: {
+    color: '#f1f5f9',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 9,
+    marginBottom: 2,
+  },
+  optionMeta: {
+    color: '#9ca3af',
+    fontSize: 7.5,
+    lineHeight: 1.35,
+  },
+})
 
 export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, projectName }: TempPowerPdfDocProps) {
   const fv = (v: number, d = 1) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })
@@ -25,151 +126,186 @@ export function TempPowerPdfDoc({ inputs, results, riskReview, clientName, proje
       : inputs.technicianCoverage === 'none'
         ? 'None / customer managed'
         : 'Business hours'
-  const diagram = buildTempPowerOneLineDiagram(inputs, results)
-  const recommendation = recommendEquipment({
+  const equipmentRecommendation = recommendEquipment({
     peakKw: results.totalWithCoolingKw,
     baseKw: results.totalWithCoolingKw * 0.6,
-    runtimeHours: Math.min(8, inputs.durationHours),
-    projectDurationHours: inputs.durationHours,
-    peakHoursPerDay: Math.min(8, inputs.durationHours),
+    runtimeHours: results.dailyRuntimeHours,
+    projectDurationHours: results.operatingHours,
+    peakHoursPerDay: results.dailyRuntimeHours,
     powerFactor: inputs.powerFactor,
     siteVoltage: inputs.siteVoltage,
-  })
+  })!
+
+  const recommendation = { ...equipmentRecommendation, preferred: 'generator' as const }
+  const preferred = recommendation.generator
+  const includeCooling = inputs.includeCooling !== false
+  const reason = buildTempPowerPlainLanguageReason(recommendation, includeCooling)
+  const planningLoad = riskReview?.adjustedPlanningKw ?? results.totalWithCoolingKw
+  const openChecks = riskReview?.rfis.length ?? 0
+  const scheduleLabel = runtimeScheduleLabel(inputs.runtimeSchedule)
+  const rentalTerm = rentalPeriodLabel(inputs.rentalPeriod ?? 'daily', inputs.rentalPeriodCount ?? Math.max(1, results.rentalDays))
+  const siteLayout3d = includeCooling ? generatorCoolingSiteLayout3d : generatorSiteLayout3d
+  const primaryRfis = riskReview?.rfis.slice(0, 4) ?? []
+  const remainingRfis = riskReview?.rfis.slice(4) ?? []
 
   return (
-    <PdfDocument title="EMaaS Temporary Power & Cooling Report" clientName={clientName} projectName={projectName}>
-      {/* Project Overview */}
-      <PdfSection title="Project Overview">
-        <PdfKeyValue label="Sizing Mode" value={inputs.mode === 'single' ? 'Single Load' : 'Base Camp / Multi-Facility'} />
-        <PdfKeyValue label="Ambient Temperature" value={`${inputs.ambientTemp} °F`} />
-        <PdfKeyValue label="Target Temperature" value={`${inputs.targetTemp} °F`} />
-        <PdfKeyValue label="Duration" value={`${fi(inputs.durationHours)} hours (${fv(inputs.durationHours / 24, 0)} days)`} />
-        <PdfKeyValue label="Altitude" value={`${fi(inputs.altitude)} ft ASL`} />
-        <PdfKeyValue label="Site Voltage" value={`${siteVoltage} V`} />
-        <PdfKeyValue label="Power Factor" value={`${inputs.powerFactor}`} />
-        <PdfKeyValue label="PM Service Interval" value={`${fv(inputs.serviceIntervalDays ?? 10, 0)} days`} />
-        <PdfKeyValue label="Technician Coverage" value={technicianCoverage} />
-        <PdfKeyValue label="Containment Required" value={inputs.containmentRequired === false ? 'No - confirm site spec' : 'Yes - 110% contained'} />
-        <PdfKeyValue label="Noise Fine Exposure" value={fc(results.noiseFineExposure)} />
+    <PdfDocument title="EMaaS Recommended Energy Plan" clientName={clientName} projectName={projectName}>
+      <PdfSection title="Recommended Energy Plan">
+        <View style={styles.confidence}>
+          <Text style={styles.confidenceTitle}>
+            {riskReview ? `${riskReview.confidenceBand} confidence - ${riskReview.confidenceScore}/100` : 'Preliminary planning confidence'}
+          </Text>
+          <Text style={styles.confidenceBody}>
+            {openChecks > 0
+              ? `${openChecks} field checks remain open and can affect contingency or final equipment selection.`
+              : 'Core field assumptions are confirmed. Final engineering checks still apply.'}
+          </Text>
+        </View>
+
+        <Text style={styles.packageLabel}>Recommended Package</Text>
+        <Text style={styles.packageTitle}>{compactEquipmentLabel(preferred.units)}</Text>
+        <Text style={styles.packageMeta}>
+          Standalone generator{includeCooling ? ' + temporary cooling add-on' : ' - power-only scope'} using rental-fleet planning classes
+        </Text>
+
+        <View style={styles.reasonBox}>
+          <Text style={styles.reasonLabel}>Why this solution fits</Text>
+          <Text style={styles.body}>{reason}</Text>
+        </View>
+
+        <PdfTable
+          headers={['Decision Item', 'Recommended Value', 'Planning Context']}
+          rows={[
+            ['Planning Load', `${fv(planningLoad)} kW`, `${fv(results.totalWithCoolingKw)} kW before field contingency`],
+            ['Generator', `${fi(results.generatorKw)} kW / ${fi(results.generatorKva)} kVA`, 'Includes generator sizing margin'],
+            ['Distribution', `${siteVoltage} V / ${fi(results.ampsPerPhase)} A per phase`, `${Math.max(1, Math.ceil(results.ampsPerPhase / 400))} cable leg(s) per phase`],
+            ...(includeCooling ? [['Cooling Add-on', `${fv(results.coolingTons)} tons / ${fv(results.coolingKw)} kW`, 'Included only because temporary cooling was selected']] : []),
+            ['Rental / Runtime', `${rentalTerm} / ${fi(results.operatingHours)} operating hours`, `${scheduleLabel}; ${fi(results.serviceEvents)} PM events`],
+            ['Planning Footprint', `~${fi(preferred.footprintSqFt)} sq ft`, 'Before cable, fuel, and service clearances'],
+          ]}
+        />
       </PdfSection>
 
-      {/* Facility Breakdown */}
+      <PdfSection title="Why the Breaker Panel Does Not Set Source Size">
+        <Text style={styles.body}>{panelSizingExplanation}</Text>
+        <PdfWarning>{sizingTradeoffs.oversized}</PdfWarning>
+        <PdfWarning>{sizingTradeoffs.undersized}</PdfWarning>
+      </PdfSection>
+
+      <View break>
+        <PdfSection title="3D Planning Mockup">
+          <Image src={siteLayout3d} style={styles.visual} />
+          <Text style={styles.caption}>
+            {includeCooling ? 'Generator-led power with the selected temporary-cooling add-on.' : 'Generator-only power scope; cooling and battery equipment are not included.'} Conceptual placement only. Final clearances, access, cable routes, grounding, containment, fire protection, and maintenance zones require site verification.
+          </Text>
+        </PdfSection>
+      </View>
+
+      <View break>
+        <PdfSection title="Electrical One-Line Drawing">
+          <TempPowerOneLinePdf inputs={inputs} results={results} />
+          <Text style={styles.caption}>
+            Uses conventional one-line symbols and ANSI/IEEE-style device tags for planning review. This is not a stamped construction drawing.
+          </Text>
+        </PdfSection>
+      </View>
+
+      <PdfSection title="Calculation Detail">
+        <PdfTable
+          headers={['Calculation Group', 'Metric', 'Value']}
+          rows={[
+            ['Load', 'Connected equipment load', `${fv(results.totalLoadKw)} kW`],
+            ...(includeCooling ? [['Cooling Add-on', 'Cooling electrical load', `${fv(results.coolingKw)} kW`]] : []),
+            ['Load', 'Calculated operating load', `${fv(results.totalWithCoolingKw)} kW`],
+            ['Load', 'Field risk contingency', `${fv(riskReview?.contingencyKw ?? 0)} kW`],
+            ['Source and Distribution', 'Generator load factor', `${fv(results.loadFactor * 100)}%`],
+            ['Source and Distribution', 'Power factor', `${inputs.powerFactor}`],
+            ['Fuel and Runtime', 'Fuel rate', `${fv(results.fuelGallonsPerHour)} gal/hr`],
+            ['Fuel and Runtime', 'Total fuel plan', `${fi(results.totalFuelGallons)} gal`],
+            ['Fuel and Runtime', 'Rental duration', `${fi(results.rentalDays)} days`],
+            ['Fuel and Runtime', 'Operating time', `${fi(results.operatingHours)} hours`],
+            ['Fuel and Runtime', 'BSFC', `${fv(results.bsfcGalPerKwh, 3)} gal/kWh`],
+            ['Service and Risk', 'Noise fine exposure', fc(results.noiseFineExposure)],
+          ]}
+        />
+        {results.parallelRunsNeeded && (
+          <PdfWarning>{`${fi(results.ampsPerPhase)} A per phase requires approximately ${Math.ceil(results.ampsPerPhase / 400)} cable legs per phase when using 400 A planning capacity per leg.`}</PdfWarning>
+        )}
+        {results.altitudeDerating > 1 && (
+          <PdfWarning>{`Altitude derating adds approximately ${fv((results.altitudeDerating - 1) * 100)}% to modeled fuel consumption at ${fi(inputs.altitude)} ft.`}</PdfWarning>
+        )}
+      </PdfSection>
+
       {inputs.mode === 'basecamp' && results.facilityBreakdown.length > 0 && (
-        <PdfSection title="Facility Breakdown">
+        <PdfSection title="Facility Load Schedule">
           <PdfTable
-            headers={['Facility', 'Load (kW)']}
+            headers={['Facility', 'Load']}
             rows={[
-              ...results.facilityBreakdown.map((f) => [f.label, `${fv(f.kw)} kW`]),
+              ...results.facilityBreakdown.map((facility) => [facility.label, `${fv(facility.kw)} kW`]),
               ['Total Equipment Load', `${fv(results.totalLoadKw)} kW`],
             ]}
           />
         </PdfSection>
       )}
 
-      {/* Equipment Sizing */}
-      <PdfSection title="Equipment Sizing">
-        <PdfTable
-          headers={['Equipment', 'Size', 'Unit', 'Safety Margin Applied']}
-          rows={[
-            ['Generator Size', fi(results.generatorKva), 'kVA', 'Yes (1.25x)'],
-            ['Generator Size', fi(results.generatorKw), 'kW', 'Yes (1.25x)'],
-            [`Amps per Phase (3Φ ${siteVoltage}V)`, fi(results.ampsPerPhase), 'A', results.parallelRunsNeeded ? 'PARALLEL RUNS NEEDED' : '—'],
-            ['Cooling Tonnage', fv(results.coolingTons), 'tons', 'Yes (1.15x)'],
-            ['Fuel Rate', fv(results.fuelGallonsPerHour), 'gal/hr', 'No'],
-            ['Total Fuel', fi(results.totalFuelGallons), 'gallons', 'Yes (1.10x contingency)'],
-            ['Operating Duration', fv(results.operatingDays, 1), 'days', 'No'],
-            ['PM Service Events', fi(results.serviceEvents), 'events', 'No'],
-          ]}
-        />
-        {results.parallelRunsNeeded && (
-          <PdfWarning>
-            {`${fi(results.ampsPerPhase)}A per phase — ${Math.ceil(results.ampsPerPhase / 400)} legs per phase required (generator power cable rated 400A per leg).`}
-          </PdfWarning>
-        )}
-        {results.altitudeDerating > 1 && (
-          <PdfWarning>
-            {`Altitude derating applied: ${fv((results.altitudeDerating - 1) * 100)}% increase in fuel consumption at ${fi(inputs.altitude)} ft`}
-          </PdfWarning>
-        )}
-      </PdfSection>
+      <View break>
+        <PdfSection title="Why This Generator Package Leads">
+          <Text style={styles.body}>
+            The standalone generator is selected from calculated demand, starting-load allowance, operating schedule, voltage, footprint, and field contingency. Cooling is treated as a separate downstream load and is included only when requested. Fleet classes are planning anchors, not final engineering selections.
+          </Text>
+          <View wrap={false} style={[styles.optionCard, { borderColor: '#c89a3c' }]}>
+            <Text style={styles.optionTitle}>Standalone Generator - Recommended</Text>
+            <Text style={styles.optionMeta}>{preferred.units}</Text>
+            <Text style={styles.optionMeta}>{preferred.notes.join(' ')}</Text>
+          </View>
+        </PdfSection>
+      </View>
 
-      <PdfEquipmentRecommendationSection recommendation={recommendation} />
+      <PdfSection title="Selected Scope">
+        <PdfKeyValue label="Primary Source" value="Standalone generator" />
+        <PdfKeyValue label="Temporary Cooling" value={includeCooling ? `${fv(results.coolingTons)} tons included as an add-on` : 'Not included'} />
+        <PdfKeyValue label="Battery / Hybrid Equipment" value="Not included in this temporary-power package" />
+        <Text style={styles.caption}>Use the Hybrid EMaaS Strategy workflow when battery support, quiet operation, peak shaving, or generator cycling is part of the client requirement.</Text>
+      </PdfSection>
 
       {riskReview && (
-        <PdfSection title="Field Risk Review">
+        <PdfSection title="Field Verification and Open Questions">
           <PdfTable
-            headers={['Metric', 'Value']}
-            rows={[
-              ['Confidence', `${riskReview.confidenceBand.toUpperCase()} (${riskReview.confidenceScore}/100)`],
-              ['Adjusted Planning Load', `${fv(riskReview.adjustedPlanningKw)} kW`],
-              ['Risk-Adjusted Generator', `${fv(riskReview.adjustedGeneratorKva, 0)} kVA / ${fv(riskReview.adjustedGeneratorKw, 0)} kW`],
-              ['Field Risk Contingency', `${fv(riskReview.contingencyKw)} kW`],
-              ['Load Contingency', `${fv(riskReview.loadContingencyPct * 100)}%`],
-              ['Cooling Contingency', `${fv(riskReview.coolingContingencyPct * 100)}%`],
-            ]}
-          />
-          <PdfTable
-            headers={['Risk', 'Status', 'Impact']}
+            headers={['Field Condition', 'Status', 'Sizing Effect']}
             rows={riskReview.items.map((item) => [item.label, item.status, item.impact])}
           />
-          {riskReview.rfis.map((rfi) => (
-            <PdfWarning key={rfi}>{rfi}</PdfWarning>
-          ))}
+          {primaryRfis.map((rfi) => <PdfWarning key={rfi}>{rfi}</PdfWarning>)}
         </PdfSection>
       )}
 
-      <PdfSection title="One-Line Diagram">
-        <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6 }}>
-          {diagram.caption}
-        </Text>
-        <PdfTable
-          headers={['Stage', 'Element', 'Detail']}
-          rows={flattenDiagramRows(diagram)}
-        />
-        <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 6, fontFamily: 'Courier' }}>
-          {diagram.mermaid}
-        </Text>
-      </PdfSection>
-
-      {/* Hybrid Recommendation */}
-      {results.hybrid && (
-        <PdfSection title="Hybrid Recommendation">
-          <Text style={{ fontSize: 9, color: '#9ca3af', marginBottom: 6 }}>
-            {results.hybrid.reason}
-          </Text>
-          <PdfTable
-            headers={['Metric', 'All Generator', 'Hybrid (Gen + BESS)']}
-            rows={[
-              ['Generator Units', `${results.hybrid.allGen.genUnits}`, `${results.hybrid.hybrid.genUnits}`],
-              ['BESS Units', '0', `${results.hybrid.hybrid.bessUnits} x ${results.hybrid.hybrid.bessUnitSize} kW`],
-              ['Daily Fuel', `${fi(results.hybrid.allGen.fuelPerDay)} gal`, `${fi(results.hybrid.hybrid.fuelPerDay)} gal`],
-              ['30-Day Fuel', `${fi(results.hybrid.allGen.fuel30Day)} gal`, `${fi(results.hybrid.hybrid.fuel30Day)} gal`],
-              ['Fuel Savings', '--', `${fv(results.hybrid.hybrid.fuelSavingsPercent, 0)}%`],
-              ['CO2 Avoided', '--', `${fi(results.co2AvoidedLbs)} lbs (${fv(results.co2AvoidedTons)} tons)`],
-            ]}
-          />
-        </PdfSection>
+      {remainingRfis.length > 0 && (
+        <View break>
+          <PdfSection title="Remaining Field Questions">
+            {remainingRfis.map((rfi) => <PdfWarning key={rfi}>{rfi}</PdfWarning>)}
+          </PdfSection>
+        </View>
       )}
 
-      {/* Electrical Distribution Notes */}
-      <PdfSection title="Electrical Distribution Notes">
-        <PdfWarning>
-          {`Your site needs step-down transformers for ${siteVoltage}V to 240V to 120V distribution. Confirm with your electrician.`}
-        </PdfWarning>
-        <PdfWarning>
-          Redundancy requires Automatic Transfer Switch(es) — include in your equipment order.
-        </PdfWarning>
-        <PdfWarning>
-          Cable sizing depends on distance. Voltage drop over long runs may require upsizing wire gauge — consult NEC tables.
-        </PdfWarning>
+      <PdfSection title="Project Inputs and Operating Assumptions">
+        <PdfKeyValue label="Sizing Mode" value={inputs.mode === 'single' ? 'Single Load' : 'Base Camp / Multi-Facility'} />
+        <PdfKeyValue label="Solution Scope" value={includeCooling ? 'Standalone generator + temporary cooling' : 'Standalone generator only'} />
+        <PdfKeyValue label="Ambient / Target" value={includeCooling ? `${inputs.ambientTemp} F / ${inputs.targetTemp} F` : `${inputs.ambientTemp} F / cooling not included`} />
+        <PdfKeyValue label="Rental Term" value={`${rentalTerm} (${fi(results.rentalDays)} calendar days)`} />
+        <PdfKeyValue label="Operating Schedule" value={`${scheduleLabel} (${fi(results.dailyRuntimeHours)} hours/day)`} />
+        <PdfKeyValue label="Calculated Runtime" value={`${fi(results.operatingHours)} operating hours`} />
+        <PdfKeyValue label="Altitude" value={`${fi(inputs.altitude)} ft ASL`} />
+        <PdfKeyValue label="Site Voltage / Power Factor" value={`${siteVoltage} V / ${inputs.powerFactor}`} />
+        <PdfKeyValue label="PM Service Interval" value={`${fv(inputs.serviceIntervalDays ?? 10, 0)} days`} />
+        <PdfKeyValue label="Technician Coverage" value={technicianCoverage} />
+        <PdfKeyValue label="Containment" value={inputs.containmentRequired === false ? 'No - confirm site spec' : 'Yes - 110% contained'} />
       </PdfSection>
 
-      {/* Disclaimer */}
-      <PdfSection title="Disclaimer">
-        <Text style={{ fontSize: 8, color: '#9ca3af' }}>
-          These are emergency estimates for reference only. Final sizing must be verified by a licensed professional engineer. Sustainable Gaps is not responsible for equipment failures, safety incidents, or cost overruns resulting from the use of these calculations without professional engineering review.
-        </Text>
+      <PdfSection title="Before Release">
+        <PdfWarning>Verify voltage drop, OCPD ratings, conductor sizing, grounding and bonding, available fault current, protection settings, and selective coordination.</PdfWarning>
+        <PdfWarning>{`Confirm step-down transformer placement for ${siteVoltage} V to 120/208 V distribution and validate final cable distances.`}</PdfWarning>
+        <PdfWarning>Redundancy and transfer requirements must be reflected in the ATS, switchgear, controls, and equipment order.</PdfWarning>
       </PdfSection>
+
     </PdfDocument>
   )
 }
