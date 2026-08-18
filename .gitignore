@@ -28,3 +28,9 @@ dist-ssr
 ios/App/build
 ios/App/output
 ios/DerivedData
+
+# Local tooling / build output (added 2026-08-17)
+.azure/
+.codex-audit/
+output/
+tmp/
