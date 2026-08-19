@@ -3,7 +3,13 @@ import { Menu, ShieldCheck, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { APP_BRAND } from '../../lib/brand'
 
-export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
+export function Header({
+  onMenuToggle,
+  menuOpen,
+}: {
+  onMenuToggle: () => void
+  menuOpen: boolean
+}) {
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   )
@@ -25,6 +31,8 @@ export function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         onClick={onMenuToggle}
         className="lg:hidden p-2 rounded-lg hover:bg-sg-700 text-text-muted"
         aria-label="Toggle menu"
+        aria-controls="emaas-navigation"
+        aria-expanded={menuOpen}
       >
         <Menu size={20} />
       </button>

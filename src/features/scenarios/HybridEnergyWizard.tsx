@@ -9,7 +9,6 @@ import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
-import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
 import { buildHybridOneLineDiagram } from './oneLineDiagram'
@@ -493,7 +492,10 @@ export default function HybridEnergyWizard() {
 
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={<HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} clientName={clientName} projectName={projectName} />}
+              createDocument={async () => {
+                const { HybridEnergyPdfDoc } = await import('./HybridEnergyPdf')
+                return <HybridEnergyPdfDoc inputs={inputs} results={results} zones={zones} clientName={clientName} projectName={projectName} />
+              }}
               filename="emaas-hybrid-energy-report.pdf"
             />
           </div>

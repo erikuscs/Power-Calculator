@@ -5,11 +5,12 @@
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
+    "X-Frame-Options": "",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-DNS-Prefetch-Control": "off",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "X-Robots-Tag": "noindex, nofollow, noarchive"
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+    "Content-Security-Policy": "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.cloud.microsoft https://*.microsoft365.com https://*.office.com"
   },
   "mimeTypes": {
     ".json": "application/json",

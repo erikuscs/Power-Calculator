@@ -10,7 +10,6 @@ import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
 import { FieldRiskReviewPanel } from '../../components/ui/FieldRiskReviewPanel'
 import { Button } from '../../components/ui/Button'
-import { TempPowerPdfDoc } from './TempPowerPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateTempPower, type TempPowerInputs, type FacilityEntry } from './scenario.formulas'
 import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
@@ -433,7 +432,10 @@ export default function TempPowerWizard() {
 
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={<TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />}
+              createDocument={async () => {
+                const { TempPowerPdfDoc } = await import('./TempPowerPdf')
+                return <TempPowerPdfDoc inputs={inputs} results={results} riskReview={fieldRiskReview ?? undefined} clientName={clientName} projectName={projectName} />
+              }}
               filename="emaas-temp-power-report.pdf"
             />
           </div>

@@ -5,6 +5,11 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    // React PDF is isolated behind the export click; its renderer is intentionally
+    // larger than Vite's default warning threshold but never blocks route loading.
+    chunkSizeWarningLimit: 1500,
+  },
   plugins: [
     react(),
     tailwindcss(),

@@ -17,6 +17,8 @@ still deploys to Azure SWA at emaas.pro; the iOS app is built from the same code
 - Safe-area (notch/home-indicator) CSS and `viewport-fit=cover`
 - Native PDF export: on iOS the report is written to the app cache and opened in the
   share sheet (AirDrop, Mail, Files, print) instead of a browser download
+- Universal iPhone and iPad support
+- App privacy manifest declaring no tracking, collection, or required-reason API use
 - `ITSAppUsesNonExemptEncryption = NO` (standard HTTPS only → skips export-compliance
   questionnaire on every build)
 - Status bar set to light content to match the dark theme
@@ -48,20 +50,31 @@ the certificates and provisioning profile for you.
 - **Category**: Utilities (primary), Productivity (secondary)
 - **Privacy policy URL** (required): host one at https://emaas.pro/privacy —
   the app stores everything locally on-device and collects nothing, so the policy is short
+- **Support URL**: https://emaas.pro
 - **App Privacy questionnaire**: answer "Data Not Collected" (true: no analytics,
   no accounts, no network calls after load)
-- **Age rating**: 4+
+- **Age rating**: complete Apple's current questionnaire; with all content answers
+  set to "None," the expected rating is 4+
+- **Copyright**: 2026 Sustainable Gaps LLC
+- **EU distribution**: complete App Store Connect trader-status verification if the
+  app will be available in the European Union
 - **Price**: Free (or as desired)
 
 ### 4. Screenshots (required sizes)
 Take these in the iOS Simulator (`Cmd+S` saves a screenshot):
-- 6.9" (iPhone 17 Pro Max): 1320 × 2868
-- 6.5" fallback accepted from the 6.9" set
+- **iPhone:** use the latest 6.9" iPhone Pro Max simulator
+- **iPad:** use the latest 13" iPad Pro simulator
+
+Because the app is universal, App Store Connect requires an iPhone set and an iPad
+set. Upload the simulator-native PNGs without resizing; App Store Connect recognizes
+the exact device dimensions.
+
 Recommended shots: dashboard, one wizard (Temp Power), a calculator with results,
-the PDF share sheet.
+and the PDF share sheet. Capture the same four screens on both device families.
 
 ### 5. Upload and submit
-In Xcode: Product → Archive → Distribute App → App Store Connect → Upload.
+Build and upload with Xcode 26 or newer. In Xcode: Product → Archive →
+Distribute App → App Store Connect → Upload.
 Then in App Store Connect select the build, fill in the "What's New" text, and
 Submit for Review. First reviews typically take 1–3 days.
 
@@ -71,6 +84,8 @@ Apple sometimes rejects thin web wrappers. This app has a strong case — make i
 explicit in the **App Review notes** field:
 - Fully offline: all 20+ calculators work in airplane mode (PWA precache + local code)
 - Native share-sheet PDF report generation
+- Built-in tutorials explain each workflow's objective, assumptions, worked starting
+  point, expected output, and engineering-review boundary
 - No account, no web redirect — it is not a repackaged website view of emaas.pro
   (the site itself is noindexed; the app is the product)
 

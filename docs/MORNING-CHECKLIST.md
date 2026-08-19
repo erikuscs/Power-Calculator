@@ -44,24 +44,28 @@ re-run `npx cap open ios` from the Terminal.
 3. **Team** dropdown (says "None") → select **Sustainable Gaps LLC**
 4. Red error disappears. Bundle ID should read `pro.emaas.app`.
 
-## Step 4 — Switch to a simulator (30 sec)
+## Step 4 — Select the review simulators
 
 1. Top toolbar: click the device name (says **"Not Your iPhone"**)
-2. Scroll to **iOS Simulators** → pick the biggest **iPhone Pro Max**
+2. Under **iOS Simulators**, select the latest **iPhone 17 Pro Max**
+3. After capturing the iPhone set, repeat with the latest **13-inch iPad Pro**
 
 ## Step 5 — Run it (2 min)
 
 Press **▶︎ Play**. A virtual iPhone boots and EMaaS.pro launches on it.
-Take a moment. That's your product on an iPhone.
+Repeat on the iPad simulator and confirm the layout on both device families.
 
-## Step 6 — Screenshots (5 min)
+## Step 6 — Screenshots
 
 With the Simulator window focused, **Cmd+S** saves a screenshot to Desktop.
-Take these 4:
+Take these four screens on both the iPhone 17 Pro Max and 13-inch iPad Pro:
 1. Dashboard (home screen)
 2. Temp Power & Cooling wizard (enter a load first so it shows results)
 3. Fuel Consumption calculator with results visible
 4. A PDF export — tap Export on any report, screenshot the share sheet
+
+Upload the resulting eight simulator-native PNGs without resizing. The universal
+target requires both iPhone and iPad screenshot sets.
 
 ## Step 7 — Archive & upload (10 min, mostly waiting)
 
@@ -98,6 +102,7 @@ Then fill the version page — ALL COPY IS BELOW, copy/paste:
 >
 > • 16 calculators: generator/UPS power, kW-kVA, amperes, fuel consumption, BESS runtime & ROI, cooling load, chiller, psychrometrics
 > • Guided workflows: temporary power & cooling, BESS+generator hybrid strategy, project economics
+> • Built-in tutorials with objectives, worked starting points, and expected outcomes
 > • Load-dependent fuel curves with altitude and temperature derating — not flat-rate guesses
 > • Every result shows the formula with your values, so you can check the math
 > • Fully offline — all calculators work in airplane mode
@@ -107,17 +112,24 @@ Then fill the version page — ALL COPY IS BELOW, copy/paste:
 > Estimates are for planning and reference. Always verify with a licensed professional engineer before final design.
 
 **Privacy Policy URL:** `https://emaas.pro/privacy`
+**Support URL:** `https://emaas.pro`
+**Copyright:** `2026 Sustainable Gaps LLC`
 
 **App Privacy questionnaire:** select **"Data Not Collected"** (true — verify each category as not collected)
 
 **Category:** Primary: Utilities · Secondary: Productivity
-**Age rating:** 4+ (answer "None" to everything in the questionnaire)
+**Age rating:** complete the current questionnaire; answering "None" to all content
+questions should produce 4+
 **Price:** Free
 
-**App Review notes (paste into the "Notes" box — this is rejection insurance):**
-> Fully functional offline — all 16+ calculators work in airplane mode via local code and precache. Native share-sheet PDF generation. No account and no web redirect; this is a standalone engineering tool, not a repackaged view of emaas.pro (the site is noindexed). No login required — reviewer can use every feature immediately.
+If distributing in the European Union, complete the **Trader Status** verification
+in App Store Connect before submission.
 
-**Screenshots:** upload the 4 from Step 6 (6.9" iPhone slot).
+**App Review notes (paste into the "Notes" box — this is rejection insurance):**
+> Fully functional offline — all 16+ calculators work in airplane mode via local code and precache. Built-in guided tutorials explain workflow objectives, assumptions, worked starting points, expected outputs, and the engineering-review boundary. Native share-sheet PDF generation. No account and no web redirect; this is a standalone engineering tool, not a repackaged view of emaas.pro (the site is noindexed). No login required — reviewer can use every feature immediately.
+
+**Screenshots:** upload the iPhone set to the 6.9" slot and the iPad set to the
+13" iPad slot.
 
 ## Step 9 — Submit
 

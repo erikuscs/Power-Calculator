@@ -5,7 +5,6 @@ import { TabGroup } from '../../components/ui/TabGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
-import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { fmt } from '../../lib/formatters'
 import {
@@ -104,8 +103,10 @@ export default function GeneratorPowerPage() {
 
             <div className="mt-4 flex justify-center">
               <PdfExportButton
-                document={
-                  <GenericCalculatorPdf
+                createDocument={async () => {
+                  const { GenericCalculatorPdf } = await import('../../components/pdf/GenericCalculatorPdf')
+                  return (
+                    <GenericCalculatorPdf
                     title="Generator Power Sizing Report"
                     inputs={[
                       { label: 'Phase', value: phase === 'single' ? 'Single-Phase' : 'Three-Phase' },
@@ -121,8 +122,9 @@ export default function GeneratorPowerPage() {
                     ]}
                     formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
                     warnings={['Never run a generator above 80% continuous load. Size to 125% minimum.']}
-                  />
-                }
+                    />
+                  )
+                }}
                 filename="generator-sizing-report.pdf"
               />
             </div>

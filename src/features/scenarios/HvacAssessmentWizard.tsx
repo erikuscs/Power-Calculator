@@ -7,7 +7,6 @@ import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { Button } from '../../components/ui/Button'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
-import { HvacAssessmentPdfDoc } from './HvacAssessmentPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import {
   calculateCooling,
@@ -515,8 +514,10 @@ export default function HvacAssessmentWizard() {
           {/* PDF Export */}
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={
-                <HvacAssessmentPdfDoc
+              createDocument={async () => {
+                const { HvacAssessmentPdfDoc } = await import('./HvacAssessmentPdf')
+                return (
+                  <HvacAssessmentPdfDoc
                   coolingInputs={coolingInputs}
                   coolingResults={coolingResults}
                   chillerInputs={chillerInputs}
@@ -525,8 +526,9 @@ export default function HvacAssessmentWizard() {
                   airsideResults={airsideResults}
                   clientName={clientName}
                   projectName={projectName}
-                />
-              }
+                  />
+                )
+              }}
               filename="emaas-hvac-assessment-report.pdf"
             />
           </div>

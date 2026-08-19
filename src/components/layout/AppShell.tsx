@@ -9,7 +9,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-sg-900 flex flex-col">
-      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <Header
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        menuOpen={sidebarOpen}
+      />
       <div className="flex flex-1">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="flex-1 p-5 md:p-8 lg:p-10 overflow-auto">
