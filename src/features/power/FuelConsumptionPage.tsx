@@ -5,7 +5,6 @@ import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
-import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { fmt, fmtPercent } from '../../lib/formatters'
@@ -176,8 +175,10 @@ export default function FuelConsumptionPage() {
 
             <div className="mt-4 flex justify-center">
               <PdfExportButton
-                document={
-                  <GenericCalculatorPdf
+                createDocument={async () => {
+                  const { GenericCalculatorPdf } = await import('../../components/pdf/GenericCalculatorPdf')
+                  return (
+                    <GenericCalculatorPdf
                     title="Fuel Consumption Report"
                     inputs={[
                       { label: 'Actual Load', value: `${actualKw} kW` },
@@ -197,8 +198,9 @@ export default function FuelConsumptionPage() {
                     ]}
                     formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
                     warnings={!isEfficient ? ['Generator not running at optimal load factor (70-80%). Consider right-sizing.'] : undefined}
-                  />
-                }
+                    />
+                  )
+                }}
                 filename="fuel-consumption-report.pdf"
               />
             </div>

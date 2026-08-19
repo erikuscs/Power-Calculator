@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Battery, Plug, Thermometer, Workflow } from 'lucide-react'
+import { X, LayoutDashboard, Battery, BookOpen, Plug, Thermometer, Workflow } from 'lucide-react'
 
 const navGroups = [
   {
@@ -9,6 +9,11 @@ const navGroups = [
       { to: '/', label: 'EMaaS Dashboard' },
       { to: '/learn', label: 'Start Here' },
     ],
+  },
+  {
+    label: 'Guidance',
+    icon: BookOpen,
+    items: [{ to: '/learn', label: 'Tutorials & Objectives' }],
   },
   {
     label: 'EMaaS Workflows',
@@ -65,11 +70,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />
       )}
       <aside
+        id="emaas-navigation"
+        aria-label="EMaaS navigation"
         className={`
           fixed top-0 left-0 h-full w-64 bg-sg-900 border-r border-sg-600/30 z-50 overflow-y-auto
           transform transition-transform duration-200
-          ${open ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 lg:z-0
+          ${open ? 'visible translate-x-0' : 'invisible -translate-x-full'}
+          lg:visible lg:static lg:translate-x-0 lg:z-0
         `}
       >
         <div className="lg:hidden flex justify-end p-3">

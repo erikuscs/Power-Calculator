@@ -9,7 +9,6 @@ import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecom
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
-import { BessProjectPdfDoc } from './BessProjectPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import {
   calculateSizing,
@@ -288,16 +287,19 @@ export default function BessProjectWizard() {
           {/* PDF Export */}
           <div className="flex justify-center py-4">
             <PdfExportButton
-              document={
-                <BessProjectPdfDoc
+              createDocument={async () => {
+                const { BessProjectPdfDoc } = await import('./BessProjectPdf')
+                return (
+                  <BessProjectPdfDoc
                   sizingInputs={sizingInputs}
                   sizingResults={sizingResults}
                   roiInputs={roiInputs}
                   roiResults={roiResults}
                   clientName={clientName}
                   projectName={projectName}
-                />
-              }
+                  />
+                )
+              }}
               filename="emaas-bess-project-report.pdf"
             />
           </div>

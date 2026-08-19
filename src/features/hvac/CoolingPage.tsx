@@ -5,7 +5,6 @@ import { SelectField } from '../../components/ui/SelectField'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
-import { GenericCalculatorPdf } from '../../components/pdf/GenericCalculatorPdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { calculateCooling, describeCooling, type CoolingInputs } from './hvac.formulas'
@@ -106,8 +105,10 @@ export default function CoolingPage() {
 
           <div className="mt-4 flex justify-center">
             <PdfExportButton
-              document={
-                <GenericCalculatorPdf
+              createDocument={async () => {
+                const { GenericCalculatorPdf } = await import('../../components/pdf/GenericCalculatorPdf')
+                return (
+                  <GenericCalculatorPdf
                   title="Cooling Load Report"
                   inputs={[
                     { label: 'Equipment Load', value: `${loadKw} kW` },
@@ -127,8 +128,9 @@ export default function CoolingPage() {
                   ]}
                   formulaSteps={describeCooling(inputs, results).map((s) => ({ label: s.label, result: s.result }))}
                   warnings={parseInt(occupants) === 0 ? ['Occupant heat not included — each person adds ~450 BTU/hr.'] : undefined}
-                />
-              }
+                  />
+                )
+              }}
               filename="cooling-load-report.pdf"
             />
           </div>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3 } from 'lucide-react'
+import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3, BookOpen, ArrowDown } from 'lucide-react'
 import { APP_BRAND } from '../../lib/brand'
 import {
   EMAAS_FIELD_MODES,
@@ -47,9 +47,9 @@ interface CalcItem {
   accent?: boolean
 }
 
-function CalcGrid({ title, items }: { title: string; items: CalcItem[] }) {
+function CalcGrid({ title, items, id }: { title: string; items: CalcItem[]; id?: string }) {
   return (
-    <div>
+    <div id={id} className="scroll-mt-6">
       <h2 className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em] mb-4">{title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => (
@@ -116,6 +116,22 @@ export default function DashboardPage() {
             <span className="rounded-lg border border-sg-600/50 px-3 py-2">Report ready</span>
             <span className="rounded-lg border border-sg-600/50 px-3 py-2">Engineer review</span>
           </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <a
+              href="#field-workflows"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-bold text-sg-900 no-underline transition-colors hover:bg-accent-400"
+            >
+              <ArrowDown size={16} />
+              Choose a field workflow
+            </a>
+            <Link
+              to="/learn"
+              className="inline-flex items-center gap-2 rounded-lg border border-accent-500/40 bg-accent-500/10 px-4 py-2.5 text-sm font-semibold text-accent-300 no-underline transition-colors hover:bg-accent-500/20"
+            >
+              <BookOpen size={16} />
+              Tutorials and objectives
+            </Link>
+          </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-sg-600/40 bg-sg-800">
           <img
@@ -132,7 +148,7 @@ export default function DashboardPage() {
         ))}
       </section>
 
-      <CalcGrid title="EMaaS Workflows - What are you managing today?" items={scenarios} />
+      <CalcGrid id="field-workflows" title="EMaaS Workflows - What are you managing today?" items={scenarios} />
 
       <section>
         <h2 className="text-[10px] font-bold text-text-dim uppercase tracking-[0.15em] mb-4">Operating Variables Covered</h2>

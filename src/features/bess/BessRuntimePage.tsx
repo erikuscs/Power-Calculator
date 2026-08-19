@@ -8,7 +8,6 @@ import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
 import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { HistoryDrawer } from '../../components/ui/HistoryDrawer'
-import { BessRuntimePdfDoc } from './BessRuntimePdf'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { useUrlState } from '../../hooks/useUrlState'
@@ -169,7 +168,10 @@ export default function BessRuntimePage() {
 
             <div className="mt-4 flex justify-end">
               <PdfExportButton
-                document={<BessRuntimePdfDoc inputs={inputs} results={results} />}
+                createDocument={async () => {
+                  const { BessRuntimePdfDoc } = await import('./BessRuntimePdf')
+                  return <BessRuntimePdfDoc inputs={inputs} results={results} />
+                }}
                 filename="bess-runtime-report.pdf"
               />
             </div>
