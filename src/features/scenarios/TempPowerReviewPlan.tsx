@@ -1,63 +1,52 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
-  Activity,
+  ArrowRight,
+  Building2,
   CheckCircle2,
   ChevronDown,
   Clock3,
-  Fan,
   FileCheck2,
-  Gauge,
   Info,
   Map as MapIcon,
-  MonitorCog,
-  Ruler,
-  ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
-  Zap,
 } from 'lucide-react'
 import { PdfActionBar } from '../../components/pdf/PdfActionBar'
 import { SelectField } from '../../components/ui/SelectField'
-import { PrintableOneLine } from '../../components/ui/OneLineDiagramPanel'
-import type { EquipmentRecommendation } from '../../lib/equipmentRecommendations'
-import { fmt, fmtInt, fmtPercent } from '../../lib/formatters'
-import generatorSiteLayout3d from '../../assets/emaas-generator-site-layout-3d.jpg'
-import generatorCoolingSiteLayout3d from '../../assets/emaas-generator-cooling-site-layout-3d.jpg'
-import type { FieldRiskReview, RiskPosture, RvServicePosture, TempPowerRiskInputs } from './fieldRiskReview'
-import type { OneLineDiagram } from './oneLineDiagram'
-import type { TempPowerInputs, TempPowerResults } from './scenario.formulas'
-import { TempPowerPdfDoc } from './TempPowerPdf'
+import { fmt, fmtInt } from '../../lib/formatters'
+import type { FieldVerificationReview, RiskPosture, RvServicePosture, TempPowerRiskInputs } from './fieldRiskReview'
+import type { TempPowerPlanningInputs, TempPowerPlanningResults } from './scenario.formulas'
 import {
-  buildTempPowerPlainLanguageReason,
-  compactEquipmentLabel,
   panelSizingExplanation,
   rentalPeriodLabel,
   runtimeScheduleLabel,
   sizingTradeoffs,
 } from './tempPowerPresentation'
+import type { TempPowerCalculationVerification } from './tempPowerVerification'
 
 interface TempPowerReviewPlanProps {
-  inputs: TempPowerInputs
-  results: TempPowerResults
-  recommendation: EquipmentRecommendation
-  fieldRiskReview: FieldRiskReview
+  inputs: TempPowerPlanningInputs
+  results: TempPowerPlanningResults
+  calculationVerification: TempPowerCalculationVerification
+  fieldRiskReview: FieldVerificationReview
   riskInputs: TempPowerRiskInputs
   onRiskChange: (field: keyof TempPowerRiskInputs, value: RiskPosture | RvServicePosture) => void
-  oneLineDiagram: OneLineDiagram
   clientName: string
   projectName: string
   onEditRequirements?: () => void
+  isWorkedExample?: boolean
+  onUseAsStartingPoint?: () => void
+  onAddToEstimate?: () => void
 }
-
-type VisualMode = 'one-line' | 'layout'
 
 const postureOptions: { value: RiskPosture; label: string }[] = [
   { value: 'known', label: 'Confirmed / no added risk' },
   { value: 'assume_typical', label: 'Use typical allowance' },
-  { value: 'unknown', label: 'Unknown / add contingency' },
+  { value: 'unknown', label: 'Unknown / needs confirmation' },
 ]
 
 const rvOptions: { value: RvServicePosture; label: string }[] = [
-  { value: 'unknown', label: 'Unknown / add contingency' },
+  { value: 'unknown', label: 'Unknown / needs confirmation' },
   { value: 'known_30a', label: 'Confirmed 30A pedestals' },
   { value: 'known_50a', label: 'Confirmed 50A pedestals' },
   { value: 'mixed', label: 'Mixed 30A / 50A service' },
@@ -67,9 +56,9 @@ const riskControlLabels: Record<keyof TempPowerRiskInputs, string> = {
   rvService: 'RV Service',
   hiddenPlugLoads: 'Hidden Trailer Loads',
   motorStarting: 'Motor / Compressor Starting',
-  occupancyVariance: 'Occupancy Creep',
+  occupancyVariance: 'Occupancy Changes',
   airDistribution: 'Tent / Air Distribution',
-  winterHeat: 'Winter Heat Creep',
+  winterHeat: 'Winter Heat',
   waterHeating: 'Shower / Water Heating',
 }
 
@@ -79,18 +68,14 @@ function reportFilename(projectName: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-  return `emaas-${slug || 'temp-power'}-review-package.pdf`
+  const base = slug || 'temp-power'
+  const suffix = base.endsWith('planning-brief') ? 'draft' : 'planning-brief-draft'
+  return `emaas-${base}-${suffix}.pdf`
 }
 
-function confidenceClasses(band: FieldRiskReview['confidenceBand']) {
-  if (band === 'high') return 'border-success/35 bg-success/10 text-success'
-  if (band === 'medium') return 'border-warning/35 bg-warning/10 text-warning'
-  return 'border-warning/35 bg-warning/10 text-warning'
-}
-
-function DetailDisclosure({ title, summary, children }: { title: string; summary: string; children: ReactNode }) {
+function DetailDisclosure({ id, title, summary, children }: { id?: string; title: string; summary: string; children: ReactNode }) {
   return (
-    <details className="group rounded-xl border border-sg-600/45 bg-sg-800/70">
+    <details id={id} className="group scroll-mt-24 rounded-xl border border-sg-600/45 bg-sg-800/70">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400/70">
         <span>
           <span className="block text-sm font-bold text-text">{title}</span>
@@ -103,44 +88,34 @@ function DetailDisclosure({ title, summary, children }: { title: string; summary
   )
 }
 
-function Metric({ icon: Icon, label, value }: { icon: typeof Zap; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-sg-500 bg-sg-900 text-steel-400">
-        <Icon size={16} />
-      </span>
-      <div>
-        <div className="text-sm font-bold leading-tight text-text">{value}</div>
-        <div className="mt-0.5 text-xs text-text-muted">{label}</div>
-      </div>
-    </div>
-  )
-}
-
 export function TempPowerReviewPlan({
   inputs,
   results,
-  recommendation,
+  calculationVerification,
   fieldRiskReview,
   riskInputs,
   onRiskChange,
-  oneLineDiagram,
   clientName,
   projectName,
   onEditRequirements,
+  isWorkedExample = false,
+  onUseAsStartingPoint,
+  onAddToEstimate,
 }: TempPowerReviewPlanProps) {
-  const [visualMode, setVisualMode] = useState<VisualMode>('one-line')
-  const preferred = recommendation.generator
   const includeCooling = inputs.includeCooling !== false
-  const reason = buildTempPowerPlainLanguageReason(recommendation, includeCooling)
   const openChecks = fieldRiskReview.rfis.length
-  const confidenceLabel = `${fieldRiskReview.confidenceBand[0].toUpperCase()}${fieldRiskReview.confidenceBand.slice(1)} confidence`
   const filename = reportFilename(projectName)
   const siteVoltage = inputs.siteVoltage ?? 480
-  const cableLegs = Math.max(1, Math.ceil(results.ampsPerPhase / 400))
+  const loadVoltage = inputs.loadVoltage ?? siteVoltage
   const rentalTerm = rentalPeriodLabel(inputs.rentalPeriod ?? 'daily', inputs.rentalPeriodCount ?? Math.max(1, results.rentalDays))
   const scheduleLabel = runtimeScheduleLabel(inputs.runtimeSchedule)
-  const siteLayout3d = includeCooling ? generatorCoolingSiteLayout3d : generatorSiteLayout3d
+  const includesRv = inputs.facilities.some((facility) => facility.type === 'rv')
+  const continuityIntent = inputs.continuityTarget === 'n_plus_1'
+    ? 'Generator redundancy'
+    : 'Support the entered load'
+  const voltageIntent = siteVoltage === loadVoltage
+    ? `${loadVoltage} V source / ${loadVoltage} V load`
+    : `${siteVoltage} V source / ${loadVoltage} V load`
 
   const riskItems = useMemo(
     () => new Map(fieldRiskReview.items.map((item) => [item.id, item])),
@@ -148,7 +123,7 @@ export function TempPowerReviewPlan({
   )
 
   const riskControls = (Object.keys(riskControlLabels) as (keyof TempPowerRiskInputs)[])
-    .filter((key) => includeCooling || key !== 'airDistribution')
+    .filter((key) => key !== 'airDistribution' && (includesRv || key !== 'rvService'))
     .map((key) => ({
       key,
       label: riskControlLabels[key],
@@ -157,240 +132,224 @@ export function TempPowerReviewPlan({
       item: riskItems.get(key),
     }))
 
-  const energyPriorities = [
+  const conversationSteps = [
+    {
+      icon: Building2,
+      label: 'Demand',
+      value: `${fmt(results.totalWithCoolingKw, 1)} kW entered`,
+      detail: includeCooling
+        ? `Includes ${fmt(results.coolingKw, 1)} kW of cooling-equipment demand.`
+        : 'Based on the equipment and facilities entered.',
+    },
     {
       icon: SlidersHorizontal,
-      title: 'Load right-sizing',
-      detail: 'Match the generator to expected demand and starting loads instead of the breaker-panel rating.',
-      signal: `${fmtPercent(results.loadFactor)} planned load factor`,
+      label: 'Voltage',
+      value: voltageIntent,
+      detail: 'Verify available source voltage, phase, and load connection before equipment selection.',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Continuity',
+      value: continuityIntent,
+      detail: continuityIntent === 'Generator redundancy'
+        ? 'A spare generator does not protect the controls and distribution between the source and the load.'
+        : 'No spare source has been assumed.',
     },
     {
       icon: Clock3,
-      title: 'Runtime and service',
-      detail: 'Fuel and maintenance are calculated from the rental term and selected operating schedule.',
-      signal: `${fmtInt(results.operatingHours)} operating hours`,
+      label: 'Runtime',
+      value: `${fmtInt(results.operatingHours)} scheduled hours`,
+      detail: `${rentalTerm}; ${scheduleLabel.toLowerCase()}. Actual runtime depends on operations.`,
     },
-    ...(includeCooling
-      ? [{
-          icon: Fan,
-          title: 'Cooling add-on',
-          detail: 'Cooling is a separate downstream load and appears only because it was selected.',
-          signal: `${fmt(results.coolingTons, 1)} tons planned`,
-        }]
-      : []),
     {
-      icon: MonitorCog,
-      title: 'Monitoring and controls',
-      detail: 'Track kW, fuel, power factor, temperature, alarms, and service cadence.',
-      signal: 'Remote monitoring ready',
+      icon: FileCheck2,
+      label: 'Next decision',
+      value: openChecks > 0 ? `${openChecks} checks remain` : 'Initial checks answered',
+      detail: 'Confirm the open items before selecting equipment.',
     },
   ]
 
+  const showFieldVerification = () => {
+    const verification = document.getElementById('temp-power-field-verification') as HTMLDetailsElement | null
+    if (!verification) return
+    verification.open = true
+    verification.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    verification.querySelector('summary')?.focus()
+  }
+
   return (
-    <section aria-labelledby="recommended-energy-plan" className="space-y-3">
+    <section aria-labelledby="temp-power-planning-brief" className="space-y-3">
+      {isWorkedExample && (
+        <div className="flex flex-col gap-4 rounded-xl border border-accent-500/45 bg-accent-500/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-accent-300">Worked Example</div>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text">
+              This 56 kW jobsite example demonstrates the planning conversation. The values are examples, and no equipment package has been selected.
+            </p>
+          </div>
+          {onUseAsStartingPoint && (
+            <button
+              type="button"
+              onClick={onUseAsStartingPoint}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-bold text-sg-900 transition-colors hover:bg-accent-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
+            >
+              Use as My Starting Point
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
         <div className="text-xs text-text-muted">
           <span className="font-semibold text-accent-400">Temporary Power</span>
           <span className="px-2 text-text-dim">/</span>
-          Recommended Energy Plan
+          Planning Brief
         </div>
-        {onEditRequirements ? (
+        {onEditRequirements && (
           <button
             type="button"
-            aria-label="Requirements selected - edit requirements"
+            aria-label={isWorkedExample ? 'Review worked example inputs' : 'Review temporary power inputs'}
             onClick={onEditRequirements}
-            className="inline-flex items-center gap-2 rounded-lg border border-sg-600/50 bg-sg-800/65 px-3 py-2 text-xs font-semibold text-success transition-colors hover:border-accent-500/50 hover:text-accent-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70"
+            className="inline-flex items-center gap-2 rounded-lg border border-sg-600/50 bg-sg-800/65 px-3 py-2 text-xs font-semibold text-text transition-colors hover:border-accent-500/50 hover:text-accent-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70"
           >
-            <CheckCircle2 size={16} />
-            Requirements selected
-            <span className="border-l border-sg-600/50 pl-2 text-text-muted">Edit</span>
+            <CheckCircle2 size={16} className="text-success" />
+            Review inputs
           </button>
-        ) : (
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-success">
-            <CheckCircle2 size={16} />
-            Requirements selected
-          </div>
         )}
       </div>
 
-      <h1 id="recommended-energy-plan" className="text-3xl font-bold tracking-tight text-text sm:text-4xl">
-        Recommended Energy Plan
+      <h1 id="temp-power-planning-brief" className="text-3xl font-bold tracking-tight text-text sm:text-4xl">
+        Temporary Power Planning Brief
       </h1>
 
-      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${confidenceClasses(fieldRiskReview.confidenceBand)}`}>
-        <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em]">
-          <ShieldAlert size={18} />
-          {confidenceLabel} - {fieldRiskReview.confidenceScore}/100
+      <div className="rounded-xl border border-signal-blue/40 bg-signal-blue/10 px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-2 text-sm font-bold text-signal-blue">
+              <Info size={18} />
+              Planning brief ready for review
+            </div>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-muted">
+              This brief organizes the stated demand and operating needs. It does not select equipment or confirm outage coverage.
+            </p>
+          </div>
+          {openChecks > 0 ? (
+            <button
+              type="button"
+              onClick={showFieldVerification}
+              className="rounded-md border border-signal-blue/35 px-3 py-2 text-xs font-semibold text-signal-blue transition-colors hover:bg-signal-blue/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-blue/60"
+            >
+              Review {openChecks} open item{openChecks === 1 ? '' : 's'}
+            </button>
+          ) : (
+            <div className="text-xs font-semibold text-text">Initial field answers captured</div>
+          )}
         </div>
-        <p className="max-w-md text-xs leading-relaxed text-text-muted">
-          {openChecks > 0
-            ? `${openChecks} field check${openChecks === 1 ? '' : 's'} remain open. They affect contingency and final package confirmation.`
-            : 'The core field assumptions are confirmed. Final engineering checks still apply.'}
-        </p>
+      </div>
+
+      <div className="rounded-xl border border-success/40 bg-success/10 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
+          <div>
+            <div className="text-sm font-bold text-text">Calculation check passed</div>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              {calculationVerification.passedCount} of {calculationVerification.checkedCount} arithmetic checks agree across line items, cooling scope, total load, rental days, and scheduled hours.
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-text-dim">
+              This confirms internal arithmetic only. Equipment selection and technical suitability still require project-specific verification.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-sg-600/50 bg-sg-800/85 shadow-2xl shadow-black/20">
-        <div className="grid grid-cols-1 xl:grid-cols-[0.78fr_1.22fr]">
-          <div className="border-b border-sg-600/45 p-4 xl:border-b-0 xl:border-r">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-dim">Recommended Package</div>
-            <h2 className="mt-2 text-xl font-bold leading-tight text-text">{compactEquipmentLabel(preferred.units)}</h2>
-            <p className="mt-1 text-sm text-text-muted">
-              Standalone generator{includeCooling ? ' + temporary cooling add-on' : ' • power-only scope'}
+        <div>
+          <div className="p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-dim">What the inputs support</div>
+            <h2 className="mt-2 text-xl font-bold leading-tight text-text">A clear starting point for the customer conversation</h2>
+            <p className="mt-2 text-sm leading-relaxed text-text-muted">
+              Demand, runtime, voltage, and continuity needs are visible. The power-source setup, equipment quantity, protection, cabling, and placement still need project-specific review.
             </p>
-
-            <div className="mt-3 rounded-lg border border-accent-500/35 bg-accent-500/8 p-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-accent-300">
-                <Info size={15} />
-                Why this fits
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-text">{reason}</p>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
-              <Metric icon={Activity} label="Planning Load" value={`${fmt(fieldRiskReview.adjustedPlanningKw, 1)} kW`} />
-              <Metric icon={Zap} label="Distribution" value={`${siteVoltage} V`} />
-              <Metric icon={Gauge} label="Generator" value={`${fmt(results.generatorKva, 0)} kVA`} />
-              <Metric icon={Ruler} label="Planning Footprint" value={`~${fmtInt(preferred.footprintSqFt)} sq ft`} />
-              <Metric icon={Clock3} label="Rental Term" value={rentalTerm} />
-              <Metric icon={Clock3} label={scheduleLabel} value={`${fmtInt(results.operatingHours)} hr`} />
-              {includeCooling && <Metric icon={Fan} label="Cooling Add-on" value={`${fmt(results.coolingTons, 1)} tons`} />}
-            </div>
-
-            <div className="mt-4 border-t border-sg-600/40 pt-3">
-              <PdfActionBar
-                document={(
-                  <TempPowerPdfDoc
-                    inputs={inputs}
-                    results={results}
-                    riskReview={fieldRiskReview}
-                    clientName={clientName}
-                    projectName={projectName}
-                  />
-                )}
-                filename={filename}
-                title="EMaaS Recommended Energy Plan"
-                shareText={`${clientName || 'Client'} - ${projectName || 'Temporary Power Review'} recommended energy plan`}
-              />
-            </div>
           </div>
 
-          <div className="min-w-0 p-4">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-dim">Solution Visualization</div>
-                <div className="mt-1 text-xs text-text-muted">Both views show only the equipment included in this scope.</div>
-              </div>
-              <div className="inline-flex rounded-lg border border-sg-600/60 bg-sg-900 p-1" role="tablist" aria-label="Solution visualization">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={visualMode === 'one-line'}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${visualMode === 'one-line' ? 'bg-accent-500 text-sg-900' : 'text-text-muted hover:text-text'}`}
-                  onClick={() => setVisualMode('one-line')}
-                >
-                  One-Line
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={visualMode === 'layout'}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${visualMode === 'layout' ? 'bg-accent-500 text-sg-900' : 'text-text-muted hover:text-text'}`}
-                  onClick={() => setVisualMode('layout')}
-                >
-                  3D Site Layout
-                </button>
-              </div>
+          <div className="min-w-0 border-t border-sg-600/45 p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-dim">Planning Path</div>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              Each step narrows the next decision without pretending the equipment package is final.
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+              {conversationSteps.map((step, index) => {
+                const Icon = step.icon
+                return (
+                  <div key={step.label} className="flex flex-col rounded-lg border border-sg-600/45 bg-sg-900/55 p-3 lg:min-h-[168px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-accent-400">
+                        <Icon size={15} />
+                        {step.label}
+                      </div>
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-sg-600 text-[10px] font-bold text-text-dim">{index + 1}</span>
+                    </div>
+                    <div className="mt-3 text-sm font-bold leading-snug text-text">{step.value}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-text-muted">{step.detail}</p>
+                  </div>
+                )
+              })}
             </div>
 
-            <div role="tabpanel" className="min-h-[310px] overflow-hidden rounded-lg border border-sg-600/45 bg-sg-900/75">
-              {visualMode === 'one-line' ? (
-                <PrintableOneLine diagram={oneLineDiagram} compact showNotes={false} />
-              ) : (
-                <figure>
-                  <img
-                    src={siteLayout3d}
-                    alt={includeCooling
-                      ? 'Isometric 3D planning mockup showing a standalone generator, controls, switchgear, transformer, distribution panels, and temporary cooling'
-                      : 'Isometric 3D planning mockup showing a standalone generator, controls, switchgear, transformer, and distribution panels'}
-                    className="h-[286px] w-full object-cover object-center sm:h-[320px]"
-                  />
-                  <figcaption className="border-t border-sg-600/35 px-4 py-3 text-xs leading-relaxed text-text-muted">
-                    {includeCooling ? 'Generator-led power with the selected cooling add-on.' : 'Generator-only power scope; cooling and battery equipment are not included.'} Final clearances, access, cable paths, grounding, containment, and fire protection require site verification.
-                  </figcaption>
-                </figure>
+            <div className="mt-4 rounded-lg border border-warning/35 bg-warning/10 p-4">
+              <div className="text-xs font-bold uppercase tracking-[0.13em] text-warning">Equipment comes after verification</div>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted">
+                Final equipment decisions depend on verified starting loads, voltage and phase, cable distance, source controls, protection, site access, and what must remain running during an outage.
+              </p>
+            </div>
+
+            <div className="mt-4 border-t border-sg-600/40 pt-4">
+              {onAddToEstimate && !isWorkedExample && (
+                <button
+                  type="button"
+                  onClick={onAddToEstimate}
+                  className="mb-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-accent-500/45 bg-accent-500/10 px-4 py-2 text-sm font-bold text-accent-300 transition-colors hover:bg-accent-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70"
+                >
+                  Add to Estimate
+                  <ArrowRight size={16} />
+                </button>
               )}
+              <PdfActionBar
+                draft
+                createDocument={async () => {
+                  const { TempPowerPdfDoc } = await import('./TempPowerPdf')
+                  return (
+                    <TempPowerPdfDoc
+                      inputs={inputs}
+                      results={results}
+                      riskReview={fieldRiskReview}
+                      clientName={clientName}
+                      projectName={projectName}
+                      isWorkedExample={isWorkedExample}
+                    />
+                  )
+                }}
+                filename={filename}
+                title="EMaaS Temporary Power Planning Brief - Draft"
+                shareText={`${clientName || 'Client'} - ${projectName || 'Temporary Power'} planning brief draft`}
+              />
             </div>
           </div>
         </div>
 
         <div className="border-t border-sg-600/45 px-5 py-3 text-xs text-text-muted">
-          <span className="font-bold uppercase tracking-[0.14em] text-text-dim">Selected Scope:</span>{' '}
-          Standalone generator{includeCooling ? ' with temporary cooling.' : '. Cooling is not included.'}
-          {' '}Battery or hybrid operation is evaluated in the Hybrid EMaaS Strategy workflow.
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-dim">Energy Management Priorities</div>
-        <div className="overflow-hidden rounded-xl border border-sg-600/45 bg-sg-800/70">
-          {energyPriorities.map((priority, index) => (
-            <div key={priority.title} className="grid gap-3 border-b border-sg-600/35 px-4 py-3 last:border-b-0 md:grid-cols-[28px_190px_1fr_auto] md:items-center">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-accent-500/70 text-xs font-bold text-accent-300">{index + 1}</span>
-              <div className="flex items-center gap-2 text-sm font-bold text-text">
-                <priority.icon size={16} className="text-steel-400" />
-                {priority.title}
-              </div>
-              <div className="text-xs leading-relaxed text-text-muted">{priority.detail}</div>
-              <div className="text-xs font-semibold text-accent-400">{priority.signal}</div>
-            </div>
-          ))}
+          <span className="font-bold uppercase tracking-[0.14em] text-text-dim">Planning Scope:</span>{' '}
+          Temporary power demand{includeCooling ? ', entered cooling-equipment demand,' : ''}, operating schedule, voltage need, continuity intent, and open field checks.
         </div>
       </div>
 
       <div className="space-y-3">
-        <DetailDisclosure title="Calculation Details" summary="Grouped load, source, distribution, fuel, runtime, and service values.">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <CalculationGroup
-              title={includeCooling ? 'Load and Cooling' : 'Load'}
-              rows={[
-                ['Equipment load', `${fmt(results.totalLoadKw, 1)} kW`],
-                ...(includeCooling ? [['Cooling add-on', `${fmt(results.coolingKw, 1)} kW`] as [string, string]] : []),
-                ['Calculated operating load', `${fmt(results.totalWithCoolingKw, 1)} kW`],
-                ['Risk-adjusted load', `${fmt(fieldRiskReview.adjustedPlanningKw, 1)} kW`],
-              ]}
-            />
-            <CalculationGroup
-              title="Source and Distribution"
-              rows={[
-                ['Generator', `${fmt(results.generatorKw, 0)} kW / ${fmt(results.generatorKva, 0)} kVA`],
-                ['Load factor', fmtPercent(results.loadFactor)],
-                ['Current', `${fmt(results.ampsPerPhase, 0)} A/phase`],
-                ['Cable planning', `${cableLegs} leg${cableLegs === 1 ? '' : 's'}/phase`],
-              ]}
-            />
-            <CalculationGroup
-              title="Fuel and Runtime"
-              rows={[
-                ['Fuel rate', `${fmt(results.fuelGallonsPerHour, 1)} gal/hr`],
-                ['Total fuel', `${fmtInt(results.totalFuelGallons)} gal`],
-                ['Operating time', `${fmtInt(results.operatingHours)} hr`],
-                ['Rental duration', `${fmt(results.rentalDays, 0)} days`],
-                ['Schedule', scheduleLabel],
-              ]}
-            />
-            <CalculationGroup
-              title="Service and Risk"
-              rows={[
-                ['PM events', fmtInt(results.serviceEvents)],
-                ['Contingency', `${fmt(fieldRiskReview.contingencyKw, 1)} kW`],
-                ['Open field checks', `${openChecks}`],
-                ['Noise fine exposure', `$${fmtInt(results.noiseFineExposure)}`],
-              ]}
-            />
-          </div>
-        </DetailDisclosure>
-
-        <DetailDisclosure title="Field Verification" summary={`${openChecks} open question${openChecks === 1 ? '' : 's'}; selections update contingency and confidence immediately.`}>
+        <DetailDisclosure
+          id="temp-power-field-verification"
+          title="Field Verification"
+          summary={`${openChecks} open question${openChecks === 1 ? '' : 's'}; answers clarify the need and prepare the next review.`}
+        >
           <div className="grid gap-4 lg:grid-cols-2">
             {riskControls.map((control) => (
               <div key={control.key} className="rounded-lg border border-sg-600/40 bg-sg-900/55 p-4">
@@ -403,6 +362,38 @@ export function TempPowerReviewPlan({
                 {control.item && <p className="mt-2 text-xs leading-relaxed text-text-muted">{control.item.impact}</p>}
               </div>
             ))}
+          </div>
+        </DetailDisclosure>
+
+        <DetailDisclosure title="Planning Details" summary="The load, schedule, voltage, and continuity information used in this draft.">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CalculationGroup
+              title="Demand"
+              rows={[
+                ['Connected equipment', `${fmt(results.totalLoadKw, 1)} kW`],
+                ...(includeCooling ? [['Cooling equipment', `${fmt(results.coolingKw, 1)} kW`] as [string, string]] : []),
+                ['Entered operating demand', `${fmt(results.totalWithCoolingKw, 1)} kW`],
+                ['Field allowance', 'Pending field verification'],
+              ]}
+            />
+            <CalculationGroup
+              title="Operating Basis"
+              rows={[
+                ['Rental term', rentalTerm],
+                ['Schedule', scheduleLabel],
+                ['Scheduled coverage', `${fmtInt(results.operatingHours)} hr`],
+                ['Actual runtime', 'Confirm with the operating team'],
+              ]}
+            />
+            <CalculationGroup
+              title="Electrical Intent"
+              rows={[
+                ['Source / load voltage', `${siteVoltage} V / ${loadVoltage} V`],
+                ['Continuity request', continuityIntent],
+                ['Equipment package', 'Pending verification'],
+                ['Open checks', `${openChecks}`],
+              ]}
+            />
           </div>
         </DetailDisclosure>
 
@@ -420,18 +411,18 @@ export function TempPowerReviewPlan({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-sg-600/40 px-3 py-3 text-[11px] text-text-muted">
-        <span className="inline-flex items-center gap-2 font-bold uppercase tracking-[0.15em] text-text-dim"><FileCheck2 size={15} /> Before Release</span>
-        <span>Verify voltage drop</span>
-        <span>Confirm OCPD ratings</span>
-        <span>Check grounding and bonding</span>
-        <span>Size conductors</span>
-        <span>Calculate fault current</span>
-        <span>Confirm selective coordination</span>
+        <span className="inline-flex items-center gap-2 font-bold uppercase tracking-[0.15em] text-text-dim"><FileCheck2 size={15} /> Before Equipment Selection</span>
+        <span>Confirm starting loads</span>
+        <span>Verify voltage and phase</span>
+        <span>Define continuity expectation</span>
+        <span>Confirm cable distance</span>
+        <span>Review fault current and protection</span>
+        <span>Verify site access and placement</span>
       </div>
 
       <div className="flex items-start gap-2 px-1 text-xs leading-relaxed text-text-dim">
         <MapIcon size={14} className="mt-0.5 shrink-0" />
-        Planning estimate only. Final equipment selection, conductor sizing, protection, grounding, placement, and code compliance require licensed engineering review.
+        Draft planning estimate only. Equipment selection, conductor sizing, protection, grounding, placement, and code compliance require project-specific technical review.
       </div>
     </section>
   )

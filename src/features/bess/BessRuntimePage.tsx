@@ -41,6 +41,8 @@ export default function BessRuntimePage() {
   const [voltage, setVoltageUrl] = useUrlState('v', persistedVoltage)
   const [amps, setAmpsUrl] = useUrlState('a', persistedAmps)
   const [powerFactor, setPfUrl] = useUrlState('pf', persistedPf)
+  const parsedPowerFactor = Number.parseFloat(powerFactor)
+  const powerFactorValid = Number.isFinite(parsedPowerFactor) && parsedPowerFactor > 0 && parsedPowerFactor <= 1
 
   // Sync changes to both URL and localStorage
   const setKWh = useCallback((v: string) => { setKWhUrl(v); setPersistedKwh(v) }, [setKWhUrl, setPersistedKwh])
@@ -55,8 +57,8 @@ export default function BessRuntimePage() {
     kWh: parseFloat(kWh) || 0,
     voltage: parseFloat(voltage) || 0,
     amps: parseFloat(amps) || 0,
-    powerFactor: parseFloat(powerFactor) || 0.8,
-  }), [kWh, voltage, amps, powerFactor])
+    powerFactor: Number.isFinite(parsedPowerFactor) ? parsedPowerFactor : 0,
+  }), [kWh, voltage, amps, parsedPowerFactor])
 
   const calculate = useCallback(
     (i: RuntimeInputs): RuntimeResults | null => {
@@ -141,6 +143,11 @@ export default function BessRuntimePage() {
             onChange={setPowerFactor}
             options={POWER_FACTOR_OPTIONS}
           />
+          {!powerFactorValid && (
+            <p role="alert" className="rounded-lg border border-error/45 bg-error/10 px-3 py-2 text-xs leading-relaxed text-error">
+              Power factor must be greater than 0 and no more than 1. Select 0.8 or 1.0 to continue.
+            </p>
+          )}
         </div>
 
         {results && (

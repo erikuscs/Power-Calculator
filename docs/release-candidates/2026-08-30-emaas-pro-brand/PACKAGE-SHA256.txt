@@ -1,0 +1,6 @@
+# Non-self checksum record for the EMaaS Pro web-shell brand-only freeze package
+936213a4b647b88eac61ba9fa615542f5ed3b1851bd5f5868db2f825f6643927  ASSEMBLY.md
+782bd82e5b1b6afb620d74e7316b2a7b4b7eae9909de33201477a8337b8a0462  ASSET-COPY-MANIFEST.tsv
+b43f9e04843a4d621b020ff6775a3a2c5201620f0d15cc81acb9c17f4c128507  INPUT-SHA256.txt
+1f8b8e8564cad0643d688be9ff9e1eca8795f7df72333a64345aed63d21f8581  OUTPUT-SHA256.txt
+bc5f4b0f4ef7561cc711693702225b4f3dfe111db9cd9f0181fd4648909bbd93  emaas-pro-web-shell-brand-only.patch

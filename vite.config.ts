@@ -6,6 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   build: {
+    sourcemap: false,
+    minify: 'oxc',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/app/[hash].js',
+        chunkFileNames: 'assets/chunks/[hash].js',
+        assetFileNames: 'assets/files/[hash][extname]',
+      },
+    },
     // React PDF is isolated behind the export click; its renderer is intentionally
     // larger than Vite's default warning threshold but never blocks route loading.
     chunkSizeWarningLimit: 1500,

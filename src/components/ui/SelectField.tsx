@@ -25,7 +25,7 @@ export function SelectField({ label, value, onChange, options, unit, required, t
           {tooltip && (
             <span className="relative group">
               <Info size={12} className="text-text-dim cursor-help" />
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-3 py-1.5 bg-sg-900 text-xs text-text rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 border border-sg-600/40">
+              <span className="absolute bottom-full right-0 mb-1.5 w-56 max-w-[calc(100vw-2rem)] px-3 py-1.5 text-left text-xs font-normal normal-case tracking-normal text-text opacity-0 shadow-lg transition-opacity pointer-events-none z-10 rounded-lg border border-sg-600/40 bg-sg-900 whitespace-normal group-hover:opacity-100 group-focus-within:opacity-100 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
                 {tooltip}
               </span>
             </span>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3, BookOpen, ArrowDown } from 'lucide-react'
+import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3, BookOpen, ArrowDown, ClipboardList, MapPinned } from 'lucide-react'
 import { APP_BRAND } from '../../lib/brand'
 import {
   EMAAS_FIELD_MODES,
@@ -13,6 +13,9 @@ import {
 
 const scenarios = [
   { to: '/scenarios/temp-power', icon: Zap, title: 'Temporary Power', desc: 'Generator-first planning with optional cooling, runtime, and report output', accent: true },
+  { to: '/hvac/heating', icon: Thermometer, title: 'Temporary Heating Plan', desc: 'Size electric or propane heat and carry the equipment demand into generator planning', accent: true },
+  { to: '/estimate', icon: ClipboardList, title: 'Build Estimate', desc: 'Combine planning requirements, actual equipment, logistics, rates, and quote approval checks', accent: true },
+  { to: '/site-fit', icon: MapPinned, title: 'Site Fit & One-Line', desc: 'Show the electrical path, equipment space, and power limit created by site constraints', accent: true },
   { to: '/scenarios/hybrid-energy', icon: Workflow, title: 'Hybrid EMaaS Strategy', desc: 'Design BESS + generator systems for commissioning blocks and redundant sites', accent: true },
   { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Economics', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
   { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'Cooling Load Strategy', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
@@ -34,6 +37,7 @@ const powerCalcs = [
 ]
 
 const hvacCalcs = [
+  { to: '/hvac/heating', icon: Thermometer, title: 'Temporary Heating', desc: 'Space heat, equipment quantity, propane use, and generator demand' },
   { to: '/hvac/cooling', icon: Thermometer, title: 'Cooling Load', desc: 'Equipment + envelope + occupant heat → tonnage' },
   { to: '/hvac/chiller', icon: Droplets, title: 'Chiller Sizing', desc: 'GPM, ΔT, specific heat → tonnage' },
   { to: '/hvac/psychrometrics', icon: Wind, title: 'Psychrometrics', desc: 'Airside tonnage — sensible, latent, and total' },
@@ -104,7 +108,7 @@ export default function DashboardPage() {
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
         <div className="flex flex-col justify-between rounded-lg border border-sg-600/40 bg-sg-800/70 p-6 md:p-7">
           <div>
-            <p className="text-[10px] font-bold text-accent-400 uppercase tracking-[0.15em] mb-3">{APP_BRAND.descriptor}</p>
+            <p className="text-[10px] font-bold text-accent-400 uppercase tracking-[0.15em] mb-3">{APP_BRAND.firstReference}</p>
             <h1 className="text-3xl font-bold text-text tracking-tight md:text-4xl">{APP_BRAND.suiteName}</h1>
             <p className="mt-3 max-w-3xl text-base leading-relaxed text-text-muted">
               {EMAAS_POSITIONING}

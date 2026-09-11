@@ -1,10 +1,17 @@
 import { Circle, G, Line, Path, Rect, Svg, Text as SvgTextPrimitive, View } from '@react-pdf/renderer'
 import type { ReactNode } from 'react'
 import type { TempPowerInputs, TempPowerResults } from './scenario.formulas'
+import type { TempPowerArchitecturePlan } from '../../lib/tempPowerArchitecture'
 
 interface TempPowerOneLinePdfProps {
   inputs: TempPowerInputs
   results: TempPowerResults
+  sourceSizing?: {
+    generatorKw: number
+    generatorKva: number
+    ampsPerPhase: number
+  }
+  architecture?: TempPowerArchitecturePlan
 }
 
 const ink = '#111827'
@@ -71,15 +78,19 @@ function Breaker({ x, y, tag }: { x: number; y: number; tag: string }) {
   )
 }
 
-export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProps) {
+export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, architecture }: TempPowerOneLinePdfProps) {
   const voltage = inputs.siteVoltage ?? 480
+  const loadVoltage = inputs.loadVoltage ?? voltage
   const includeCooling = inputs.includeCooling !== false
+  const transformerRequired = architecture?.transformer.required ?? voltage !== loadVoltage
+  const generatorUnitCount = architecture?.selected.unitCount ?? Math.max(1, Math.ceil(sourceSizing.generatorKw / 500))
+  const parallelSource = generatorUnitCount > 1
 
   return (
     <View style={{ borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', padding: 6 }}>
       <Svg viewBox="0 0 520 238" style={{ width: '100%', height: 238 }}>
         <Rect x={0} y={0} width={520} height={238} fill="#ffffff" />
-        <SvgText x={12} y={16} fontSize={9} fontFamily="Helvetica-Bold" fill={ink}>Temporary Power Electrical One-Line</SvgText>
+        <SvgText x={12} y={16} fontSize={9} fontFamily="Helvetica-Bold" fill={ink}>Temporary Power Conceptual One-Line</SvgText>
         <SvgText x={508} y={16} textAnchor="end" fontSize={5.5} fill={muted}>Planning drawing - engineering review required</SvgText>
 
         <SvgText x={42} y={32} textAnchor="middle" fontSize={5} fontFamily="Helvetica-Bold" fill={muted}>SOURCE</SvgText>
@@ -89,8 +100,14 @@ export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProp
 
         <Line x1={62} y1={70} x2={129} y2={70} stroke={ink} strokeWidth={1.6} />
         <Line x1={161} y1={70} x2={228} y2={70} stroke={ink} strokeWidth={1.6} />
-        <Line x1={272} y1={70} x2={316} y2={70} stroke={ink} strokeWidth={1.6} />
-        <Line x1={348} y1={70} x2={388} y2={70} stroke={ink} strokeWidth={1.6} />
+        {transformerRequired ? (
+          <G>
+            <Line x1={272} y1={70} x2={316} y2={70} stroke={ink} strokeWidth={1.6} />
+            <Line x1={348} y1={70} x2={388} y2={70} stroke={ink} strokeWidth={1.6} />
+          </G>
+        ) : (
+          <Line x1={272} y1={70} x2={388} y2={70} stroke={ink} strokeWidth={1.6} />
+        )}
         <Line x1={424} y1={70} x2={448} y2={70} stroke={ink} strokeWidth={1.6} />
         {includeCooling && (
           <G>
@@ -105,15 +122,16 @@ export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProp
         <DeviceTag x={42} y={42} label="GEN" />
         <Breaker x={88} y={70} tag="52G" />
         <SvgText x={42} y={111} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>Generator Plant</SvgText>
-        <SvgText x={42} y={119} textAnchor="middle" fontSize={4.8} fill={muted}>{`${Math.round(results.generatorKva)} kVA / ${Math.round(results.generatorKw)} kW`}</SvgText>
+        <SvgText x={42} y={119} textAnchor="middle" fontSize={4.8} fill={muted}>{architecture ? `${generatorUnitCount} x ${architecture.selected.unit.kw} kW` : `${Math.round(sourceSizing.generatorKva)} kVA / ${Math.round(sourceSizing.generatorKw)} kW`}</SvgText>
+        {architecture && <SvgText x={42} y={126} textAnchor="middle" fontSize={4.3} fill={muted}>{`${Math.round(architecture.selected.firmCapacityKw)} kW firm`}</SvgText>}
 
         <Rect x={129} y={52} width={32} height={36} fill={panel} stroke={ink} strokeWidth={1.2} />
         <Line x1={136} y1={80} x2={154} y2={60} stroke={ink} strokeWidth={1.4} />
         <Circle cx={135} cy={81} r={1.8} fill={ink} />
         <Circle cx={155} cy={59} r={1.8} fill={ink} />
-        <DeviceTag x={145} y={42} label="ATS/52" />
-        <SvgText x={145} y={101} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>ATS / Generator Controller</SvgText>
-        <SvgText x={145} y={109} textAnchor="middle" fontSize={4.8} fill={muted}>generator start + transfer logic</SvgText>
+        <DeviceTag x={145} y={42} label={parallelSource ? 'PAR/52' : 'CTRL/52'} />
+        <SvgText x={145} y={101} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>{parallelSource ? 'Paralleling Controls' : 'Generator Controller'}</SvgText>
+        <SvgText x={145} y={109} textAnchor="middle" fontSize={4.8} fill={muted}>{parallelSource ? 'sync + load share + protection' : 'start + protection logic'}</SvgText>
 
         <Rect x={122} y={120} width={46} height={26} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1} strokeDasharray="3 2" />
         <SvgText x={145} y={132} textAnchor="middle" fontSize={6} fontFamily="Helvetica-Bold" fill={ink}>EMaaS</SvgText>
@@ -125,14 +143,19 @@ export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProp
         <Breaker x={239} y={70} tag="52" />
         <DeviceTag x={250} y={42} label="SWGR" />
         <SvgText x={250} y={104} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>{`${voltage} V Switchgear`}</SvgText>
-        <SvgText x={250} y={112} textAnchor="middle" fontSize={4.8} fill={muted}>{`${Math.round(results.ampsPerPhase)} A/phase`}</SvgText>
+        <SvgText x={250} y={112} textAnchor="middle" fontSize={4.8} fill={muted}>{`${Math.round(sourceSizing.ampsPerPhase)} A/phase`}</SvgText>
 
-        <Circle cx={326} cy={70} r={15} fill="none" stroke={ink} strokeWidth={1.4} />
-        <Circle cx={338} cy={70} r={15} fill="none" stroke={ink} strokeWidth={1.4} />
-        <Ground x={332} y={88} />
-        <DeviceTag x={332} y={42} label="XFMR" />
-        <SvgText x={332} y={111} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>Step-Down Transformer</SvgText>
-        <SvgText x={332} y={119} textAnchor="middle" fontSize={4.8} fill={muted}>{`${voltage} V to 120/208 V`}</SvgText>
+        {transformerRequired && (
+          <G>
+            <Circle cx={326} cy={70} r={15} fill="none" stroke={ink} strokeWidth={1.4} />
+            <Circle cx={338} cy={70} r={15} fill="none" stroke={ink} strokeWidth={1.4} />
+            <Ground x={332} y={88} />
+            <DeviceTag x={332} y={42} label="XFMR" />
+            <SvgText x={332} y={111} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>{architecture && architecture.transformer.unitCount > 1 ? 'Transformer Bank' : 'Step-Down Transformer'}</SvgText>
+            <SvgText x={332} y={119} textAnchor="middle" fontSize={4.8} fill={muted}>{architecture ? `${architecture.transformer.unitCount} x ${Math.round(architecture.transformer.unitKva)} kVA` : `${voltage} V to ${loadVoltage} V`}</SvgText>
+            <SvgText x={332} y={126} textAnchor="middle" fontSize={4.3} fill={muted}>{`${voltage} V to ${loadVoltage} V`}</SvgText>
+          </G>
+        )}
 
         <Rect x={388} y={50} width={36} height={40} fill={panel} stroke={ink} strokeWidth={1.2} />
         <Line x1={398} y1={57} x2={398} y2={83} stroke={ink} strokeWidth={1.8} />
@@ -140,7 +163,7 @@ export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProp
         <Line x1={416} y1={57} x2={416} y2={83} stroke={ink} strokeWidth={1.8} />
         <DeviceTag x={406} y={42} label="PNL" />
         <SvgText x={406} y={104} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>Branch Panels</SvgText>
-        <SvgText x={406} y={112} textAnchor="middle" fontSize={4.8} fill={muted}>protected final distribution</SvgText>
+        <SvgText x={406} y={112} textAnchor="middle" fontSize={4.8} fill={muted}>{`${loadVoltage} V final distribution`}</SvgText>
 
         <Rect x={448} y={51} width={54} height={38} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1.2} />
         <Line x1={459} y1={70} x2={487} y2={70} stroke={ink} strokeWidth={1.2} />
@@ -157,7 +180,7 @@ export function TempPowerOneLinePdf({ inputs, results }: TempPowerOneLinePdfProp
             <Line x1={464} y1={148} x2={486} y2={148} stroke={ink} strokeWidth={0.8} />
             <DeviceTag x={475} y={120} label="HVAC" />
             <SvgText x={475} y={179} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>Temporary Cooling</SvgText>
-            <SvgText x={475} y={187} textAnchor="middle" fontSize={4.8} fill={muted}>{`${results.coolingTons.toFixed(1)} tons / ${Math.round(results.coolingKw)} kW`}</SvgText>
+            <SvgText x={475} y={187} textAnchor="middle" fontSize={4.8} fill={muted}>{results.coolingKw > 0 ? `${results.coolingTons.toFixed(1)} tons / ${Math.round(results.coolingKw)} electrical kW` : 'electrical demand open'}</SvgText>
           </G>
         )}
 

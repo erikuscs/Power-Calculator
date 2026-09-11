@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { recommendEquipment } from './equipmentRecommendations'
+import { normalizeRateToDaily, recommendEquipment } from './equipmentRecommendations'
+
+describe('normalizeRateToDaily', () => {
+  it('uses the 28-day rental cycle for monthly equipment rates', () => {
+    expect(normalizeRateToDaily(2800, 'monthly')).toBe(100)
+    expect(normalizeRateToDaily(700, 'weekly')).toBe(100)
+    expect(normalizeRateToDaily(100, 'daily')).toBe(100)
+  })
+})
 
 describe('recommendEquipment', () => {
   it('sizes BESS alternatives to the autonomy window instead of the full project duration', () => {

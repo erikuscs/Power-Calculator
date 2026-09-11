@@ -75,3 +75,53 @@
 - P3: if the rental catalog later supplies exact calendar start and end dates, a date-range option could sit behind an advanced control without changing the simple daily, weekly, and monthly path.
 
 final result: passed
+
+---
+
+# Site Fit & One-Line Design QA
+
+## Evidence
+
+- Source visual: `/Users/sustainablegaps/.codex/generated_images/01a08d9a-7b6b-7cb3-bb76-ec2648f7b63e/exec-60ad52ce-1aa9-4015-89d0-d8e1a96c444e.png`
+- Source dimensions: 1536 × 1088 px, desktop integrated view
+- Implementation URL: `http://127.0.0.1:5174/site-fit`
+- Implementation capture: Codex in-app browser CUA inline capture; this browser surface did not expose a filesystem screenshot path
+- Implementation viewport: 655 × 839 px responsive in-app browser viewport
+- States checked: default integrated view, focused site board, focused quote explanation, fit state, component-selected state
+- Full evidence: top-level page capture at default load
+- Focused evidence: `#site-plan` and `#quote-explanation` captures
+
+## Comparison
+
+The source visual and implementation captures were reviewed together. The implementation preserves the source's dark EMaaS shell, amber primary actions, integrated electrical/site planning concept, dimensioned equipment blocks, fit summary, and selected-equipment explanation. The existing product shell and typography were retained rather than replacing the application design system.
+
+Responsive adaptation intentionally stacks the controls, integrated visual, and commercial explanation at the available narrow viewport. The one-line remains in a contained horizontal scroller so the electrical sequence is not compressed into illegibility or allowed to create page-level horizontal overflow.
+
+## Iteration history
+
+1. Added the integrated page with persisted job constraints, site plan, one-line, fit summary, cable schedule, neutral explanation, transformer logic, and low-voltage warning.
+2. Moved transformer, fuel, and BESS planning blocks outside the access-lane overlay after visual inspection.
+3. Added focused hash targets for repeatable site-plan and quote-explanation review.
+4. An independent review found that area-only logic could approve an unusably narrow site. Replaced it with conservative two-dimensional packing validation that includes access, exclusion, equipment, and service-clearance rectangles.
+5. Corrected step-up versus step-down transformer wording and withheld equipment, cable, and fit conclusions for zero requested load.
+6. Verified the corrected default plan visually, confirmed readable hierarchy and non-overlapping equipment blocks, and retained horizontal scrolling only inside the one-line container.
+
+## Findings
+
+- P0: none.
+- P1: none after correction and independent recheck.
+- P2: none after correction and independent recheck.
+- P3: At a narrow viewport the one-line requires horizontal scrolling. This is an intentional legibility tradeoff and is contained within the one-line panel.
+- Boundary: equipment dimensions and clearances are conceptual rental-planning allowances. The interface clearly requires manufacturer, engineer, vendor, and field confirmation before a final quote or equipment release.
+
+## Functional verification associated with the visual
+
+- Changing source/load voltage controls whether the transformer appears.
+- Equipment selection is linked between the site plan, one-line, and explanation card.
+- Site dimensions drive fit/no-fit status, required area, shortfall, and the conservative planning power ceiling.
+- Neutral selection changes the 50-foot cable-piece schedule.
+- Zero requested load produces no source or cable package.
+- Integrated, site-only, and one-line-only views work independently.
+- Full automated regression: 25 files and 156 tests passed; lint, production build/audit, and E2E smoke passed.
+
+final result: passed

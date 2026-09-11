@@ -1,0 +1,4 @@
+sha256	controlled_source	repository_destination
+d2909123a6a8ed2f928055f002c32f63ee93496b470c1a344873f955111fca53	/Users/sustainablegaps/SG-OFFICE/Brand Guidelines/01-Current-SG-Brand/13-Font-Package/Web/sora-latin-var.woff2	public/fonts/sora-latin-var.woff2
+ac057a5593cbe3df0d2585da5dd5f33b8efa84aa30550c710fe061b37fc5c54b	/Users/sustainablegaps/SG-OFFICE/Brand Guidelines/01-Current-SG-Brand/13-Font-Package/Web/source-sans-3-latin-var.woff2	public/fonts/source-sans-3-latin-var.woff2
+7ae7b68b6e67266fb5f4abd48c6ea18d67618c01c64976b288460dfc7ceb8ce1	/Users/sustainablegaps/SG-OFFICE/Brand Guidelines/01-Current-SG-Brand/03-Web-Assets/Logo-System/SVG/sg-logo-horizontal-reversed-dark.svg	public/brand/sg-logo-horizontal-reversed-dark.svg

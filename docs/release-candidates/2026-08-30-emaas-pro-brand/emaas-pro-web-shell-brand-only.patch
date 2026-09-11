@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -9,5 +9,5 @@
+       name="description"
+-      content="EMaaS.pro Energy Management as a Service tools for BESS, generator, cooling, and hybrid energy planning."
++      content="Energy Management as a Service (EMaaS) Pro provides BESS, generator, cooling, and hybrid energy planning tools at emaas.pro."
+     />
+-    <title>EMaaS.pro Power Console - Sustainable Gaps</title>
++    <title>Energy Management as a Service (EMaaS) Pro | Sustainable Gaps</title>
+   </head>
+diff --git a/src/index.css b/src/index.css
+--- a/src/index.css
++++ b/src/index.css
+@@ -2,35 +2,52 @@
+ 
++@font-face {
++  font-family: "Sora";
++  font-style: normal;
++  font-weight: 300 700;
++  font-display: swap;
++  src: url("/fonts/sora-latin-var.woff2") format("woff2");
++}
++
++@font-face {
++  font-family: "Source Sans 3";
++  font-style: normal;
++  font-weight: 300 700;
++  font-display: swap;
++  src: url("/fonts/source-sans-3-latin-var.woff2") format("woff2");
++}
++
+ @theme {
+-  /* Vault26 Playbook palette — near-black base, gold accent, coral warnings.
+-     signal-blue/steel retained for chart + diagram accents. */
+-  --color-sg-900: #0b0e14;
+-  --color-sg-800: #111827;
+-  --color-sg-700: #1a1f2e;
+-  --color-sg-600: #242a38;
+-  --color-sg-500: #2d3548;
++  /* Existing shell semantics mapped to the approved SG digital palette. */
++  --color-sg-900: #0e151c;
++  --color-sg-800: #141d26;
++  --color-sg-700: #1e2a38;
++  --color-sg-600: #34495e;
++  --color-sg-500: #5b6673;
+ 
+-  --color-accent-600: #a67d2e;
+-  --color-accent-500: #c89a3c;
+-  --color-accent-400: #d4ad52;
+-  --color-accent-300: #e8c66a;
++  --color-accent-600: #8e4f1b;
++  --color-accent-500: #c27a2c;
++  --color-accent-400: #d88a34;
++  --color-accent-300: #d88a34;
+ 
+-  --color-signal-blue: #38bdf8;
+-  --color-signal-blue-muted: #164e63;
+-  --color-steel-400: #94a3b8;
++  --color-signal-blue: #abe1fa;
++  --color-signal-blue-muted: #34495e;
++  --color-steel-400: #c5c6c7;
+ 
+-  --color-coral-500: #e07460;
+-  --color-coral-400: #e8897a;
++  --color-coral-500: #d88a34;
++  --color-coral-400: #d88a34;
+ 
+-  --color-text: #f1f5f9;
+-  --color-text-muted: #9ca3af;
+-  --color-text-dim: #6b7280;
++  --color-text: #e9e4d6;
++  --color-text-muted: #c5c6c7;
++  --color-text-dim: #c5c6c7;
+ 
+-  --color-success: #22c55e;
+-  --color-warning: #f59e0b;
+-  --color-error: #ef4444;
+-  --color-info: #3b82f6;
++  --color-success: #42d392;
++  --color-warning: #c27a2c;
++  --color-error: #d88a34;
++  --color-info: #abe1fa;
+ 
++  --color-surface: #1e2a38;
++  --color-surface-alt: #141d26;
+ 
+-  --color-surface: #1a1f2e;
+-  --color-surface-alt: #111827;
++  --font-sans: "Source Sans 3", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
++  --font-display: "Sora", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+ }
+@@ -38,3 +55,3 @@
+ body {
+-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
++  font-family: var(--font-sans);
+   background-color: var(--color-sg-900);
+@@ -51,2 +68,11 @@
+ 
++h1,
++h2,
++h3,
++h4,
++h5,
++h6 {
++  font-family: var(--font-display);
++}
++
+ input[type="number"]::-webkit-inner-spin-button,
+diff --git a/src/lib/brand.ts b/src/lib/brand.ts
+--- a/src/lib/brand.ts
++++ b/src/lib/brand.ts
+@@ -1,4 +1,5 @@
+ export const APP_BRAND = {
+-  productName: 'EMaaS.pro',
+-  suiteName: 'EMaaS Power Console',
++  firstReference: 'Energy Management as a Service (EMaaS) Pro',
++  productName: 'EMaaS Pro',
++  suiteName: 'EMaaS Pro Power Console',
+   descriptor: 'Energy Management as a Service',
+diff --git a/src/features/dashboard/DashboardPage.tsx b/src/features/dashboard/DashboardPage.tsx
+--- a/src/features/dashboard/DashboardPage.tsx
++++ b/src/features/dashboard/DashboardPage.tsx
+@@ -106,3 +106,3 @@
+           <div>
+-            <p className="text-[10px] font-bold text-accent-400 uppercase tracking-[0.15em] mb-3">{APP_BRAND.descriptor}</p>
++            <p className="text-[10px] font-bold text-accent-400 uppercase tracking-[0.15em] mb-3">{APP_BRAND.firstReference}</p>
+             <h1 className="text-3xl font-bold text-text tracking-tight md:text-4xl">{APP_BRAND.suiteName}</h1>
+diff --git a/src/components/layout/Header.tsx b/src/components/layout/Header.tsx
+--- a/src/components/layout/Header.tsx
++++ b/src/components/layout/Header.tsx
+@@ -1,3 +1,3 @@
+ import { useState, useEffect } from 'react'
+-import { ArrowLeft, Menu, ShieldCheck, Zap } from 'lucide-react'
++import { ArrowLeft, Menu, ShieldCheck } from 'lucide-react'
+ import { Link } from 'react-router-dom'
+@@ -39,10 +39,14 @@
+       </button>
+-      <Link to="/" className="flex items-center gap-3 no-underline">
+-        <div className="w-9 h-9 bg-accent-500 rounded-lg flex items-center justify-center">
+-          <Zap size={18} className="text-sg-900" />
+-        </div>
+-        <div>
+-          <div className="text-base font-bold text-text leading-tight tracking-tight">{APP_BRAND.productName}</div>
+-          <p className="text-[11px] text-accent-400 uppercase tracking-widest leading-tight mt-0.5">{APP_BRAND.descriptor}</p>
+-        </div>
++      <Link
++        to="/"
++        className="flex shrink-0 items-center no-underline"
++        aria-label={`${APP_BRAND.firstReference} home`}
++      >
++        <img
++          src="/brand/sg-logo-horizontal-reversed-dark.svg"
++          alt="Sustainable Gaps"
++          width="160"
++          height="31"
++          className="h-auto w-40"
++        />
+       </Link>
+diff --git a/src/components/ui/DisclaimerModal.tsx b/src/components/ui/DisclaimerModal.tsx
+--- a/src/components/ui/DisclaimerModal.tsx
++++ b/src/components/ui/DisclaimerModal.tsx
+@@ -26,3 +26,3 @@
+       >
+-        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-3">{APP_BRAND.productName}</p>
++        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-3">{APP_BRAND.firstReference}</p>
+         <h2 id="emaas-disclaimer-title" className="text-xl font-bold text-text mb-4 tracking-tight leading-tight">
+diff --git a/src/features/legal/PrivacyPage.tsx b/src/features/legal/PrivacyPage.tsx
+--- a/src/features/legal/PrivacyPage.tsx
++++ b/src/features/legal/PrivacyPage.tsx
+@@ -1,2 +1,3 @@
+ import { Link } from 'react-router-dom'
++import { APP_BRAND } from '../../lib/brand'
+ 
+@@ -6,3 +7,3 @@
+       <div>
+-        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-2">EMaaS.pro Power Console</p>
++        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-2">{APP_BRAND.suiteName}</p>
+         <h1 className="text-3xl font-bold text-text tracking-tight">Privacy Policy</h1>
+@@ -13,3 +14,3 @@
+         <p className="text-text">
+-          EMaaS.pro Power Console does not collect, store, or transmit any personal data.
++          {APP_BRAND.suiteName} does not collect, store, or transmit any personal data.
+         </p>
+@@ -73,3 +74,3 @@
+       <p className="text-center text-xs text-text-dim leading-relaxed">
+-        EMaaS.pro Power Console provides estimates for reference and planning only.
++        {APP_BRAND.suiteName} provides estimates for reference and planning only.
+         Verify all results with a licensed professional engineer before making
+diff --git a/src/features/learn/LearnHubPage.tsx b/src/features/learn/LearnHubPage.tsx
+--- a/src/features/learn/LearnHubPage.tsx
++++ b/src/features/learn/LearnHubPage.tsx
+@@ -14,2 +14,3 @@
+ import { Card } from '../../components/ui/Card'
++import { APP_BRAND } from '../../lib/brand'
+ 
+@@ -217,3 +218,3 @@
+         <p className="mt-3 max-w-3xl text-base leading-relaxed text-text-muted">
+-          The objective is not to replace engineering design. EMaaS.pro turns early field
++          The objective is not to replace engineering design. {APP_BRAND.productName} turns early field
+           information into a transparent planning estimate that teams can challenge,
+diff --git a/src/features/scenarios/workflow-fields.smoke.test.tsx b/src/features/scenarios/workflow-fields.smoke.test.tsx
+--- a/src/features/scenarios/workflow-fields.smoke.test.tsx
++++ b/src/features/scenarios/workflow-fields.smoke.test.tsx
+@@ -28,3 +28,4 @@
+ 
+-    expect(screen.getByText('EMaaS Power Console')).toBeInTheDocument()
++    expect(screen.getByText('Energy Management as a Service (EMaaS) Pro')).toBeInTheDocument()
++    expect(screen.getByText('EMaaS Pro Power Console')).toBeInTheDocument()
+     expect(screen.getByText('Data center centric')).toBeInTheDocument()

@@ -1,0 +1,11 @@
+# EMaaS Pro web-shell brand-only assembly preimages
+# Run from /Users/sustainablegaps/Projects/emaas-pro
+5f1b1cda34b1b1a535cec80b7aaa96ff6981b3bbf2e5786e92e6bec4203b3618  index.html
+4a49ff2472b023c1884910619199923e83c0d80b9de450a48ddd17f1fcfa3d13  src/index.css
+d4791887ceb1a5be53689f2d5286859946e11031b5d0b1e6bc148f20d1c053d1  src/lib/brand.ts
+d42f93b7e0b60e2390e6d9aa5ab71f70ca938504c1b1baa37d20c7c9b13ffd45  src/features/dashboard/DashboardPage.tsx
+8493d3494c5ec15329568a3a5908220c0c2a50e8c635ffafc841b3de9e124899  src/components/layout/Header.tsx
+d9a663efef3455f068f1782544f2e69c034b0e8e0dc77dcad177e4b439525a40  src/components/ui/DisclaimerModal.tsx
+42f8aed20ee567785c18fa3ff868d4f4618bf447d5e3e8f484c90a599b9bc4d4  src/features/legal/PrivacyPage.tsx
+c17c7463f68bfa1e52dbd321a585c04ffd80f2001bcd0ae50d952b6324211651  src/features/learn/LearnHubPage.tsx
+7d4e1568077b4bd5f7d7a7599afe642a3c6f594a2417592c259bd4ef5c5d553e  src/features/scenarios/workflow-fields.smoke.test.tsx

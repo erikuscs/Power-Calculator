@@ -11,12 +11,12 @@ export function buildTempPowerPlainLanguageReason(recommendation: EquipmentRecom
   }
 
   return includeCooling
-    ? 'The generator is sized from the equipment demand, starting load, cooling add-on, and contingency—not the breaker-panel rating. This keeps the source practical while reducing low-load operation, overload trips, and unscheduled shutdowns.'
-    : 'The generator is sized from the equipment demand, starting load, and contingency—not the breaker-panel rating. Cooling is excluded, keeping the base solution focused while reducing low-load operation, overload trips, and unscheduled shutdowns.'
+    ? 'The source plant is sized from the confirmed equipment demand, starting load, selected cooling-equipment demand, and field allowance—not the breaker-panel rating. The continuity target then determines whether the job uses one source or a parallel generator plant.'
+    : 'The source plant is sized from the confirmed equipment demand, starting load, and field allowance—not the breaker-panel rating. The continuity target then determines whether the job uses one source or a parallel generator plant.'
 }
 
 export function rentalPeriodLabel(period: RentalPeriod, count: number) {
-  const unit = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
+  const unit = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : '28-day cycle'
   const safeCount = Math.max(1, count || 1)
   return `${safeCount.toLocaleString()} ${unit}${safeCount === 1 ? '' : 's'}`
 }
@@ -30,7 +30,7 @@ export function compactEquipmentLabel(label: string) {
 }
 
 export const panelSizingExplanation =
-  'The breaker-panel rating is the maximum the distribution system can accommodate. It is not the amount of power the site is expected to use, so the temporary source is sized from calculated demand instead.'
+  'The breaker-panel rating is the maximum the distribution system can accommodate, not the amount of power the site is expected to use. Source selection should begin with verified equipment demand, starting behavior, and the operating schedule.'
 
 export const sizingTradeoffs = {
   oversized:

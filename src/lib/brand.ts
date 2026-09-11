@@ -1,6 +1,7 @@
 export const APP_BRAND = {
-  productName: 'EMaaS.pro',
-  suiteName: 'EMaaS Power Console',
+  firstReference: 'Energy Management as a Service (EMaaS) Pro',
+  productName: 'EMaaS Pro',
+  suiteName: 'EMaaS Pro Power Console',
   descriptor: 'Energy Management as a Service',
   companyName: 'Sustainable Gaps',
   reportBrand: 'Sustainable Gaps EMaaS',

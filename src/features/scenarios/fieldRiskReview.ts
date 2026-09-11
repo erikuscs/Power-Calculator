@@ -19,6 +19,14 @@ export interface FieldRiskReviewContext {
   totalWithCoolingKw: number
   powerFactor?: number
   includeCooling?: boolean
+  includesRv?: boolean
+}
+
+export interface FieldVerificationReviewContext {
+  inputs: TempPowerRiskInputs
+  coolingKw: number
+  includeCooling?: boolean
+  includesRv?: boolean
 }
 
 export interface FieldRiskItem {
@@ -38,6 +46,12 @@ export interface FieldRiskReview {
   adjustedPlanningKw: number
   adjustedGeneratorKw: number
   adjustedGeneratorKva: number
+  rfis: string[]
+  reportNotes: string[]
+  items: FieldRiskItem[]
+}
+
+export interface FieldVerificationReview {
   rfis: string[]
   reportNotes: string[]
   items: FieldRiskItem[]
@@ -83,18 +97,16 @@ function confidenceBand(score: number): ConfidenceBand {
   return 'low'
 }
 
-export function buildFieldRiskReview({
+function buildFieldVerificationAssessment({
   inputs,
-  totalLoadKw,
   coolingKw,
-  totalWithCoolingKw,
-  powerFactor = 0.8,
   includeCooling = coolingKw > 0,
-}: FieldRiskReviewContext): FieldRiskReview {
+  includesRv = true,
+}: FieldVerificationReviewContext) {
   const items: FieldRiskItem[] = []
   const rfis: string[] = []
   const reportNotes: string[] = [
-    'This easy-button review does not replace field judgment; it forces hidden load and unknown-risk assumptions into the quote record.',
+    'This planning review does not replace field judgment; it carries hidden loads and unresolved assumptions into the customer record.',
   ]
 
   let score = 100
@@ -116,35 +128,37 @@ export function buildFieldRiskReview({
     if (note) reportNotes.push(note)
   }
 
-  if (inputs.rvService === 'unknown') {
-    loadContingencyPct += 0.08
-    addItem(
-      'rvService',
-      'RV pedestal service',
-      14,
-      'Unknown',
-      'RV service type can swing connected load and voltage strategy materially.',
-      'Confirm RV pedestal mix: 30A, 50A, mixed, and whether true 120/240V service is required.',
-      'RV pedestal assumptions should be shown as a quote assumption until confirmed.',
-    )
-  } else if (inputs.rvService === 'mixed') {
-    loadContingencyPct += 0.04
-    addItem(
-      'rvService',
-      'RV pedestal service',
-      7,
-      'Mixed',
-      'Mixed RV services require row-level distribution planning and phase balancing.',
-      'Provide RV schedule by pedestal type and expected occupancy by row.',
-    )
-  } else {
-    addItem(
-      'rvService',
-      'RV pedestal service',
-      0,
-      inputs.rvService === 'known_50a' ? 'Known 50A' : 'Known 30A',
-      'RV service assumption is defined.',
-    )
+  if (includesRv) {
+    if (inputs.rvService === 'unknown') {
+      loadContingencyPct += 0.08
+      addItem(
+        'rvService',
+        'RV pedestal service',
+        14,
+        'Unknown',
+        'RV service type can swing connected load and voltage strategy materially.',
+        'Confirm RV pedestal mix: 30A, 50A, mixed, and whether true 120/240V service is required.',
+        'RV pedestal assumptions should be shown as a quote assumption until confirmed.',
+      )
+    } else if (inputs.rvService === 'mixed') {
+      loadContingencyPct += 0.04
+      addItem(
+        'rvService',
+        'RV pedestal service',
+        7,
+        'Mixed',
+        'Mixed RV services require row-level distribution planning and phase balancing.',
+        'Provide RV schedule by pedestal type and expected occupancy by row.',
+      )
+    } else {
+      addItem(
+        'rvService',
+        'RV pedestal service',
+        0,
+        inputs.rvService === 'known_50a' ? 'Known 50A' : 'Known 30A',
+        'RV service assumption is defined.',
+      )
+    }
   }
 
   const hiddenPenalty = posturePenalty(inputs.hiddenPlugLoads)
@@ -183,17 +197,11 @@ export function buildFieldRiskReview({
   )
 
   if (includeCooling) {
-    const airPenalty = posturePenalty(inputs.airDistribution)
-    coolingContingencyPct += postureLoadAdder(inputs.airDistribution, 0.10, 0.04)
-    addItem(
-      'airDistribution',
-      'Tent and air distribution',
-      airPenalty,
-      postureStatus(inputs.airDistribution),
-      'Poor supply/return placement can leave one end of a long tent hot even when tonnage looks adequate.',
-      inputs.airDistribution === 'known' ? undefined : 'Confirm tent length, duct layout, supply/return locations, door openings, and whether air distribution is balanced across the full space.',
-      inputs.airDistribution === 'known' ? undefined : 'Cooling risk is carried separately from connected electrical load because distribution can fail even when tonnage is adequate.',
-    )
+    if (coolingKw <= 0) {
+      score -= 20
+      rfis.push('Confirm the selected temporary-cooling equipment schedule and its total electrical demand in kW, including compressors, fans, pumps, controls, and starting characteristics.')
+      reportNotes.push('Cooling capacity is not converted into generator demand. The selected equipment electrical load remains an open requirement.')
+    }
   }
 
   const winterPenalty = posturePenalty(inputs.winterHeat)
@@ -203,7 +211,7 @@ export function buildFieldRiskReview({
     'Winter heat creep',
     winterPenalty,
     postureStatus(inputs.winterHeat),
-    'Chicago winter behavior can shift loads from normal plug demand to space-heater and heat-trace demand.',
+    'Cold-weather operation can shift loads from normal plug demand to space heaters, heat trace, and engine or equipment heaters.',
     inputs.winterHeat === 'known' ? undefined : 'Confirm electric heat, propane heat, heat trace, block heaters, and whether occupants may add portable heaters.',
   )
 
@@ -221,10 +229,6 @@ export function buildFieldRiskReview({
   loadContingencyPct = Math.min(loadContingencyPct, 0.28)
   coolingContingencyPct = Math.min(coolingContingencyPct, 0.14)
 
-  const contingencyKw = (totalLoadKw * loadContingencyPct) + (coolingKw * coolingContingencyPct)
-  const adjustedPlanningKw = totalWithCoolingKw + contingencyKw
-  const adjustedGeneratorKw = adjustedPlanningKw * 1.25
-  const adjustedGeneratorKva = adjustedGeneratorKw / Math.max(0.1, powerFactor)
   const confidenceScore = Math.max(0, Math.round(score))
 
   return {
@@ -232,12 +236,47 @@ export function buildFieldRiskReview({
     confidenceBand: confidenceBand(confidenceScore),
     loadContingencyPct,
     coolingContingencyPct,
+    rfis,
+    reportNotes,
+    items,
+  }
+}
+
+export function buildFieldVerificationReview(context: FieldVerificationReviewContext): FieldVerificationReview {
+  const assessment = buildFieldVerificationAssessment(context)
+  return {
+    rfis: assessment.rfis,
+    reportNotes: assessment.reportNotes,
+    items: assessment.items,
+  }
+}
+
+export function buildFieldRiskReview({
+  inputs,
+  totalLoadKw,
+  coolingKw,
+  totalWithCoolingKw,
+  powerFactor = 0.8,
+  includeCooling = coolingKw > 0,
+  includesRv = true,
+}: FieldRiskReviewContext): FieldRiskReview {
+  const assessment = buildFieldVerificationAssessment({
+    inputs,
+    coolingKw,
+    includeCooling,
+    includesRv,
+  })
+  const contingencyKw = (totalLoadKw * assessment.loadContingencyPct)
+    + (coolingKw * assessment.coolingContingencyPct)
+  const adjustedPlanningKw = totalWithCoolingKw + contingencyKw
+  const adjustedGeneratorKw = adjustedPlanningKw * 1.25
+  const adjustedGeneratorKva = adjustedGeneratorKw / Math.max(0.1, powerFactor)
+
+  return {
+    ...assessment,
     contingencyKw,
     adjustedPlanningKw,
     adjustedGeneratorKw,
     adjustedGeneratorKva,
-    rfis,
-    reportNotes,
-    items,
   }
 }

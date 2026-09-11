@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
 import { SelectField } from '../../components/ui/SelectField'
@@ -7,49 +8,76 @@ import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { Button } from '../../components/ui/Button'
 import { useCalculator } from '../../hooks/useCalculator'
 import {
-  calculateTempPower,
+  calculateTempPowerPlanningBrief,
   calculateTempPowerSchedule,
   type FacilityEntry,
   type RentalPeriod,
   type RuntimeSchedule,
-  type TempPowerInputs,
+  type TempPowerPlanningInputs,
 } from './scenario.formulas'
-import { buildTempPowerOneLineDiagram } from './oneLineDiagram'
-import { buildFieldRiskReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
+import { buildFieldVerificationReview, defaultTempPowerRiskInputs, type TempPowerRiskInputs } from './fieldRiskReview'
 import { FACILITY_PRESETS, STRUCTURE_COOLING_MULTIPLIERS, VOLTAGE_OPTIONS } from '../../lib/constants'
-import { recommendEquipment } from '../../lib/equipmentRecommendations'
-import { ClipboardList, Trash2, X } from 'lucide-react'
+import { JOBSITE_TRAILER_PRESETS, trailerPresetLabel } from '../../lib/jobsiteTrailerPresets'
+import type { TempPowerContinuityTarget } from '../../lib/tempPowerArchitecture'
+import { ChevronDown, ClipboardList, ExternalLink, Trash2, X } from 'lucide-react'
 import { TempPowerReviewPlan } from './TempPowerReviewPlan'
+import { verifyTempPowerPlanningBrief } from './tempPowerVerification'
+import { usePersistedState } from '../../hooks/usePersistedState'
+import { addPlanningRequirement } from '../estimate/estimateDraft'
 
-let nextId = 1
+function createWorkedExampleFacilities(): FacilityEntry[] {
+  return [
+    {
+      id: 'sample-jobsite-trailer-56kw',
+      type: 'jobsite_trailer',
+      label: 'Jobsite Trailer Setup',
+      quantity: 1,
+      kwPerUnit: 56,
+      structureType: 'container',
+      structureMultiplier: 1.0,
+      loadBasis: 'Worked example covering office HVAC, heat, lighting, receptacles, IT, and common jobsite support loads. Replace the aggregate with delivered-unit model and nameplate data for a live project.',
+      loadBasisType: 'user-defined',
+    },
+  ]
+}
 
 export default function TempPowerWizard() {
-  const [mode, setMode] = useState<'single' | 'basecamp'>('single')
-  const [loadKw, setLoadKw] = useState('200')
-  const [sqFt, setSqFt] = useState('2000')
-  const [ambientTemp, setAmbientTemp] = useState('95')
-  const [targetTemp, setTargetTemp] = useState('72')
-  const [rentalPeriod, setRentalPeriod] = useState<RentalPeriod>('monthly')
-  const [rentalPeriodCount, setRentalPeriodCount] = useState('1')
-  const [runtimeSchedule, setRuntimeSchedule] = useState<RuntimeSchedule>('shift_8')
-  const [includeCooling, setIncludeCooling] = useState(false)
-  const [altitude, setAltitude] = useState('0')
-  const [siteVoltage, setSiteVoltage] = useState('480')
-  const [powerFactor, setPowerFactor] = useState('0.8')
-  const [serviceIntervalDays, setServiceIntervalDays] = useState('10')
-  const [technicianCoverage, setTechnicianCoverage] = useState<'none' | 'business_hours' | '24_7'>('business_hours')
-  const [containmentRequired, setContainmentRequired] = useState(true)
-  const [noiseFinePerDay, setNoiseFinePerDay] = useState('0')
-  const [clientName, setClientName] = useState('')
-  const [projectName, setProjectName] = useState('')
-  const [facilities, setFacilities] = useState<FacilityEntry[]>([])
-  const [riskInputs, setRiskInputs] = useState<TempPowerRiskInputs>(defaultTempPowerRiskInputs)
+  const navigate = useNavigate()
+  const routeKey = '/scenarios/temp-power'
+  const [mode, setMode] = usePersistedState<'single' | 'basecamp'>(routeKey, 'mode', 'basecamp')
+  const [loadKw, setLoadKw] = usePersistedState(routeKey, 'loadKw', '0')
+  const [rentalPeriod, setRentalPeriod] = usePersistedState<RentalPeriod>(routeKey, 'rentalPeriod', 'monthly')
+  const [rentalPeriodCount, setRentalPeriodCount] = usePersistedState(routeKey, 'rentalPeriodCount', '1')
+  const [runtimeSchedule, setRuntimeSchedule] = usePersistedState<RuntimeSchedule>(routeKey, 'runtimeSchedule', 'continuous_24_7')
+  const [includeCooling, setIncludeCooling] = usePersistedState(routeKey, 'includeCooling', false)
+  const [coolingDetailsOpen, setCoolingDetailsOpen] = useState(false)
+  const [coolingCapacityTons, setCoolingCapacityTons] = usePersistedState(routeKey, 'coolingCapacityTons', '0')
+  const [coolingElectricalKw, setCoolingElectricalKw] = usePersistedState(routeKey, 'coolingElectricalKw', '0')
+  const [siteVoltage, setSiteVoltage] = usePersistedState(routeKey, 'siteVoltage', '240')
+  const [loadVoltage, setLoadVoltage] = usePersistedState(routeKey, 'loadVoltage', '240')
+  const [continuityTarget, setContinuityTarget] = usePersistedState<TempPowerContinuityTarget>(routeKey, 'continuityTarget', 'standard')
+  const [clientName, setClientName] = usePersistedState(routeKey, 'clientName', 'Worked Example')
+  const [projectName, setProjectName] = usePersistedState(routeKey, 'projectName', 'Jobsite Trailer Planning Brief')
+  const [facilities, setFacilities] = usePersistedState<FacilityEntry[]>(routeKey, 'facilities', createWorkedExampleFacilities())
+  const [riskInputs, setRiskInputs] = usePersistedState<TempPowerRiskInputs>(routeKey, 'riskInputs', { ...defaultTempPowerRiskInputs })
   const [requirementsOpen, setRequirementsOpen] = useState(false)
+  const [isWorkedExample, setIsWorkedExample] = usePersistedState(routeKey, 'isWorkedExample', true)
+  const requirementsHeadingRef = useRef<HTMLHeadingElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  const markAsCustomPlan = () => {
+    if (!isWorkedExample) return
+    setIsWorkedExample(false)
+    setClientName('')
+    setProjectName('')
+  }
 
   useEffect(() => {
     if (!requirementsOpen) return
 
     const previousOverflow = document.body.style.overflow
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const focusFrame = window.requestAnimationFrame(() => requirementsHeadingRef.current?.focus())
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setRequirementsOpen(false)
     }
@@ -58,29 +86,58 @@ export default function TempPowerWizard() {
     window.addEventListener('keydown', closeOnEscape)
 
     return () => {
+      window.cancelAnimationFrame(focusFrame)
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', closeOnEscape)
+      previousFocusRef.current?.focus()
     }
   }, [requirementsOpen])
 
   const addFacility = (type: string) => {
     const preset = FACILITY_PRESETS[type]
     if (!preset) return
+    markAsCustomPlan()
     setFacilities((prev) => [
       ...prev,
       {
-        id: `fac-${nextId++}`,
+        id: `fac-${Date.now()}-${prev.length}`,
         type,
         label: preset.label,
         quantity: 1,
-        kwPerUnit: preset.defaultKw,
+        kwPerUnit: 0,
         structureType: 'canvas',
         structureMultiplier: STRUCTURE_COOLING_MULTIPLIERS.canvas.multiplier,
+        loadBasis: `No load is assumed for this facility type. Enter the planned equipment load from a schedule, submittal, or nameplate.`,
+        loadBasisType: 'planning-estimate',
+      },
+    ])
+  }
+
+  const addJobsiteTrailer = (presetId: string) => {
+    const preset = JOBSITE_TRAILER_PRESETS.find((item) => item.id === presetId)
+    if (!preset) return
+    markAsCustomPlan()
+
+    setFacilities((prev) => [
+      ...prev,
+      {
+        id: `trailer-${Date.now()}-${prev.length}`,
+        type: 'jobsite_trailer',
+        label: `${preset.manufacturer} ${preset.dimensions} ${preset.model}`,
+        quantity: 1,
+        kwPerUnit: 0,
+        structureType: 'container',
+        structureMultiplier: STRUCTURE_COOLING_MULTIPLIERS.container.multiplier,
+        loadBasis: `${preset.basis} Published electrical context: ${preset.voltage}.`,
+        loadBasisType: preset.loadBasis,
+        sourceLabel: preset.sourceLabel,
+        sourceUrl: preset.sourceUrl,
       },
     ])
   }
 
   const updateFacility = (id: string, field: string, value: string | number) => {
+    markAsCustomPlan()
     setFacilities((prev) =>
       prev.map((f) => {
         if (f.id !== id) return f
@@ -94,150 +151,176 @@ export default function TempPowerWizard() {
   }
 
   const removeFacility = (id: string) => {
+    markAsCustomPlan()
     setFacilities((prev) => prev.filter((f) => f.id !== id))
   }
 
   const updateRiskInput = <K extends keyof TempPowerRiskInputs>(field: K, value: TempPowerRiskInputs[K]) => {
+    markAsCustomPlan()
     setRiskInputs((prev) => ({ ...prev, [field]: value }))
   }
 
-  const loadTempHousingScenario = () => {
+  const loadJobsiteTrailerScenario = () => {
     setMode('basecamp')
     setLoadKw('0')
-    setSqFt('0')
-    setAmbientTemp('95')
-    setTargetTemp('72')
     setRentalPeriod('monthly')
-    setRentalPeriodCount('33')
+    setRentalPeriodCount('1')
     setRuntimeSchedule('continuous_24_7')
-    setIncludeCooling(true)
-    setAltitude('0')
-    setSiteVoltage('480')
-    setPowerFactor('0.8')
-    setServiceIntervalDays('10')
-    setTechnicianCoverage('24_7')
-    setContainmentRequired(true)
-    setNoiseFinePerDay('0')
-    setClientName('Stark Industries')
-    setProjectName('Temporary Housing - North Lot')
-    setFacilities([
-      { id: 'workshop-rv', type: 'rv', label: 'RV Pedestal (50A)', quantity: 60, kwPerUnit: 9.6, structureType: 'container', structureMultiplier: 1.0 },
-      { id: 'workshop-bath', type: 'bathroom', label: 'Bathroom Trailer', quantity: 4, kwPerUnit: 14.4, structureType: 'container', structureMultiplier: 1.0 },
-      { id: 'workshop-shower', type: 'shower', label: 'Shower Trailer', quantity: 2, kwPerUnit: 57.6, structureType: 'container', structureMultiplier: 1.0 },
-      { id: 'workshop-concession', type: 'concession', label: 'Concession Structure', quantity: 2, kwPerUnit: 115.3, structureType: 'sprung', structureMultiplier: 1.4 },
-    ])
-    setRiskInputs({
-      ...defaultTempPowerRiskInputs,
-      rvService: 'unknown',
-      hiddenPlugLoads: 'unknown',
-      motorStarting: 'unknown',
-      occupancyVariance: 'assume_typical',
-      airDistribution: 'unknown',
-      winterHeat: 'unknown',
-      waterHeating: 'unknown',
-    })
+    setIncludeCooling(false)
+    setCoolingCapacityTons('0')
+    setCoolingElectricalKw('0')
+    setSiteVoltage('240')
+    setLoadVoltage('240')
+    setContinuityTarget('standard')
+    setClientName('Worked Example')
+    setProjectName('Jobsite Trailer Planning Brief')
+    setFacilities(createWorkedExampleFacilities())
+    setRiskInputs({ ...defaultTempPowerRiskInputs })
+    setCoolingDetailsOpen(false)
+    setIsWorkedExample(true)
+    setRequirementsOpen(false)
   }
+
+  const useWorkedExampleAsStartingPoint = () => {
+    setIsWorkedExample(false)
+    setClientName('')
+    setProjectName('')
+    setRequirementsOpen(true)
+  }
+
+  const rentalPeriodCountValue = Number(rentalPeriodCount)
+  const rentalPeriodCountValid = Number.isInteger(rentalPeriodCountValue) && rentalPeriodCountValue >= 1
+  const effectiveRentalPeriodCount = rentalPeriodCountValid ? rentalPeriodCountValue : 1
+  const singleLoadValue = Number(loadKw)
+  const singleLoadValid = mode !== 'single' || (Number.isFinite(singleLoadValue) && singleLoadValue > 0)
+  const facilitiesValid = mode !== 'basecamp' || (
+    facilities.length > 0
+    && facilities.every((facility) => Number.isFinite(facility.quantity) && facility.quantity > 0 && Number.isFinite(facility.kwPerUnit) && facility.kwPerUnit > 0)
+  )
+  const coolingLoadValue = Number(coolingElectricalKw)
+  const coolingInputValid = !includeCooling || (Number.isFinite(coolingLoadValue) && coolingLoadValue > 0)
+  const clientNameValid = clientName.trim().length > 0
+  const projectNameValid = projectName.trim().length > 0
+  const planningInputsValid = rentalPeriodCountValid
+    && singleLoadValid
+    && facilitiesValid
+    && coolingInputValid
+    && clientNameValid
+    && projectNameValid
 
   const schedule = calculateTempPowerSchedule(
     rentalPeriod,
-    parseFloat(rentalPeriodCount) || 1,
+    effectiveRentalPeriodCount,
     runtimeSchedule,
   )
 
-  const inputs: TempPowerInputs = {
+  const inputs: TempPowerPlanningInputs = {
     mode,
     loadKw: parseFloat(loadKw) || 0,
-    sqFt: parseFloat(sqFt) || 0,
-    ambientTemp: parseFloat(ambientTemp) || 95,
-    targetTemp: parseFloat(targetTemp) || 72,
     durationHours: schedule.operatingHours,
     rentalPeriod,
-    rentalPeriodCount: parseFloat(rentalPeriodCount) || 1,
+    rentalPeriodCount: effectiveRentalPeriodCount,
     runtimeSchedule,
     includeCooling,
-    altitude: parseFloat(altitude) || 0,
+    coolingCapacityTons: parseFloat(coolingCapacityTons) || 0,
+    coolingElectricalKw: parseFloat(coolingElectricalKw) || 0,
     siteVoltage: parseFloat(siteVoltage) || 480,
-    powerFactor: parseFloat(powerFactor) || 0.8,
-    serviceIntervalDays: parseFloat(serviceIntervalDays) || 0,
-    technicianCoverage,
-    containmentRequired,
-    noiseFinePerDay: parseFloat(noiseFinePerDay) || 0,
+    loadVoltage: parseFloat(loadVoltage) || parseFloat(siteVoltage) || 480,
+    continuityTarget,
     facilities,
   }
 
-  const calculate = useCallback((inp: TempPowerInputs) => calculateTempPower(inp), [])
+  const calculate = useCallback((inp: TempPowerPlanningInputs) => calculateTempPowerPlanningBrief(inp), [])
   const results = useCalculator(inputs, calculate)
-  const oneLineDiagram = results ? buildTempPowerOneLineDiagram(inputs, results) : null
-  const equipmentRecommendation = results
-    ? recommendEquipment({
-        peakKw: results.totalWithCoolingKw,
-        baseKw: results.totalWithCoolingKw * 0.6,
-        runtimeHours: results.dailyRuntimeHours,
-        projectDurationHours: results.operatingHours,
-        peakHoursPerDay: results.dailyRuntimeHours,
-        powerFactor: inputs.powerFactor,
-        siteVoltage: inputs.siteVoltage,
-      })
-    : null
-  const recommendation = equipmentRecommendation
-    ? { ...equipmentRecommendation, preferred: 'generator' as const }
-    : null
+  const calculationVerification = results ? verifyTempPowerPlanningBrief(inputs, results) : null
   const fieldRiskReview = results
-    ? buildFieldRiskReview({
+    ? buildFieldVerificationReview({
         inputs: riskInputs,
-        totalLoadKw: results.totalLoadKw,
         coolingKw: results.coolingKw,
-        totalWithCoolingKw: results.totalWithCoolingKw,
-        powerFactor: inputs.powerFactor,
         includeCooling,
+        includesRv: facilities.some((facility) => facility.type === 'rv'),
       })
     : null
-  const hasRecommendation = Boolean(results && results.totalLoadKw > 0 && recommendation && fieldRiskReview && oneLineDiagram)
+  const coolingLoadReady = !includeCooling || (results?.coolingKw ?? 0) > 0
+  const hasPlanningBrief = Boolean(
+    planningInputsValid
+    && results
+    && results.totalLoadKw > 0
+    && coolingLoadReady
+    && fieldRiskReview
+    && calculationVerification?.passed,
+  )
 
-  const structureOptions = Object.entries(STRUCTURE_COOLING_MULTIPLIERS).map(([value, { label, multiplier }]) => ({
+  const facilityOptions = Object.entries(FACILITY_PRESETS).map(([value, { label }]) => ({
     value,
-    label: `${label} (${multiplier}x)`,
+    label,
   }))
 
-  const facilityOptions = Object.entries(FACILITY_PRESETS).map(([value, { label, defaultKw, unit }]) => ({
-    value,
-    label: `${label} — ${defaultKw} kW ${unit}`,
+  const trailerOptions = JOBSITE_TRAILER_PRESETS.map((preset) => ({
+    value: preset.id,
+    label: trailerPresetLabel(preset),
   }))
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 lg:-mt-6">
-      {results && results.totalLoadKw > 0 && recommendation && fieldRiskReview && oneLineDiagram && (
+      {!requirementsOpen && planningInputsValid && coolingLoadReady && results && results.totalLoadKw > 0 && fieldRiskReview && calculationVerification?.passed && (
         <TempPowerReviewPlan
           inputs={inputs}
           results={results}
-          recommendation={recommendation}
+          calculationVerification={calculationVerification}
           fieldRiskReview={fieldRiskReview}
           riskInputs={riskInputs}
           onRiskChange={(field, value) => updateRiskInput(field, value as never)}
-          oneLineDiagram={oneLineDiagram}
           clientName={clientName}
           projectName={projectName}
           onEditRequirements={() => setRequirementsOpen(true)}
+          isWorkedExample={isWorkedExample}
+          onUseAsStartingPoint={useWorkedExampleAsStartingPoint}
+          onAddToEstimate={() => {
+            const added = addPlanningRequirement({
+              source: 'temporary_power',
+              title: 'Temporary Power Requirement',
+              summary: `${results.totalWithCoolingKw.toFixed(1)} kW entered; ${results.operatingHours.toFixed(0)} scheduled hours`,
+              details: [
+                { label: 'Planning demand', value: `${results.totalWithCoolingKw.toFixed(1)} kW` },
+                { label: 'Source / load voltage', value: `${inputs.siteVoltage} V / ${inputs.loadVoltage} V` },
+                { label: 'Continuity', value: inputs.continuityTarget === 'n_plus_1' ? 'Generator redundancy' : 'Meet entered load' },
+                { label: 'Rental duration', value: `${results.rentalDays} days; ${results.operatingHours.toFixed(0)} scheduled hours` },
+              ],
+              assumptions: fieldRiskReview.rfis,
+            }, { clientName, projectName })
+            if (!added) {
+              window.alert('The current estimate belongs to another client or project. Open Build Estimate and start a new estimate before importing this result.')
+              return
+            }
+            navigate('/estimate')
+          }}
         />
       )}
 
-      {(!hasRecommendation || requirementsOpen) && (
+      {!requirementsOpen && results && calculationVerification && !calculationVerification.passed && (
+        <div role="alert" className="rounded-xl border border-error/45 bg-error/10 px-5 py-4 text-sm leading-relaxed text-text">
+          The calculation check found an internal mismatch. The planning brief is withheld until the load and schedule totals agree.
+        </div>
+      )}
+
+      {(!hasPlanningBrief || requirementsOpen) && (
         <div
-          role={hasRecommendation ? 'dialog' : undefined}
-          aria-modal={hasRecommendation ? true : undefined}
-          aria-label={hasRecommendation ? 'Edit temporary power requirements' : undefined}
-          className={hasRecommendation ? 'fixed inset-0 z-[70] overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-6' : ''}
+          role={requirementsOpen ? 'dialog' : undefined}
+          aria-modal={requirementsOpen ? true : undefined}
+          aria-label={requirementsOpen ? 'Edit temporary power requirements' : undefined}
+          className={requirementsOpen ? 'fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-black/75 p-3 backdrop-blur-sm sm:p-6' : ''}
         >
-          <div className={hasRecommendation ? 'mx-auto max-w-6xl space-y-4 rounded-2xl border border-sg-600/60 bg-sg-900 p-3 shadow-2xl sm:p-5' : 'space-y-6'}>
-            {hasRecommendation && (
+          <div className={requirementsOpen ? 'mx-auto max-w-6xl space-y-4 rounded-2xl border border-sg-600/60 bg-sg-900 p-3 shadow-2xl sm:p-5' : 'space-y-6'}>
+            {requirementsOpen && (
               <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sg-600/50 bg-sg-900/95 px-4 py-3 shadow-lg backdrop-blur">
                 <div>
-                  <h2 className="text-lg font-bold text-text">Edit Requirements</h2>
-                  <p className="mt-0.5 text-xs text-text-muted">Changes update the recommended package immediately.</p>
+                  <h2 ref={requirementsHeadingRef} tabIndex={-1} className="text-lg font-bold text-text outline-none">Edit Requirements</h2>
+                  <p className="mt-0.5 text-xs text-text-muted">Changes update the planning brief immediately.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button type="button" onClick={() => setRequirementsOpen(false)} disabled={!hasRecommendation}>
-                    Apply Requirements
+                  <Button type="button" onClick={() => setRequirementsOpen(false)} disabled={!hasPlanningBrief}>
+                    Done
                   </Button>
                   <button
                     type="button"
@@ -254,26 +337,29 @@ export default function TempPowerWizard() {
       <Card>
         <CardHeader
           title="Temporary Power Requirements"
-          subtitle="Start with a standalone generator plan, then add cooling only when the job requires it"
-          action={
-            <Button type="button" variant="secondary" size="sm" onClick={loadTempHousingScenario}>
+          subtitle="Capture the demand, operating schedule, voltage need, and continuity expectation before discussing equipment"
+          action={!isWorkedExample ? (
+            <Button type="button" variant="secondary" size="sm" onClick={loadJobsiteTrailerScenario}>
               <ClipboardList size={14} />
-              Use Example Scenario
+              Reload 56 kW Example
             </Button>
-          }
+          ) : undefined}
         />
 
         <ReportContextFields
           clientName={clientName}
           projectName={projectName}
-          onClientNameChange={setClientName}
-          onProjectNameChange={setProjectName}
+          onClientNameChange={(value) => { markAsCustomPlan(); setClientName(value) }}
+          onProjectNameChange={(value) => { markAsCustomPlan(); setProjectName(value) }}
+          required
+          clientError={clientName.length > 0 && !clientNameValid ? 'Enter a client or account name.' : undefined}
+          projectError={projectName.length > 0 && !projectNameValid ? 'Enter a project or phase name.' : undefined}
         />
 
         <RadioGroup
           label="Sizing Mode"
           value={mode}
-          onChange={(v) => setMode(v as 'single' | 'basecamp')}
+          onChange={(v) => { markAsCustomPlan(); setMode(v as 'single' | 'basecamp') }}
           options={[
             { value: 'single', label: 'Single Load' },
             { value: 'basecamp', label: 'Base Camp / Multi-Facility' },
@@ -284,50 +370,103 @@ export default function TempPowerWizard() {
           <RadioGroup
             label="Solution Scope"
             value={includeCooling ? 'power_cooling' : 'power_only'}
-            onChange={(value) => setIncludeCooling(value === 'power_cooling')}
+            onChange={(value) => {
+              const coolingSelected = value === 'power_cooling'
+              markAsCustomPlan()
+              setIncludeCooling(coolingSelected)
+              setCoolingDetailsOpen(coolingSelected)
+            }}
             options={[
-              { value: 'power_only', label: 'Generator Only' },
-              { value: 'power_cooling', label: 'Add Temporary Cooling' },
+              { value: 'power_only', label: 'Temporary Power' },
+              { value: 'power_cooling', label: 'Power + Cooling' },
             ]}
           />
           <p className="mt-2 text-xs leading-relaxed text-text-dim">
-            The generator remains the base solution. Cooling is sized and added to the package only when selected.
+            Temporary cooling is a downstream load. Select the cooling solution first, then enter its electrical demand here.
           </p>
         </div>
 
+        {includeCooling && (
+          <details
+            className="group mt-4 rounded-lg border border-signal-blue/35 bg-signal-blue/5"
+            open={coolingDetailsOpen}
+            onToggle={(event) => setCoolingDetailsOpen(event.currentTarget.open)}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400/70">
+              <span>
+                <span className="block text-sm font-bold text-text">Temporary Cooling Details</span>
+                <span className="mt-1 block text-xs text-text-muted">
+                  {parseFloat(coolingElectricalKw) > 0
+                    ? `${coolingElectricalKw} kW selected-equipment demand${parseFloat(coolingCapacityTons) > 0 ? ` / ${coolingCapacityTons} tons` : ''}`
+                    : 'Enter the selected cooling equipment load before it is added to generator demand.'}
+                </span>
+              </span>
+              <ChevronDown size={18} className="shrink-0 text-text-dim transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="grid grid-cols-1 gap-4 border-t border-signal-blue/25 px-4 py-4 sm:grid-cols-2">
+              <InputField
+                label="Cooling Equipment Demand"
+                unit="electrical kW"
+                value={coolingElectricalKw}
+                onChange={(value) => { markAsCustomPlan(); setCoolingElectricalKw(value) }}
+                min={0}
+                required
+                error={!coolingInputValid ? 'Enter an electrical demand greater than 0 kW.' : undefined}
+                tooltip="Electrical demand from the selected cooling equipment; do not enter thermal kW"
+              />
+              <InputField
+                label="Cooling Capacity"
+                unit="tons"
+                value={coolingCapacityTons}
+                onChange={(value) => { markAsCustomPlan(); setCoolingCapacityTons(value) }}
+                min={0}
+                tooltip="Thermal capacity shown for scope context; it is not converted into generator kW"
+              />
+              <p className="text-xs leading-relaxed text-text-muted sm:col-span-2">
+                Use the HVAC Load Assessment to select the cooling solution. This workflow adds only the chosen equipment's electrical demand to the temporary-power plan.
+              </p>
+            </div>
+          </details>
+        )}
+
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {mode === 'single' && (
-            <>
-              <InputField label="Equipment Load" unit="kW (real power)" value={loadKw} onChange={setLoadKw} required tooltip="Total electrical load — kW, not kVA" />
-              {includeCooling && <InputField label="Conditioned Area" unit="sq ft" value={sqFt} onChange={setSqFt} tooltip="Floor area used only for the optional cooling calculation" />}
-            </>
+            <InputField
+              label="Equipment Load"
+              unit="kW (real power)"
+              value={loadKw}
+              onChange={(value) => { markAsCustomPlan(); setLoadKw(value) }}
+              min={0}
+              required
+              error={!singleLoadValid ? 'Enter an equipment load greater than 0 kW.' : undefined}
+              tooltip="Total electrical load — kW, not kVA"
+            />
           )}
-          <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} required />
-          {includeCooling && <InputField label="Target Temperature" unit="°F" value={targetTemp} onChange={setTargetTemp} required />}
           <SelectField
             label="Rental Period"
             value={rentalPeriod}
-            onChange={(value) => setRentalPeriod(value as RentalPeriod)}
+            onChange={(value) => { markAsCustomPlan(); setRentalPeriod(value as RentalPeriod) }}
             options={[
               { value: 'daily', label: 'Daily' },
               { value: 'weekly', label: 'Weekly' },
-              { value: 'monthly', label: 'Monthly (30 days)' },
+              { value: 'monthly', label: 'Monthly (28-day cycle)' },
             ]}
             required
           />
           <InputField
             label="Number of Rental Periods"
-            unit={rentalPeriod === 'daily' ? 'days' : rentalPeriod === 'weekly' ? 'weeks' : 'months'}
+            unit={rentalPeriod === 'daily' ? 'days' : rentalPeriod === 'weekly' ? 'weeks' : '28-day cycles'}
             value={rentalPeriodCount}
-            onChange={setRentalPeriodCount}
+            onChange={(value) => { markAsCustomPlan(); setRentalPeriodCount(value) }}
             min={1}
             step={1}
             required
+            error={!rentalPeriodCountValid ? 'Enter a whole number of rental periods, 1 or greater.' : undefined}
           />
           <SelectField
             label="Operating Schedule"
             value={runtimeSchedule}
-            onChange={(value) => setRuntimeSchedule(value as RuntimeSchedule)}
+            onChange={(value) => { markAsCustomPlan(); setRuntimeSchedule(value as RuntimeSchedule) }}
             options={[
               { value: 'shift_8', label: '8-hour shift' },
               { value: 'continuous_24_7', label: '24/7 continuous' },
@@ -335,53 +474,37 @@ export default function TempPowerWizard() {
             required
           />
           <div aria-live="polite" className="rounded-lg border border-accent-500/30 bg-accent-500/8 px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-accent-300">Calculated Runtime</div>
-            <div className="mt-1 text-sm font-bold text-text">{schedule.operatingHours.toLocaleString()} operating hours</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-accent-300">Scheduled Coverage</div>
+            <div className="mt-1 text-sm font-bold text-text">{schedule.operatingHours.toLocaleString()} scheduled hours</div>
             <div className="mt-0.5 text-xs text-text-muted">
               {schedule.rentalDays.toLocaleString()} rental days × {schedule.dailyRuntimeHours} hours/day
             </div>
           </div>
-          <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} tooltip="+3% derating per 1,000 ft above 1,000 ft" />
           <SelectField
-            label="Site Voltage"
+            label="Source Voltage"
             value={siteVoltage}
-            onChange={setSiteVoltage}
+            onChange={(value) => { markAsCustomPlan(); setSiteVoltage(value) }}
             options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
+            tooltip="Voltage expected at the site connection; confirm source phase and frequency separately"
             required
           />
           <SelectField
-            label="Power Factor"
-            value={powerFactor}
-            onChange={setPowerFactor}
-            options={[
-              { value: '0.8', label: '0.8 (typical)' },
-              { value: '0.85', label: '0.85' },
-              { value: '0.9', label: '0.9' },
-              { value: '1.0', label: '1.0 (unity)' },
-            ]}
+            label="Load Voltage"
+            value={loadVoltage}
+            onChange={(value) => { markAsCustomPlan(); setLoadVoltage(value) }}
+            options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
+            tooltip="Voltage required by the connected loads; verify it against delivered-equipment nameplates"
             required
           />
-          <InputField label="PM Service Interval" unit="days" value={serviceIntervalDays} onChange={setServiceIntervalDays} tooltip="Planned maintenance cadence for generators and temporary power assets" />
-          <SelectField
-            label="Technician Coverage"
-            value={technicianCoverage}
-            onChange={(v) => setTechnicianCoverage(v as 'none' | 'business_hours' | '24_7')}
+          <RadioGroup
+            label="Continuity Need"
+            value={continuityTarget}
+            onChange={(value) => { markAsCustomPlan(); setContinuityTarget(value as TempPowerContinuityTarget) }}
             options={[
-              { value: 'none', label: 'None / customer managed' },
-              { value: 'business_hours', label: 'Business hours' },
-              { value: '24_7', label: '24/7 field technician' },
+              { value: 'standard', label: 'Meet the entered load' },
+              { value: 'n_plus_1', label: 'Plan for one generator unavailable' },
             ]}
           />
-          <SelectField
-            label="Containment Required"
-            value={containmentRequired ? 'yes' : 'no'}
-            onChange={(v) => setContainmentRequired(v === 'yes')}
-            options={[
-              { value: 'yes', label: 'Yes - 110% contained' },
-              { value: 'no', label: 'No - confirm site spec' },
-            ]}
-          />
-          <InputField label="Night Noise Fine" unit="$/day" value={noiseFinePerDay} onChange={setNoiseFinePerDay} tooltip="Daily fine exposure if site noise limits are exceeded" />
         </div>
       </Card>
 
@@ -389,16 +512,30 @@ export default function TempPowerWizard() {
         <Card>
           <CardHeader
             title="Facility List"
-            subtitle="Add facilities — override loads if you know the real number from experience"
-            action={
+            subtitle="Start with a common trailer model or add another facility. Every auto-filled load remains editable."
+          />
+
+          <div className="mb-5 grid grid-cols-1 gap-4 border-y border-sg-600/40 py-5 lg:grid-cols-2">
+            <SelectField
+              label="Jobsite Trailer Model"
+              value=""
+              onChange={(value) => { if (value) addJobsiteTrailer(value) }}
+              options={[{ value: '', label: 'Select a manufacturer model...' }, ...trailerOptions]}
+              tooltip="Adds the selected model and source context. Enter the actual planned load from the delivered-unit submittal or nameplates."
+            />
+            <div>
               <SelectField
-                label=""
+                label="Other Facility Type"
                 value=""
                 onChange={(v) => { if (v) addFacility(v) }}
                 options={[{ value: '', label: 'Add facility...' }, ...facilityOptions]}
               />
-            }
-          />
+            </div>
+          </div>
+
+          <p className="mb-5 text-xs leading-relaxed text-text-dim">
+            Selecting a model does not infer its operating load. Enter the planned load from the delivered-unit submittal or nameplates, then confirm voltage, phase, HVAC, heat, water heating, appliances, and added plug loads.
+          </p>
 
           {facilities.length === 0 && (
             <p className="text-sm text-text-dim text-center py-4">No facilities added. Select from the dropdown above.</p>
@@ -409,14 +546,46 @@ export default function TempPowerWizard() {
               <div key={f.id} className="bg-sg-800 rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-text">{f.label}</span>
-                  <button onClick={() => removeFacility(f.id)} className="text-text-dim hover:text-error transition-colors">
+                  <button
+                    type="button"
+                    aria-label={`Remove ${f.label}`}
+                    onClick={() => removeFacility(f.id)}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-sg-700 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70"
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>
-                <div className={`grid gap-3 ${includeCooling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                  <InputField label="Qty" value={f.quantity} onChange={(v) => updateFacility(f.id, 'quantity', v)} />
-                  <InputField label="kW/unit" value={f.kwPerUnit} onChange={(v) => updateFacility(f.id, 'kwPerUnit', v)} tooltip="Override if you know better" />
-                  {includeCooling && <SelectField label="Structure" value={f.structureType} onChange={(v) => updateFacility(f.id, 'structureType', v)} options={structureOptions} />}
+                {f.loadBasis && (
+                  <div className="rounded-lg border border-sg-600/45 bg-sg-900/55 px-3 py-2 text-xs leading-relaxed text-text-muted">
+                    <span className="font-semibold text-text">
+                      {f.loadBasisType === 'published-service' ? 'Manufacturer context' : f.loadBasisType === 'planning-estimate' ? 'Load entry required' : 'Example basis'}:
+                    </span>{' '}
+                    {f.loadBasis}
+                    {f.sourceUrl && (
+                      <a href={f.sourceUrl} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-1 font-semibold text-accent-300 hover:text-accent-200">
+                        {f.sourceLabel ?? 'Manufacturer source'} <ExternalLink size={11} aria-hidden="true" />
+                      </a>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <InputField
+                    label="Qty"
+                    value={f.quantity}
+                    onChange={(v) => updateFacility(f.id, 'quantity', v)}
+                    min={1}
+                    step={1}
+                    error={f.quantity <= 0 ? 'Quantity must be 1 or greater.' : undefined}
+                  />
+                  <InputField
+                    label="Planned Load"
+                    unit="kW/unit"
+                    value={f.kwPerUnit}
+                    onChange={(v) => updateFacility(f.id, 'kwPerUnit', v)}
+                    min={0}
+                    error={f.kwPerUnit <= 0 ? 'Enter a load greater than 0 kW from a schedule, submittal, or nameplate.' : undefined}
+                    tooltip="Use the project load schedule, delivered-unit submittal, or equipment nameplates"
+                  />
                 </div>
               </div>
             ))}

@@ -36,3 +36,5 @@ ios/DerivedData
 .playwright-cli/
 output/
 tmp/
+
+.env

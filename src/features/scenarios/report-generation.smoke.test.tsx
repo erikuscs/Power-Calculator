@@ -6,6 +6,7 @@ import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 import { BessProjectPdfDoc } from './BessProjectPdf'
 import { HvacAssessmentPdfDoc } from './HvacAssessmentPdf'
 import { calculateTempPower, calculateHybridWizard, type TempPowerInputs, type HybridWizardInputs } from './scenario.formulas'
+import { buildFieldRiskReview, defaultTempPowerRiskInputs } from './fieldRiskReview'
 import { calculateSizing, calculateROI } from '../bess/bess.formulas'
 import { calculateAirsideTonnage, calculateChiller, calculateCooling } from '../hvac/hvac.formulas'
 
@@ -38,12 +39,25 @@ describe('EMaaS report generation smoke tests', () => {
       facilities: [],
     }
 
+    const results = calculateTempPower(inputs)!
+    const riskReview = buildFieldRiskReview({
+      inputs: defaultTempPowerRiskInputs,
+      totalLoadKw: results.totalLoadKw,
+      coolingKw: results.coolingKw,
+      totalWithCoolingKw: results.totalWithCoolingKw,
+      powerFactor: inputs.powerFactor,
+      includeCooling: false,
+      includesRv: false,
+    })
+
     await expectPdfRenders(
       <TempPowerPdfDoc
         inputs={inputs}
-        results={calculateTempPower(inputs)}
+        results={results}
+        riskReview={riskReview}
         clientName="Data Center Campus"
         projectName="Commissioning Block A"
+        isWorkedExample
       />,
       'Temporary power PDF',
     )

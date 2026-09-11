@@ -40,6 +40,10 @@ export interface FacilityEntry {
   kwPerUnit: number
   structureType: string
   structureMultiplier: number
+  loadBasis?: string
+  loadBasisType?: 'published-service' | 'planning-estimate' | 'user-defined'
+  sourceLabel?: string
+  sourceUrl?: string
 }
 
 export type RentalPeriod = 'daily' | 'weekly' | 'monthly'
@@ -48,7 +52,7 @@ export type RuntimeSchedule = 'shift_8' | 'continuous_24_7'
 const RENTAL_PERIOD_DAYS: Record<RentalPeriod, number> = {
   daily: 1,
   weekly: 7,
-  monthly: 30,
+  monthly: 28,
 }
 
 export interface TempPowerSchedule {
@@ -73,7 +77,14 @@ export function calculateTempPowerSchedule(
   }
 }
 
-export function resolveTempPowerSchedule(inputs: Pick<TempPowerInputs, 'durationHours' | 'rentalPeriod' | 'rentalPeriodCount' | 'runtimeSchedule'>): TempPowerSchedule {
+type TempPowerScheduleSource = {
+  durationHours: number
+  rentalPeriod?: RentalPeriod
+  rentalPeriodCount?: number
+  runtimeSchedule?: RuntimeSchedule
+}
+
+export function resolveTempPowerSchedule(inputs: TempPowerScheduleSource): TempPowerSchedule {
   if (inputs.rentalPeriod && inputs.runtimeSchedule) {
     return calculateTempPowerSchedule(inputs.rentalPeriod, inputs.rentalPeriodCount ?? 1, inputs.runtimeSchedule)
   }
@@ -97,14 +108,43 @@ export interface TempPowerInputs {
   rentalPeriodCount?: number
   runtimeSchedule?: RuntimeSchedule
   includeCooling?: boolean
+  coolingCapacityTons?: number
+  coolingElectricalKw?: number
   altitude: number
   siteVoltage?: number
+  loadVoltage?: number
+  continuityTarget?: 'standard' | 'n_plus_1'
   powerFactor: number
   serviceIntervalDays?: number
   technicianCoverage?: 'none' | 'business_hours' | '24_7'
   containmentRequired?: boolean
   noiseFinePerDay?: number
   facilities: FacilityEntry[]
+}
+
+export interface TempPowerPlanningInputs {
+  mode: 'single' | 'basecamp'
+  loadKw: number
+  durationHours: number
+  rentalPeriod?: RentalPeriod
+  rentalPeriodCount?: number
+  runtimeSchedule?: RuntimeSchedule
+  includeCooling?: boolean
+  coolingCapacityTons?: number
+  coolingElectricalKw?: number
+  siteVoltage?: number
+  loadVoltage?: number
+  continuityTarget?: 'standard' | 'n_plus_1'
+  facilities: FacilityEntry[]
+}
+
+export interface TempPowerPlanningResults {
+  totalLoadKw: number
+  coolingKw: number
+  totalWithCoolingKw: number
+  rentalDays: number
+  dailyRuntimeHours: number
+  operatingHours: number
 }
 
 export interface TempPowerResults {
@@ -156,36 +196,52 @@ export interface HybridComparison {
   }
 }
 
-export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
-  let totalLoadKw: number
+function calculateEnteredTempPowerLoad(inputs: Pick<TempPowerPlanningInputs, 'mode' | 'loadKw' | 'facilities' | 'includeCooling' | 'coolingElectricalKw'>) {
   const facilityBreakdown: { label: string; kw: number }[] = []
+  let totalLoadKw = inputs.loadKw
 
   if (inputs.mode === 'single') {
-    totalLoadKw = inputs.loadKw
     facilityBreakdown.push({ label: 'Equipment Load', kw: inputs.loadKw })
   } else {
     totalLoadKw = 0
-    for (const f of inputs.facilities) {
-      const kw = f.quantity * f.kwPerUnit
+    for (const facility of inputs.facilities) {
+      const kw = facility.quantity * facility.kwPerUnit
       totalLoadKw += kw
-      facilityBreakdown.push({ label: `${f.label} × ${f.quantity}`, kw })
+      facilityBreakdown.push({ label: `${facility.label} × ${facility.quantity}`, kw })
     }
   }
 
-  const deltaT = Math.max(0, inputs.ambientTemp - inputs.targetTemp)
-  const sqFt = inputs.mode === 'single' ? inputs.sqFt : inputs.facilities.reduce((sum, f) => sum + f.quantity * 200, 0)
-  const avgMultiplier = inputs.mode === 'basecamp' && inputs.facilities.length > 0
-    ? inputs.facilities.reduce((sum, f) => sum + f.structureMultiplier * f.quantity, 0) / Math.max(1, inputs.facilities.reduce((s, f) => s + f.quantity, 0))
-    : 1.0
-
-  const includeCooling = inputs.includeCooling !== false
-  const coolingBtu = includeCooling
-    ? totalLoadKw * 3412.14 + sqFt * deltaT * 0.5 * avgMultiplier
+  const coolingKw = inputs.includeCooling !== false
+    ? Math.max(0, inputs.coolingElectricalKw ?? 0)
     : 0
-  const coolingTons = includeCooling ? (coolingBtu / 12000) * SAFETY_MARGINS.cooling_emergency : 0
-  const coolingKw = includeCooling ? coolingTons * 3.517 : 0
 
-  const totalWithCoolingKw = totalLoadKw + coolingKw
+  return {
+    totalLoadKw,
+    coolingKw,
+    totalWithCoolingKw: totalLoadKw + coolingKw,
+    facilityBreakdown,
+  }
+}
+
+export function calculateTempPowerPlanningBrief(inputs: TempPowerPlanningInputs): TempPowerPlanningResults {
+  const load = calculateEnteredTempPowerLoad(inputs)
+  const schedule = resolveTempPowerSchedule(inputs)
+
+  return {
+    totalLoadKw: load.totalLoadKw,
+    coolingKw: load.coolingKw,
+    totalWithCoolingKw: load.totalWithCoolingKw,
+    rentalDays: schedule.rentalDays,
+    dailyRuntimeHours: schedule.dailyRuntimeHours,
+    operatingHours: schedule.operatingHours,
+  }
+}
+
+export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
+  const load = calculateEnteredTempPowerLoad(inputs)
+  const { totalLoadKw, coolingKw, totalWithCoolingKw, facilityBreakdown } = load
+  const includeCooling = inputs.includeCooling !== false
+  const coolingTons = includeCooling ? Math.max(0, inputs.coolingCapacityTons ?? 0) : 0
   const generatorKw = totalWithCoolingKw * SAFETY_MARGINS.generator
   const generatorKva = generatorKw / inputs.powerFactor
 

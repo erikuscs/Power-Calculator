@@ -163,7 +163,14 @@ export function PdfDocument({ title, clientName, projectName, date, children }: 
   const displayDate = date ?? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
-    <Document>
+    <Document
+      title={title}
+      author="Sustainable Gaps"
+      subject={projectName ? `${projectName} - EMaaS planning report` : 'EMaaS planning report'}
+      creator="Sustainable Gaps EMaaS.pro"
+      keywords="temporary power, energy management, generator planning, electrical distribution"
+      language="en-US"
+    >
       <Page size="LETTER" style={s.page}>
         {/* Header */}
         <View style={s.header}>
@@ -268,7 +275,7 @@ export interface PdfWarningProps {
 
 export function PdfWarning({ children }: PdfWarningProps) {
   return (
-    <View style={s.warningBox}>
+    <View style={s.warningBox} wrap={false}>
       <Text style={s.warningText}>{children}</Text>
     </View>
   )

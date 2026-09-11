@@ -1,7 +1,53 @@
 # EMaaS.pro Launch — Handoff & Session Log
-**Updated 2026-07-06 · Erik Herring / Sustainable Gaps LLC**
+**Updated 2026-09-11 · Erik Herring / Sustainable Gaps LLC**
 This document is self-contained: a fresh Claude session (or future Erik) on any
 machine can resume from here. Add your own notes at the bottom.
+
+## 2026-09-11 Release Candidate — Minimum Field-Planning Standard
+
+Canonical source: `/Users/sustainablegaps/Projects/emaas-pro`
+
+- Temporary power now produces a verified planning architecture with explicit source/load voltage, transformer, switchgear, cable, neutral, continuity, and field-review boundaries.
+- Temporary heating supports the two primary use cases—propane and electric—and carries auxiliary or heater electrical demand into generator planning without adding steam-system complexity.
+- Cooling accepts width, height, and depth for cubic-foot planning, validates bounded inputs, and preserves the existing load formulas through regression coverage.
+- Build Estimate combines equipment, logistics, rates, discounts, taxes, assumptions, and approval checks in a persistent draft.
+- Site Fit & One-Line links each electrical node to a dimensioned site block and customer explanation. Conservative two-dimensional packing includes access, exclusions, equipment, and service clearances; a constrained site produces a bounded power ceiling or a shape conflict rather than an area-only fit claim.
+- Zero requested load withholds equipment, transformer, cable, and fit conclusions. Step-up and step-down transformer language is direction-sensitive.
+- Independent cold review and focused regression review informed the corrections. The final third-party recheck reported no remaining P0-P2 findings in the reviewed Site Fit workflow and no interference with existing calculations.
+- Release-candidate verification passed: 25 test files / 156 tests, ESLint, TypeScript/Vite production build, production artifact audit, and desktop/mobile E2E smoke checks. Browser review showed no console errors or warnings.
+- This checkpoint is prepared locally only. It has not been pushed, merged to `main`, deployed to Azure Static Web Apps, synchronized into a new native build, or accepted on a production device.
+
+## 2026-08-22 Production Bundle Hardening
+
+- Vite now explicitly uses Oxc production minification with browser source maps disabled.
+- Production application and lazy chunks publish under generic hash-only paths: `assets/app/<hash>.js` and `assets/chunks/<hash>.js`. Descriptive names such as formulas, recommendations, verification, and wizard modules no longer appear in public asset filenames.
+- `npm run build` now runs a production artifact audit that blocks source maps, source-map references, readable source-module paths, and descriptive JavaScript chunk names.
+- The Azure Static Web Apps response policy now disables unused camera, microphone, and geolocation browser capabilities while preserving the existing Microsoft Teams frame policy.
+- This is a casual-inspection deterrent, not secrecy. EMaaS calculation code delivered to a browser can still be studied; genuinely sensitive logic must move server-side in a later architecture phase.
+- Verification passed under Node 22: 18 test files / 123 tests, ESLint, TypeScript/Vite production build, artifact audit, and the full desktop/mobile browser workflow.
+- The verified static bundle was deployed to the existing `emaas-power-calculator` Azure Static Web App. Production serves generic hashed chunks and reports `Last-Modified: Sat, 22 Aug 2026 22:38:24 GMT`.
+
+## 2026-08-22 Sustainable Gaps Return Path
+
+- The application header now includes a persistent same-tab return link to `https://www.sustainablegaps.com/emaas/` on desktop and mobile.
+- The return control is available from every calculator and planning route because it lives in the shared application header.
+- All 123 tests, lint, production build, and the browser smoke suite passed under Node 22. The browser suite now protects the governed return URL from regression.
+- The verified bundle was deployed to the existing `emaas-power-calculator` Azure Static Web App. A cache-busted production mobile check confirmed the return control is visible, points to the governed SG capability page, and introduces no horizontal overflow or browser errors.
+
+## 2026-08-22 Calculation Verification And Production Update
+
+Canonical source: `/Users/sustainablegaps/Projects/emaas-pro`
+
+- Temporary Power now produces a draft planning brief before any equipment package is released.
+- A five-check calculation gate verifies facility and equipment line-item sums, cooling inclusion, total planning load, rental days, and scheduled operating hours.
+- The brief is withheld if any displayed result drifts from the calculation source. Passing the gate confirms internal arithmetic only; it is not engineering approval or final equipment selection.
+- The 56 kW jobsite trailer worked example and the 28-day rental cycle remain explicit and editable.
+- Invalid BESS power factors supplied through URL state now show a visible validation message instead of silently hiding results; zero is no longer replaced by the default value.
+- Route changes now return the viewport to the top.
+- Monthly equipment-rate normalization now uses the same 28-day rental cycle as the temporary-power schedule and report.
+- Reusable monthly-rate selectors now identify `Monthly (28-day cycle)` instead of an unlabeled calendar month.
+- Verification passed: 123 tests, TypeScript/Vite production build, ESLint, and the full Playwright desktop/mobile smoke workflow under Node 22.
+- The verified bundle was deployed to the existing `emaas-power-calculator` Azure Static Web App. A cache-busted production mobile session on `emaas.pro` displayed `Monthly (28-day cycle)`, 224 scheduled hours, and 28 rental days at eight hours per day, with no overflow or console errors.
 
 ---
 

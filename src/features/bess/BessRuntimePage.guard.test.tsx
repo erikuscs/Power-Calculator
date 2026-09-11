@@ -35,6 +35,7 @@ describe('BessRuntimePage power factor guard', () => {
       </MemoryRouter>,
     )
     expect(screen.queryByText('Estimated Runtime')).toBeNull()
+    expect(screen.getByRole('alert')).toHaveTextContent(/Power factor must be greater than 0 and no more than 1/i)
   })
 
   it('rejects zero or negative power factor injected via URL state', () => {
@@ -44,5 +45,16 @@ describe('BessRuntimePage power factor guard', () => {
       </MemoryRouter>,
     )
     expect(screen.queryByText('Estimated Runtime')).toBeNull()
+    expect(screen.getByRole('alert')).toHaveTextContent(/Power factor must be greater than 0 and no more than 1/i)
+  })
+
+  it('rejects zero power factor instead of silently replacing it with the default', () => {
+    render(
+      <MemoryRouter initialEntries={['/bess/runtime?pf=0']}>
+        <BessRuntimePage />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByText('Estimated Runtime')).toBeNull()
+    expect(screen.getByRole('alert')).toHaveTextContent(/Power factor must be greater than 0 and no more than 1/i)
   })
 })

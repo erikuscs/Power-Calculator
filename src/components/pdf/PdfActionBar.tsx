@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { pdf } from '@react-pdf/renderer'
 import type { DocumentProps } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
 import { Download, Printer, Share2 } from 'lucide-react'
@@ -8,13 +7,16 @@ import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 
 export interface PdfActionBarProps {
-  document: ReactElement<DocumentProps>
+  createDocument: () => Promise<ReactElement<DocumentProps>>
   filename: string
   title: string
   shareText: string
+  draft?: boolean
 }
 
 type PdfAction = 'print' | 'save' | 'share'
+
+const WEB_SHARE_TIMEOUT_MS = 12_000
 
 const actionClasses =
   'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 disabled:cursor-wait disabled:opacity-60'
@@ -80,15 +82,35 @@ function isShareCancel(error: unknown) {
   return (error as Error)?.message?.toLowerCase().includes('cancel') ?? false
 }
 
-export function PdfActionBar({ document: pdfDocument, filename, title, shareText }: PdfActionBarProps) {
+async function shareWithTimeout(data: ShareData) {
+  let timeoutId: number | undefined
+  const timeout = new Promise<'timeout'>((resolve) => {
+    timeoutId = window.setTimeout(() => resolve('timeout'), WEB_SHARE_TIMEOUT_MS)
+  })
+
+  try {
+    return await Promise.race([
+      navigator.share(data).then(() => 'shared' as const),
+      timeout,
+    ])
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  }
+}
+
+export function PdfActionBar({ createDocument, filename, title, shareText, draft = false }: PdfActionBarProps) {
   const [busyAction, setBusyAction] = useState<PdfAction | null>(null)
   const [status, setStatus] = useState('')
 
   const runAction = async (action: PdfAction) => {
     setBusyAction(action)
-    setStatus('Preparing the review package...')
+    setStatus(draft ? 'Preparing the draft planning brief...' : 'Preparing the review package...')
 
     try {
+      const [{ pdf }, pdfDocument] = await Promise.all([
+        import('@react-pdf/renderer'),
+        createDocument(),
+      ])
       const blob = await pdf(pdfDocument).toBlob()
 
       if (Capacitor.isNativePlatform()) {
@@ -107,26 +129,33 @@ export function PdfActionBar({ document: pdfDocument, filename, title, shareText
           files: [file.uri],
           dialogTitle: action === 'share' ? 'Share EMaaS PDF' : 'Open EMaaS PDF',
         })
-        setStatus(action === 'share' ? 'Review package shared.' : 'Review package opened in the share sheet.')
+        setStatus(action === 'share'
+          ? `${draft ? 'Draft planning brief' : 'Review package'} shared.`
+          : `${draft ? 'Draft planning brief' : 'Review package'} opened in the share sheet.`)
         return
       }
 
       if (action === 'print') {
         printBlob(blob)
-        setStatus('Print-ready PDF opened in a new tab.')
+        setStatus(`${draft ? 'Draft planning brief' : 'Print-ready PDF'} opened in a new tab.`)
         return
       }
 
       if (action === 'save') {
         downloadBlob(blob, filename)
-        setStatus('Review package saved.')
+        setStatus(`${draft ? 'Draft planning brief' : 'Review package'} saved.`)
         return
       }
 
       const file = new File([blob], filename, { type: 'application/pdf' })
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title, text: shareText })
-        setStatus('Review package shared.')
+        const shareResult = await shareWithTimeout({ files: [file], title, text: shareText })
+        if (shareResult === 'timeout') {
+          downloadBlob(blob, filename)
+          setStatus('The browser share sheet did not respond, so the PDF was saved instead.')
+        } else {
+          setStatus(`${draft ? 'Draft planning brief' : 'Review package'} shared.`)
+        }
       } else {
         downloadBlob(blob, filename)
         setStatus('File sharing is not available in this browser, so the PDF was saved instead.')
@@ -155,7 +184,7 @@ export function PdfActionBar({ document: pdfDocument, filename, title, shareText
           onClick={() => runAction('print')}
         >
           <Printer size={16} />
-          {buttonLabel('print', 'Print')}
+          {buttonLabel('print', draft ? 'Print Draft' : 'Print')}
         </button>
         <button
           type="button"
@@ -164,7 +193,7 @@ export function PdfActionBar({ document: pdfDocument, filename, title, shareText
           onClick={() => runAction('save')}
         >
           <Download size={16} />
-          {buttonLabel('save', 'Save PDF')}
+          {buttonLabel('save', draft ? 'Save Draft' : 'Save PDF')}
         </button>
         <button
           type="button"
@@ -173,11 +202,13 @@ export function PdfActionBar({ document: pdfDocument, filename, title, shareText
           onClick={() => runAction('share')}
         >
           <Share2 size={16} />
-          {buttonLabel('share', 'Share PDF')}
+          {buttonLabel('share', draft ? 'Share Draft' : 'Share PDF')}
         </button>
       </div>
       <p className="mt-2 min-h-4 text-[11px] leading-relaxed text-text-dim" aria-live="polite">
-        {status || 'Share PDF opens Messages, AirDrop, Mail, and other available destinations.'}
+        {status || (draft
+          ? 'Print opens a PDF, Save downloads it, and Share uses your device options. EMaaS does not upload the draft.'
+          : 'Share PDF opens Messages, AirDrop, Mail, and other available destinations.')}
       </p>
     </div>
   )

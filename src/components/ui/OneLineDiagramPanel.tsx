@@ -65,7 +65,7 @@ function symbolTag(node: SymbolPlacement['node']) {
   if (kind === 'generator') return 'GEN'
   if (kind === 'bess') return 'BESS/PCS'
   if (kind === 'controller') return 'EMS'
-  if (kind === 'transfer') return 'ATS/52'
+  if (kind === 'transfer') return node.label.toUpperCase().includes('PARALLEL') ? 'PAR/52' : 'ATS/52'
   if (kind === 'switchgear') return 'SWGR'
   if (kind === 'transformer') return 'XFMR'
   if (kind === 'panel') return 'PNL'
@@ -230,7 +230,7 @@ export function PrintableOneLine({
       <div className="overflow-x-auto rounded border border-sg-600/25 bg-white">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className={`block text-sg-900 ${compact ? 'w-full min-w-0' : 'min-w-[980px]'}`}
+          className={`block text-sg-900 ${compact ? 'w-full min-w-[720px]' : 'min-w-[980px]'}`}
           role="img"
           aria-label={`${diagram.title} printable electrical one-line diagram`}
         >
@@ -402,7 +402,7 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
         <path d={`M ${x - 20} ${y + 12} L ${x + 18} ${y - 12}`} stroke="#111827" strokeWidth="2.5" />
         <circle cx={x - 22} cy={y + 14} r="3" fill="#111827" />
         <circle cx={x + 20} cy={y - 14} r="3" fill="#111827" />
-        <text x={x} y={y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#111827">ATS</text>
+        <text x={x} y={y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#111827">{node.label.toUpperCase().includes('PARALLEL') ? 'PAR' : 'ATS'}</text>
         <DeviceTag x={x} y={y - 40} label={tag} />
       </g>
     )

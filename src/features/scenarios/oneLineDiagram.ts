@@ -4,6 +4,7 @@ import type {
   TempPowerInputs,
   TempPowerResults,
 } from './scenario.formulas'
+import type { TempPowerArchitecturePlan } from '../../lib/tempPowerArchitecture'
 
 export type OneLineNodeTone = 'source' | 'storage' | 'control' | 'distribution' | 'load' | 'service'
 
@@ -99,10 +100,25 @@ export function flattenDiagramRows(diagram: OneLineDiagram) {
   )
 }
 
-export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: TempPowerResults): OneLineDiagram {
-  const generatorUnits = Math.max(1, Math.ceil(results.generatorKw / 500))
-  const legsPerPhase = Math.max(1, Math.ceil(results.ampsPerPhase / 400))
+interface TempPowerSourceSizing {
+  generatorKw: number
+  generatorKva: number
+  ampsPerPhase: number
+}
+
+export function buildTempPowerOneLineDiagram(
+  inputs: TempPowerInputs,
+  results: TempPowerResults,
+  sourceSizing: TempPowerSourceSizing = results,
+  architecture?: TempPowerArchitecturePlan,
+): OneLineDiagram {
+  const generatorUnits = architecture?.selected.unitCount ?? Math.max(1, Math.ceil(sourceSizing.generatorKw / 500))
+  const legsPerPhase = Math.max(1, Math.ceil(sourceSizing.ampsPerPhase / 400))
   const includeCooling = inputs.includeCooling !== false
+  const sourceVoltage = inputs.siteVoltage ?? 480
+  const loadVoltage = inputs.loadVoltage ?? sourceVoltage
+  const transformerRequired = architecture?.transformer.required ?? sourceVoltage !== loadVoltage
+  const sourceControlLabel = generatorUnits > 1 ? 'Paralleling Controls' : 'Generator Controller'
 
   const primaryLoadNodes: OneLineNode[] = inputs.mode === 'basecamp'
     ? [
@@ -144,8 +160,10 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
         {
           id: 'GEN',
           label: 'Generator Plant',
-          detail: `${generatorUnits} x planning unit`,
-          meta: `${fi(results.generatorKva)} kVA / ${fi(results.generatorKw)} kW`,
+          detail: architecture?.selected.label ?? `${generatorUnits} x planning unit`,
+          meta: architecture
+            ? `${fi(architecture.selected.totalCapacityKw)} kW installed / ${fi(architecture.selected.firmCapacityKw)} kW firm`
+            : `${fi(sourceSizing.generatorKva)} kVA / ${fi(sourceSizing.generatorKw)} kW`,
           tone: 'source',
         },
       ],
@@ -154,9 +172,9 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
       label: 'Control',
       nodes: [
         {
-          id: 'ATS',
-          label: 'ATS / Generator Controller',
-          detail: 'generator start + transfer logic',
+          id: 'SOURCE_CTRL',
+          label: sourceControlLabel,
+          detail: generatorUnits > 1 ? 'synchronization + load sharing' : 'start + protection logic',
           meta: inputs.technicianCoverage === '24_7' ? '24/7 tech coverage' : 'remote monitoring ready',
           tone: 'control',
         },
@@ -167,18 +185,22 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
       nodes: [
         {
           id: 'SWGR',
-          label: `${inputs.siteVoltage ?? 480}V Switchgear`,
-          detail: `${fi(results.ampsPerPhase)} A/phase`,
-          meta: results.parallelRunsNeeded ? `${legsPerPhase} cable legs per phase` : 'single cable set check',
+          label: `${sourceVoltage}V Switchgear`,
+          detail: `${fi(sourceSizing.ampsPerPhase)} A/phase`,
+          meta: sourceSizing.ampsPerPhase > 400 ? `${legsPerPhase} cable legs per phase` : 'single cable set check',
           tone: 'distribution',
         },
-        {
-          id: 'XFMR',
-          label: 'Step-Down Transformers',
-          detail: `${inputs.siteVoltage ?? 480}V to 120/208V`,
-          meta: inputs.containmentRequired === false ? 'confirm containment spec' : '110% contained equipment',
-          tone: 'distribution',
-        },
+        ...(transformerRequired
+          ? [{
+              id: 'XFMR',
+              label: architecture && architecture.transformer.unitCount > 1 ? 'Step-Down Transformer Bank' : 'Step-Down Transformer',
+              detail: architecture
+                ? `${architecture.transformer.unitCount} x ${fi(architecture.transformer.unitKva)} kVA`
+                : `${sourceVoltage}V to ${loadVoltage}V`,
+              meta: `${sourceVoltage}V to ${loadVoltage}V`,
+              tone: 'distribution' as const,
+            }]
+          : []),
         {
           id: 'PANELS',
           label: 'Branch Panels',
@@ -209,10 +231,14 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'ATS', label: `${inputs.siteVoltage ?? 480}V 3-phase` },
-    { from: 'ATS', to: 'SWGR', label: 'protected feeder' },
-    { from: 'SWGR', to: 'XFMR', label: 'distribution' },
-    { from: 'XFMR', to: 'PANELS', label: '120/208V' },
+    { from: 'GEN', to: 'SOURCE_CTRL', label: `${sourceVoltage}V 3-phase` },
+    { from: 'SOURCE_CTRL', to: 'SWGR', label: 'protected source bus' },
+    ...(transformerRequired
+      ? [
+          { from: 'SWGR', to: 'XFMR', label: `${sourceVoltage}V` },
+          { from: 'XFMR', to: 'PANELS', label: `${loadVoltage}V` },
+        ] as OneLineEdge[]
+      : [{ from: 'SWGR', to: 'PANELS', label: `${loadVoltage}V` }]),
     { from: 'PANELS', to: primaryLoadNodes[0].id, label: 'branch circuits' },
     ...(includeCooling ? [{ from: 'PANELS', to: 'COOLING', label: 'cooling feeder' }] : []),
     { from: 'GEN', to: 'SERVICE', label: 'fuel / PM', kind: 'service' },
@@ -220,15 +246,18 @@ export function buildTempPowerOneLineDiagram(inputs: TempPowerInputs, results: T
 
   return finishDiagram({
     title: 'Temporary Power One-Line Diagram',
-    caption: 'Planning topology (estimates) for source, transfer, distribution, load branches, and EMaaS service assumptions.',
+    caption: 'Conceptual planning topology for generation, controls, voltage transformation, distribution, load branches, and EMaaS service assumptions.',
     stages,
     edges,
     assumptions: [
       'Final conductor sizing, grounding, fault current, protection, and selective coordination require engineering review.',
-      `Generator-only source with${includeCooling ? '' : 'out'} the optional temporary-cooling branch.`,
+      `${architecture?.selected.label ?? 'Generator source'} with${includeCooling ? '' : 'out'} the optional temporary-cooling branch.`,
+      transformerRequired
+        ? `${sourceVoltage}V generation is stepped down to ${loadVoltage}V for the downstream loads.`
+        : `Source and load voltage are both ${loadVoltage}V, so no transformer is shown.`,
       inputs.mode === 'basecamp'
         ? `Base-camp view emphasizes final distribution to trailers, concessions, and RV support${includeCooling ? ', plus the selected cooling load' : ''}.`
-        : `Single-load view emphasizes the main equipment load${includeCooling ? ' plus the selected temporary-cooling add-on' : ''}.`,
+        : `Single-load view emphasizes the main equipment load${includeCooling ? ' plus the selected cooling equipment demand' : ''}.`,
     ],
   })
 }

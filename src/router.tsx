@@ -18,6 +18,7 @@ const FuelConsumptionPage = lazy(() => import('./features/power/FuelConsumptionP
 const LumensWattsPage = lazy(() => import('./features/power/LumensWattsPage'))
 const KvaAmpsPage = lazy(() => import('./features/power/KvaAmpsPage'))
 const HvacDashboard = lazy(() => import('./features/hvac/HvacDashboard'))
+const HeatingPage = lazy(() => import('./features/hvac/HeatingPage'))
 const CoolingPage = lazy(() => import('./features/hvac/CoolingPage'))
 const ChillerPage = lazy(() => import('./features/hvac/ChillerPage'))
 const PsychrometricsPage = lazy(() => import('./features/hvac/PsychrometricsPage'))
@@ -26,6 +27,8 @@ const HybridEnergyWizard = lazy(() => import('./features/scenarios/HybridEnergyW
 const BessProjectWizard = lazy(() => import('./features/scenarios/BessProjectWizard'))
 const HvacAssessmentWizard = lazy(() => import('./features/scenarios/HvacAssessmentWizard'))
 const PrivacyPage = lazy(() => import('./features/legal/PrivacyPage'))
+const EstimatePage = lazy(() => import('./features/estimate/EstimatePage'))
+const SiteFitPage = lazy(() => import('./features/site-fit/SiteFitPage'))
 
 interface AppRoute {
   path: string
@@ -37,6 +40,8 @@ interface AppRoute {
 export const routes: AppRoute[] = [
   { path: '/', element: <DashboardPage />, label: 'Dashboard' },
   { path: '/learn', element: <LearnHubPage />, label: 'Start Here', group: 'Overview' },
+  { path: '/estimate', element: <EstimatePage />, label: 'Build Estimate', group: 'EMaaS Workflows' },
+  { path: '/site-fit', element: <SiteFitPage />, label: 'Site Fit & One-Line', group: 'EMaaS Workflows' },
   { path: '/bess/runtime', element: <BessRuntimePage />, label: 'BESS Runtime', group: 'BESS' },
   { path: '/bess/sizing', element: <BessSizingPage />, label: 'Multi-Unit Sizing', group: 'BESS' },
   { path: '/bess/roi', element: <BessRoiPage />, label: 'Revenue / ROI', group: 'BESS' },
@@ -52,6 +57,7 @@ export const routes: AppRoute[] = [
   { path: '/power/lumens', element: <LumensWattsPage />, label: 'Lumens & Watts', group: 'Power' },
   { path: '/power/kva-amps', element: <KvaAmpsPage />, label: 'kVA → Amps', group: 'Power' },
   { path: '/hvac', element: <HvacDashboard />, label: 'HVAC Calculators', group: 'HVAC' },
+  { path: '/hvac/heating', element: <HeatingPage />, label: 'Temporary Heating Plan', group: 'HVAC' },
   { path: '/hvac/cooling', element: <CoolingPage />, label: 'Cooling Load', group: 'HVAC' },
   { path: '/hvac/chiller', element: <ChillerPage />, label: 'Chiller Sizing', group: 'HVAC' },
   { path: '/hvac/psychrometrics', element: <PsychrometricsPage />, label: 'Psychrometrics', group: 'HVAC' },

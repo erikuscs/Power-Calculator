@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateHybridWizard, calculateTempPower, calculateTempPowerSchedule, evaluateHybrid, interpolateBSFC } from './scenario.formulas'
+import { calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid, interpolateBSFC } from './scenario.formulas'
 import { calcGeneralPower } from '../power/power.formulas'
 
 describe('interpolateBSFC', () => {
@@ -33,9 +33,9 @@ describe('calculateTempPower', () => {
       operatingHours: 112,
     })
     expect(calculateTempPowerSchedule('monthly', 1, 'continuous_24_7')).toEqual({
-      rentalDays: 30,
+      rentalDays: 28,
       dailyRuntimeHours: 24,
-      operatingHours: 720,
+      operatingHours: 672,
     })
   })
 
@@ -59,12 +59,12 @@ describe('calculateTempPower', () => {
     expect(result.coolingTons).toBe(0)
     expect(result.coolingKw).toBe(0)
     expect(result.totalWithCoolingKw).toBe(200)
-    expect(result.rentalDays).toBe(30)
+    expect(result.rentalDays).toBe(28)
     expect(result.dailyRuntimeHours).toBe(8)
-    expect(result.operatingHours).toBe(240)
+    expect(result.operatingHours).toBe(224)
   })
 
-  it('calculates single-load mode correctly', () => {
+  it('uses selected cooling equipment demand instead of converting tons to electrical kW', () => {
     const result = calculateTempPower({
       mode: 'single',
       loadKw: 200,
@@ -72,16 +72,41 @@ describe('calculateTempPower', () => {
       ambientTemp: 95,
       targetTemp: 72,
       durationHours: 720,
+      includeCooling: true,
+      coolingCapacityTons: 35,
+      coolingElectricalKw: 42,
       altitude: 0,
       powerFactor: 0.8,
       facilities: [],
     })
 
     expect(result.totalLoadKw).toBe(200)
-    expect(result.coolingTons).toBeGreaterThan(0)
+    expect(result.coolingTons).toBe(35)
+    expect(result.coolingKw).toBe(42)
+    expect(result.totalWithCoolingKw).toBe(242)
     expect(result.generatorKva).toBeGreaterThan(result.totalWithCoolingKw)
     expect(result.totalFuelGallons).toBeGreaterThan(0)
     expect(result.ampsPerPhase).toBeGreaterThan(0)
+  })
+
+  it('does not invent electrical demand when cooling equipment load is not entered', () => {
+    const result = calculateTempPower({
+      mode: 'single',
+      loadKw: 200,
+      sqFt: 2000,
+      ambientTemp: 95,
+      targetTemp: 72,
+      durationHours: 24,
+      includeCooling: true,
+      coolingCapacityTons: 35,
+      altitude: 0,
+      powerFactor: 0.8,
+      facilities: [],
+    })
+
+    expect(result.coolingTons).toBe(35)
+    expect(result.coolingKw).toBe(0)
+    expect(result.totalWithCoolingKw).toBe(200)
   })
 
   it('flags parallel runs when amps exceed 400A per phase', () => {
@@ -168,6 +193,40 @@ describe('calculateTempPower', () => {
     expect(result.serviceEvents).toBe(4)
     expect(result.noiseFineExposure).toBe(16000)
     expect(result.parallelRunsNeeded).toBe(true)
+  })
+})
+
+describe('calculateTempPowerPlanningBrief', () => {
+  it('returns only entered-load and schedule facts for the planning workflow', () => {
+    const result = calculateTempPowerPlanningBrief({
+      mode: 'basecamp',
+      loadKw: 0,
+      durationHours: 0,
+      rentalPeriod: 'monthly',
+      rentalPeriodCount: 1,
+      runtimeSchedule: 'shift_8',
+      includeCooling: true,
+      coolingElectricalKw: 12,
+      siteVoltage: 240,
+      loadVoltage: 208,
+      continuityTarget: 'n_plus_1',
+      facilities: [
+        { id: 'office', type: 'jobsite_trailer', label: 'Office', quantity: 2, kwPerUnit: 16, structureType: 'container', structureMultiplier: 1 },
+      ],
+    })
+
+    expect(result).toEqual({
+      totalLoadKw: 32,
+      coolingKw: 12,
+      totalWithCoolingKw: 44,
+      rentalDays: 28,
+      dailyRuntimeHours: 8,
+      operatingHours: 224,
+    })
+    expect('generatorKva' in result).toBe(false)
+    expect('fuelGallonsPerHour' in result).toBe(false)
+    expect('ampsPerPhase' in result).toBe(false)
+    expect('hybrid' in result).toBe(false)
   })
 })
 

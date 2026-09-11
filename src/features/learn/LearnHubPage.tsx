@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
+import { APP_BRAND } from '../../lib/brand'
 
 const startSteps = [
   {
@@ -50,17 +51,32 @@ interface WorkflowTutorial {
 const workflowTutorials: WorkflowTutorial[] = [
   {
     title: 'Temporary Power & Cooling',
-    objective: 'Build a defensible generator, cooling, fuel, and service plan from field load information.',
+    objective: 'Build a transparent power-demand planning brief from field load information.',
     useWhen: 'Planning construction power, temporary housing, events, emergency response, or commissioning support.',
     example: 'Start with a 200 kW load, 2,000 sq ft facility, 95°F ambient temperature, and 720-hour duration.',
-    outcome: 'Equipment sizing, cooling demand, fuel exposure, risk flags, one-line diagram, and a client-ready PDF.',
+    outcome: 'A persisted planning brief with load, schedule, voltage intent, risk flags, and a draft PDF ready for equipment selection.',
     to: '/scenarios/temp-power',
     icon: Plug,
     steps: [
       'Choose a single load or build a multi-facility base camp.',
       'Enter measured kW, site conditions, duration, and service assumptions.',
       'Review hidden-load, motor-starting, containment, and staffing risks.',
-      'Export the recommended configuration and assumptions for engineering review.',
+      'Add the verified requirement to Build Estimate, then select actual equipment and commercial terms.',
+    ],
+  },
+  {
+    title: 'Temporary Heating',
+    objective: 'Turn an enclosed-space heating outcome into an electric or propane planning requirement.',
+    useWhen: 'Planning temporary occupied-space heat, freeze protection, curing, drying, or an enclosed work area.',
+    example: 'Try a 40 × 10 × 50 ft enclosure, 30°F outdoor temperature, and a 70°F target.',
+    outcome: 'Heating capacity, heater quantity, propane allowance or electric demand, auxiliary power, and a traceable draft PDF.',
+    to: '/hvac/heating',
+    icon: Thermometer,
+    steps: [
+      'Capture the heating outcome, dimensions, exposure, temperatures, and runtime.',
+      'Choose propane or electric heat and enter the published output of the intended heater class.',
+      'Review fuel or electrical demand and answer the equipment-release questions.',
+      'Add the requirement to Build Estimate for model selection, logistics, rates, and approval.',
     ],
   },
   {
@@ -215,7 +231,7 @@ export default function LearnHubPage() {
         </div>
         <h1 className="mt-4 text-3xl font-bold tracking-tight text-text">Plan the system, expose the assumptions, review the risk.</h1>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-text-muted">
-          The objective is not to replace engineering design. EMaaS.pro turns early field
+          The objective is not to replace engineering design. {APP_BRAND.productName} turns early field
           information into a transparent planning estimate that teams can challenge,
           refine, and hand to a licensed professional engineer.
         </p>

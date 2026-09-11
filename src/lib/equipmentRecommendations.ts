@@ -79,7 +79,7 @@ export const BESS_FLEET: BessFleetUnit[] = [
 
 export function normalizeRateToDaily(value: number, period: 'daily' | 'weekly' | 'monthly'): number {
   if (period === 'weekly') return value / 7
-  if (period === 'monthly') return value / 30
+  if (period === 'monthly') return value / 28
   return value
 }
 

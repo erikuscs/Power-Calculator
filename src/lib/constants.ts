@@ -21,7 +21,7 @@ export const LOW_VOLTAGE_OPTIONS = [
 export const RATE_PERIOD_OPTIONS = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
+  { value: 'monthly', label: 'Monthly (28-day cycle)' },
 ] as const
 export type RatePeriod = (typeof RATE_PERIOD_OPTIONS)[number]['value']
 

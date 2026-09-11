@@ -1,42 +1,59 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/sora-latin-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/source-sans-3-latin-var.woff2") format("woff2");
+}
+
 @theme {
-  /* Vault26 Playbook palette — near-black base, gold accent, coral warnings.
-     signal-blue/steel retained for chart + diagram accents. */
-  --color-sg-900: #0b0e14;
-  --color-sg-800: #111827;
-  --color-sg-700: #1a1f2e;
-  --color-sg-600: #242a38;
-  --color-sg-500: #2d3548;
+  /* Existing shell semantics mapped to the approved SG digital palette. */
+  --color-sg-900: #0e151c;
+  --color-sg-800: #141d26;
+  --color-sg-700: #1e2a38;
+  --color-sg-600: #34495e;
+  --color-sg-500: #5b6673;
 
-  --color-accent-600: #a67d2e;
-  --color-accent-500: #c89a3c;
-  --color-accent-400: #d4ad52;
-  --color-accent-300: #e8c66a;
+  --color-accent-600: #8e4f1b;
+  --color-accent-500: #c27a2c;
+  --color-accent-400: #d88a34;
+  --color-accent-300: #d88a34;
 
-  --color-signal-blue: #38bdf8;
-  --color-signal-blue-muted: #164e63;
-  --color-steel-400: #94a3b8;
+  --color-signal-blue: #abe1fa;
+  --color-signal-blue-muted: #34495e;
+  --color-steel-400: #c5c6c7;
 
-  --color-coral-500: #e07460;
-  --color-coral-400: #e8897a;
+  --color-coral-500: #d88a34;
+  --color-coral-400: #d88a34;
 
-  --color-text: #f1f5f9;
-  --color-text-muted: #9ca3af;
-  --color-text-dim: #6b7280;
+  --color-text: #e9e4d6;
+  --color-text-muted: #c5c6c7;
+  --color-text-dim: #c5c6c7;
 
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: #42d392;
+  --color-warning: #c27a2c;
+  --color-error: #d88a34;
+  --color-info: #abe1fa;
 
+  --color-surface: #1e2a38;
+  --color-surface-alt: #141d26;
 
-  --color-surface: #1a1f2e;
-  --color-surface-alt: #111827;
+  --font-sans: "Source Sans 3", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Sora", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--color-sg-900);
   color: var(--color-text);
   margin: 0;
@@ -47,6 +64,15 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
 }
 
 input[type="number"]::-webkit-inner-spin-button,

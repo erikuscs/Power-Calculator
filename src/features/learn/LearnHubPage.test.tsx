@@ -12,10 +12,11 @@ describe('LearnHubPage', () => {
     )
 
     expect(screen.getByText(/objective is not to replace engineering design/i)).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /start .* tutorial/i })).toHaveLength(4)
+    expect(screen.getAllByRole('link', { name: /start .* tutorial/i })).toHaveLength(5)
     expect(screen.getByRole('link', { name: /start temporary power & cooling tutorial/i })).toHaveAttribute(
       'href',
       '/scenarios/temp-power',
     )
+    expect(screen.getByRole('link', { name: /start temporary heating tutorial/i })).toHaveAttribute('href', '/hvac/heating')
   })
 })

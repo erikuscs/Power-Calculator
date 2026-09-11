@@ -7,7 +7,7 @@ interface RadioGroupProps {
 
 export function RadioGroup({ label, value, onChange, options }: RadioGroupProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="group" aria-label={label}>
       <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{label}</span>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
@@ -15,6 +15,7 @@ export function RadioGroup({ label, value, onChange, options }: RadioGroupProps)
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
+            aria-pressed={value === opt.value}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               value === opt.value
                 ? 'bg-accent-500 text-sg-900'

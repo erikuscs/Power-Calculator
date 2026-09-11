@@ -2,15 +2,17 @@ import { PdfDocument, PdfSection, PdfTable, PdfWarning } from './PdfReportShell'
 
 interface GenericPdfProps {
   title: string
+  clientName?: string
+  projectName?: string
   inputs: { label: string; value: string }[]
   results: { label: string; value: string; unit?: string }[]
   formulaSteps?: { label: string; result: string }[]
   warnings?: string[]
 }
 
-export function GenericCalculatorPdf({ title, inputs, results, formulaSteps, warnings }: GenericPdfProps) {
+export function GenericCalculatorPdf({ title, clientName, projectName, inputs, results, formulaSteps, warnings }: GenericPdfProps) {
   return (
-    <PdfDocument title={title}>
+    <PdfDocument title={title} clientName={clientName} projectName={projectName}>
       <PdfSection title="Input Parameters">
         <PdfTable
           headers={['Parameter', 'Value']}

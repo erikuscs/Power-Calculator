@@ -11,6 +11,9 @@ describe('buildFieldRiskReview', () => {
       ambientTemp: 95,
       targetTemp: 72,
       durationHours: 24 * 974,
+      includeCooling: true,
+      coolingCapacityTons: 80,
+      coolingElectricalKw: 96,
       altitude: 0,
       powerFactor: 0.8,
       serviceIntervalDays: 10,
@@ -48,9 +51,27 @@ describe('buildFieldRiskReview', () => {
     expect(review.rfis).toEqual(expect.arrayContaining([
       expect.stringContaining('RV'),
       expect.stringContaining('compressor'),
-      expect.stringContaining('air distribution'),
       expect.stringContaining('water heating'),
     ]))
-    expect(review.reportNotes.some((note) => note.includes('easy-button'))).toBe(true)
+    expect(review.reportNotes.some((note) => note.includes('planning review'))).toBe(true)
+  })
+
+  it('keeps cooling electrical demand open when only thermal capacity is known', () => {
+    const review = buildFieldRiskReview({
+      inputs: { ...defaultTempPowerRiskInputs, airDistribution: 'known' },
+      totalLoadKw: 200,
+      coolingKw: 0,
+      totalWithCoolingKw: 200,
+      powerFactor: 0.8,
+      includeCooling: true,
+      includesRv: false,
+    })
+
+    expect(review.rfis).toEqual(expect.arrayContaining([
+      expect.stringContaining('cooling equipment schedule'),
+    ]))
+    expect(review.reportNotes).toEqual(expect.arrayContaining([
+      expect.stringContaining('not converted into generator demand'),
+    ]))
   })
 })

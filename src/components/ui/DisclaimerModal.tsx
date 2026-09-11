@@ -24,7 +24,7 @@ export function DisclaimerModal() {
         aria-describedby="emaas-disclaimer-description"
         className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-sg-600/40 bg-sg-800 p-6 shadow-2xl sm:p-8"
       >
-        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-3">{APP_BRAND.productName}</p>
+        <p className="text-[10px] font-bold text-accent-500 uppercase tracking-[0.15em] mb-3">{APP_BRAND.firstReference}</p>
         <h2 id="emaas-disclaimer-title" className="text-xl font-bold text-text mb-4 tracking-tight leading-tight">
           Energy Management as a Service planning,<br />{' '}not engineering design.
         </h2>
