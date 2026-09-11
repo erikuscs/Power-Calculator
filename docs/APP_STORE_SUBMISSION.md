@@ -1,100 +1,19 @@
-# EMaaS.pro — iOS App Store Submission Guide
+# EMaaS Pro App Store Submission Boundary
 
-> **2026-07-08:** Apple membership is paid and the privacy page is live.
-> For the current click-by-click path to submission (with all listing copy
-> ready to paste), use **`docs/MORNING-CHECKLIST.md`** — it reflects exactly
-> where the Mac Mini setup stopped. This file remains the background reference.
+Status: `REFERENCE / VERIFY CURRENT APPLE REQUIREMENTS BEFORE USE`
 
-The app is wrapped with Capacitor 8 (`ios/` folder). The web app is unchanged and
-still deploys to Azure SWA at emaas.pro; the iOS app is built from the same codebase.
+The iOS source is under `ios/` and uses Capacitor with bundle identifier `pro.emaas.app`. The repository does not store Apple credentials, signing authority, submission approval, or an assertion that an earlier App Store Connect state remains current.
 
-## What is already done
+Use [NATIVE-RELEASE-CHECKLIST.md](NATIVE-RELEASE-CHECKLIST.md) for the repository-side preparation sequence. At submission time, use current official Apple documentation and the live App Store Connect form as the authority for required screenshots, metadata, privacy disclosures, age rating, encryption, distribution regions, trader status, and review questions.
 
-- Capacitor 8 iOS project at `ios/App/App.xcodeproj` (Swift Package Manager, no CocoaPods)
-- Bundle ID: `pro.emaas.app`, display name **EMaaS.pro**
-- App icons + splash screens generated from brand assets (`assets/` → regenerate with
-  `npx @capacitor/assets generate --ios`)
-- Safe-area (notch/home-indicator) CSS and `viewport-fit=cover`
-- Native PDF export: on iOS the report is written to the app cache and opened in the
-  share sheet (AirDrop, Mail, Files, print) instead of a browser download
-- Universal iPhone and iPad support
-- App privacy manifest declaring no tracking, collection, or required-reason API use
-- `ITSAppUsesNonExemptEncryption = NO` (standard HTTPS only → skips export-compliance
-  questionnaire on every build)
-- Status bar set to light content to match the dark theme
+The following claims must be reverified against the exact build before they appear in listing copy or privacy answers:
 
-## Day-to-day build commands
+- offline operation;
+- number and availability of calculators and workflows;
+- local-only storage and absence of analytics or tracking;
+- PDF export behavior;
+- supported iPhone/iPad layouts;
+- support and privacy URLs;
+- professional-review limitations.
 
-```bash
-npm run build          # build web assets
-npx cap sync ios       # copy into iOS project
-npx cap open ios       # open in Xcode
-```
-
-## One-time steps only you can do
-
-### 1. Apple Developer Program ($99/year)
-Enroll at https://developer.apple.com/programs/enroll — as an organization
-(Sustainable Gaps) if you want the seller name to show the company; that requires a
-D-U-N-S number. Individual enrollment is faster if you're fine with "Erik Herring"
-as the seller.
-
-### 2. Signing (in Xcode)
-Open the project (`npx cap open ios`), select the **App** target → Signing &
-Capabilities → check *Automatically manage signing* → pick your team. Xcode creates
-the certificates and provisioning profile for you.
-
-### 3. App Store Connect setup (https://appstoreconnect.apple.com)
-- **New App**: platform iOS, bundle ID `pro.emaas.app`, name "EMaaS.pro Power Console"
-  (App Store names must be unique; have "EMaaS Power Console" as fallback)
-- **Category**: Utilities (primary), Productivity (secondary)
-- **Privacy policy URL** (required): host one at https://emaas.pro/privacy —
-  the app stores everything locally on-device and collects nothing, so the policy is short
-- **Support URL**: https://emaas.pro
-- **App Privacy questionnaire**: answer "Data Not Collected" (true: no analytics,
-  no accounts, no network calls after load)
-- **Age rating**: complete Apple's current questionnaire; with all content answers
-  set to "None," the expected rating is 4+
-- **Copyright**: 2026 Sustainable Gaps LLC
-- **EU distribution**: complete App Store Connect trader-status verification if the
-  app will be available in the European Union
-- **Price**: Free (or as desired)
-
-### 4. Screenshots (required sizes)
-Take these in the iOS Simulator (`Cmd+S` saves a screenshot):
-- **iPhone:** use the latest 6.9" iPhone Pro Max simulator
-- **iPad:** use the latest 13" iPad Pro simulator
-
-Because the app is universal, App Store Connect requires an iPhone set and an iPad
-set. Upload the simulator-native PNGs without resizing; App Store Connect recognizes
-the exact device dimensions.
-
-Recommended shots: dashboard, one wizard (Temp Power), a calculator with results,
-and the PDF share sheet. Capture the same four screens on both device families.
-
-### 5. Upload and submit
-Build and upload with Xcode 26 or newer. In Xcode: Product → Archive →
-Distribute App → App Store Connect → Upload.
-Then in App Store Connect select the build, fill in the "What's New" text, and
-Submit for Review. First reviews typically take 1–3 days.
-
-## Review-rejection insurance (Guideline 4.2 "minimum functionality")
-
-Apple sometimes rejects thin web wrappers. This app has a strong case — make it
-explicit in the **App Review notes** field:
-- Fully offline: all 20+ calculators work in airplane mode (PWA precache + local code)
-- Native share-sheet PDF report generation
-- Built-in tutorials explain each workflow's objective, assumptions, worked starting
-  point, expected output, and engineering-review boundary
-- No account, no web redirect — it is not a repackaged website view of emaas.pro
-  (the site itself is noindexed; the app is the product)
-
-If rejected anyway, the usual escalation is to add 1–2 more native touches
-(haptics on calculate, home-screen quick actions) and resubmit.
-
-## Privacy policy starter text (host at emaas.pro/privacy)
-
-> EMaaS.pro Power Console does not collect, store, or transmit any personal data.
-> All calculations and saved scenarios are stored locally on your device and never
-> leave it. The app contains no analytics, no advertising, no user accounts, and
-> makes no network requests containing user data. Contact: erik.herring@sustainablegaps.com
+Do not archive, upload, or submit until the exact native icon and launch-screen candidate has passed target-device proof and the central SG brand release decision is recorded.

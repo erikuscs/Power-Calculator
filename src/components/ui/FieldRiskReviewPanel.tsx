@@ -25,7 +25,7 @@ const rvOptions: { value: RvServicePosture; label: string }[] = [
 ]
 
 function confidenceClass(band: FieldRiskReview['confidenceBand']) {
-  if (band === 'high') return 'border-success/40 bg-success/10 text-success'
+  if (band === 'high') return 'border-signal-blue/40 bg-signal-blue/10 text-signal-blue'
   if (band === 'medium') return 'border-warning/40 bg-warning/10 text-warning'
   return 'border-coral-500/40 bg-coral-500/10 text-coral-400'
 }

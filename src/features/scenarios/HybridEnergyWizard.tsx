@@ -32,7 +32,7 @@ const coverageStatusLabel = {
 } as const
 
 const coverageStatusClass = {
-  '24_7_ready': 'border-success/35 bg-success/10 text-success',
+  '24_7_ready': 'border-signal-blue/35 bg-signal-blue/10 text-signal-blue',
   conditional: 'border-warning/35 bg-warning/10 text-warning',
   not_feasible: 'border-error/35 bg-error/10 text-error',
 } as const
@@ -156,7 +156,7 @@ export default function HybridEnergyWizard() {
           ? 'No reserve'
           : `${fmt(results.coverage.estimatedRechargeHours, 1)} hrs`
         const statusTone: SpecSummaryTone = primaryScenario.status === '24_7_ready'
-          ? fallbackScenario?.status === '24_7_ready' ? 'success' : 'info'
+          ? 'info'
           : primaryScenario.status === 'conditional' ? 'warning' : 'warning'
         const statusLabel = primaryScenario.status === '24_7_ready'
           ? fallbackScenario?.status === '24_7_ready' ? 'Full 24/7 fallback ready' : '24/7 hybrid ready'
@@ -445,7 +445,7 @@ export default function HybridEnergyWizard() {
                 const zonesTotal = zones.reduce((s, z) => s + z.kw, 0)
                 const diff = Math.abs(zonesTotal - inputs.peakLoadKw)
                 return (
-                  <div className={`text-sm px-3 py-2 rounded-lg border ${diff > 1 ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-success/10 border-success/30 text-success'}`}>
+                  <div className={`text-sm px-3 py-2 rounded-lg border ${diff > 1 ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-signal-blue/10 border-signal-blue/30 text-signal-blue'}`}>
                     Zones total: {fmtInt(zonesTotal)} kW vs Peak Load: {fmtInt(inputs.peakLoadKw)} kW
                     {diff > 1 && <span className="ml-2 font-medium">(difference: {fmtInt(diff)} kW)</span>}
                   </div>
@@ -550,7 +550,7 @@ export default function HybridEnergyWizard() {
                   <div
                     key={ma.id}
                     className={`flex items-center justify-between p-3 rounded-lg text-sm ${
-                      ma.assignment === 'generator' ? 'bg-error/10 border border-error/30' : 'bg-success/10 border border-success/30'
+                      ma.assignment === 'generator' ? 'bg-error/10 border border-error/30' : 'bg-signal-blue/10 border border-signal-blue/30'
                     }`}
                   >
                     <div>
@@ -561,7 +561,7 @@ export default function HybridEnergyWizard() {
                       {ma.assignment === 'generator' ? (
                         <><AlertCircle size={14} className="text-error" /><span className="text-error font-medium">Generator Circuit</span></>
                       ) : (
-                        <><Shield size={14} className="text-success" /><span className="text-success font-medium">BESS Compatible</span></>
+                        <><Shield size={14} className="text-signal-blue" /><span className="text-signal-blue font-medium">BESS Compatible</span></>
                       )}
                     </div>
                   </div>
@@ -581,7 +581,7 @@ export default function HybridEnergyWizard() {
                     <th className="text-left py-2 text-text-muted">Metric</th>
                     <th className="text-right py-2 text-text-muted">All Generator</th>
                     <th className="text-right py-2 text-accent-400">Hybrid (Gen + BESS)</th>
-                    <th className="text-right py-2 text-success">Cost Reduction</th>
+                    <th className="text-right py-2 text-signal-blue">Cost Reduction</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -589,36 +589,36 @@ export default function HybridEnergyWizard() {
                     <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />Daily Fuel</td>
                     <td className="text-right text-text">{fmtInt(results.allGenFuelPerDay)} gal</td>
                     <td className="text-right text-accent-300">{fmtInt(results.hybridFuelPerDay)} gal</td>
-                    <td className="text-right text-success">{fmtInt(results.dailyFuelReduction)} gal/day</td>
+                    <td className="text-right text-signal-blue">{fmtInt(results.dailyFuelReduction)} gal/day</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />30-Day Fuel</td>
                     <td className="text-right text-text">{fmtInt(results.allGenFuel30Day)} gal</td>
                     <td className="text-right text-accent-300">{fmtInt(results.hybridFuelPerDay * 30)} gal</td>
-                    <td className="text-right text-success">{fmtInt(results.dailyFuelReduction * 30)} gal</td>
+                    <td className="text-right text-signal-blue">{fmtInt(results.dailyFuelReduction * 30)} gal</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><DollarSign size={14} className="inline mr-1" />30-Day Total Cost</td>
                     <td className="text-right text-text">{fmtCurrency(results.allGenCost30Day)}</td>
                     <td className="text-right text-accent-300">{fmtCurrency(results.hybridCost30Day)}</td>
-                    <td className="text-right text-success font-semibold">{fmtCurrency(results.costSavings30Day)}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(results.costSavings30Day)}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text font-semibold">Estimated Fuel Cost Reduction</td>
                     <td className="text-right">—</td>
                     <td className="text-right text-accent-300">{fmtInt(results.totalFuelSavingsGal)} gal</td>
-                    <td className="text-right text-success font-semibold">{fmtCurrency(results.totalFuelSavingsDollars)}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(results.totalFuelSavingsDollars)}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-success" />CO2 Avoided</td>
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Avoided</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-success">{fmtInt(results.co2AvoidedLbs)} lbs</td>
+                    <td className="text-right text-signal-blue">{fmtInt(results.co2AvoidedLbs)} lbs</td>
                     <td></td>
                   </tr>
                   <tr>
-                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-success" />CO2 Avoided</td>
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Avoided</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-success font-semibold">{fmt(results.co2AvoidedTons, 1)} tons</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmt(results.co2AvoidedTons, 1)} tons</td>
                     <td></td>
                   </tr>
                 </tbody>

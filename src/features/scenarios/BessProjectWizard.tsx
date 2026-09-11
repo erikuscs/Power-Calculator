@@ -273,7 +273,7 @@ export default function BessProjectWizard() {
                     <tr key={row.year} className="border-b border-sg-700">
                       <td className="py-2">{row.year}</td>
                       <td className="text-right">{fmtCurrency(row.revenue)}</td>
-                      <td className={`text-right ${row.cumulative >= 0 ? 'text-success' : 'text-error'}`}>
+                      <td className={`text-right ${row.cumulative >= 0 ? 'text-signal-blue' : 'text-error'}`}>
                         {fmtCurrency(row.cumulative)}
                       </td>
                       <td className="text-right">{fmtCurrency(row.npv)}</td>

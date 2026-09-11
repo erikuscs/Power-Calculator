@@ -48,7 +48,7 @@ export function EquipmentRecommendationPanel({ recommendation }: EquipmentRecomm
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1.4fr]">
         <div className={`rounded-lg border px-4 py-3 text-sm ${
           recommendation.fuelCell.fit === 'strong'
-            ? 'border-success/35 bg-success/10 text-success'
+            ? 'border-signal-blue/35 bg-signal-blue/10 text-signal-blue'
             : recommendation.fuelCell.fit === 'possible'
               ? 'border-warning/35 bg-warning/10 text-warning'
               : 'border-sg-600/40 bg-sg-900/60 text-text-muted'

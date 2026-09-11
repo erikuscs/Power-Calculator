@@ -24,25 +24,39 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: [
+        'brand/favicon.ico',
+        'brand/favicon.svg',
+        'brand/favicon-16x16.png',
+        'brand/favicon-32x32.png',
+        'brand/favicon-48x48.png',
+        'brand/favicon-96x96.png',
+        'brand/apple-touch-icon.png',
+      ],
       manifest: {
-        name: 'EMaaS.pro Power Console - Sustainable Gaps',
-        short_name: 'EMaaS.pro',
+        name: 'Energy Management as a Service (EMaaS) Pro — Sustainable Gaps',
+        short_name: 'EMaaS Pro',
         description:
           'Energy Management as a Service tools for BESS, generator, cooling, and hybrid energy planning',
-        theme_color: '#1a1f2e',
-        background_color: '#1a1f2e',
+        theme_color: '#0E151C',
+        background_color: '#0E151C',
         display: 'standalone',
         icons: [
           {
-            src: 'favicon.svg',
+            src: 'brand/android-chrome-192x192.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
           },
           {
-            src: 'favicon.svg',
+            src: 'brand/android-chrome-512x512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
+          },
+          {
+            src: 'brand/maskable-icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

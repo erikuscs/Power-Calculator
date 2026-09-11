@@ -133,6 +133,15 @@ async function run() {
     await expectText(page, /Voltage/i, 'voltage requirement step')
     await expectText(page, /Save Draft/i, 'draft PDF save action')
     await expectText(page, /Share Draft/i, 'draft PDF share action')
+    const [planningBriefDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Save Draft' }).click(),
+    ])
+    if (!planningBriefDownload.suggestedFilename().toLowerCase().endsWith('.pdf')) {
+      throw new Error('Temporary-power planning brief did not download as a PDF')
+    }
+    await planningBriefDownload.createReadStream()
+    await expectText(page, /Draft planning brief saved/i, 'browser PDF generation with controlled report fonts')
 
     await page.goto(`${baseUrl}/learn`, { waitUntil: 'networkidle' })
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })

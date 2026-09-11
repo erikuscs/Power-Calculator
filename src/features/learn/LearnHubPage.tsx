@@ -194,7 +194,7 @@ function WorkflowTutorialCard({ tutorial, index }: { tutorial: WorkflowTutorial;
       <ol className="space-y-2">
         {tutorial.steps.map((step, stepIndex) => (
           <li key={step} className="flex gap-3 text-sm text-text-muted">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sg-700 text-xs font-bold text-accent-300">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sg-700 text-xs font-bold text-accent-400">
               {stepIndex + 1}
             </span>
             <span className="pt-0.5 leading-relaxed">{step}</span>
@@ -202,8 +202,8 @@ function WorkflowTutorialCard({ tutorial, index }: { tutorial: WorkflowTutorial;
         ))}
       </ol>
 
-      <div className="flex items-start gap-2 rounded-lg border border-success/25 bg-success/5 p-3 text-sm">
-        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" />
+      <div className="flex items-start gap-2 rounded-lg border border-signal-blue/25 bg-signal-blue/5 p-3 text-sm">
+        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-signal-blue" />
         <p className="text-text-muted">
           <span className="font-semibold text-text">Expected outcome:</span> {tutorial.outcome}
         </p>

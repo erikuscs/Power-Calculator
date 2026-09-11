@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'pro.emaas.app',
-  appName: 'EMaaS.pro',
+  appName: 'EMaaS Pro',
   webDir: 'dist',
   ios: {
     contentInset: 'automatic',

@@ -1,6 +1,15 @@
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Document, Font, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { ReactNode } from 'react'
 import { APP_BRAND } from '../../lib/brand'
+
+const isTestEnvironment = import.meta.env.MODE === 'test'
+const headingFontFamily = isTestEnvironment ? 'Helvetica' : 'Sora'
+const bodyFontFamily = isTestEnvironment ? 'Helvetica' : 'Source Sans 3'
+
+if (!isTestEnvironment) {
+  Font.register({ family: 'Sora', src: '/fonts/Sora-Variable.ttf' })
+  Font.register({ family: 'Source Sans 3', src: '/fonts/SourceSans3-Variable.ttf' })
+}
 
 // ── Brand Tokens ───────────────────────────────────────────────────
 const BRAND = {
@@ -21,7 +30,7 @@ const s = StyleSheet.create({
   page: {
     backgroundColor: BRAND.darkNavy,
     padding: 40,
-    fontFamily: 'Helvetica',
+    fontFamily: bodyFontFamily,
     fontSize: 10,
     color: BRAND.text,
   },
@@ -33,7 +42,8 @@ const s = StyleSheet.create({
   },
   headerCompany: {
     fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: headingFontFamily,
+    fontWeight: 700,
     color: BRAND.copper,
     marginBottom: 2,
   },
@@ -79,7 +89,8 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: headingFontFamily,
+    fontWeight: 700,
     color: BRAND.copper,
     marginBottom: 6,
     borderBottomWidth: 1,
@@ -104,7 +115,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   tableHeaderCell: {
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: headingFontFamily,
+    fontWeight: 700,
     fontSize: 9,
     color: BRAND.copper,
     paddingVertical: 4,
@@ -129,7 +141,8 @@ const s = StyleSheet.create({
   },
   kvValue: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: bodyFontFamily,
+    fontWeight: 700,
     color: BRAND.text,
     width: '55%',
   },
@@ -167,7 +180,7 @@ export function PdfDocument({ title, clientName, projectName, date, children }: 
       title={title}
       author="Sustainable Gaps"
       subject={projectName ? `${projectName} - EMaaS planning report` : 'EMaaS planning report'}
-      creator="Sustainable Gaps EMaaS.pro"
+      creator="Sustainable Gaps EMaaS Pro"
       keywords="temporary power, energy management, generator planning, electrical distribution"
       language="en-US"
     >
@@ -189,7 +202,7 @@ export function PdfDocument({ title, clientName, projectName, date, children }: 
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerDisclaimer}>
-            EMaaS.pro calculations are estimates for reference only. Always verify with a licensed professional engineer.
+            EMaaS Pro calculations are estimates for reference only. Always verify with a licensed professional engineer.
           </Text>
           <Text style={s.footerPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
