@@ -71,7 +71,7 @@ function CalcGrid({ title, items, id }: { title: string; items: CalcItem[]; id?:
 }
 
 const metricTone: Record<EmaasOutcomeMetric['tone'], string> = {
-  gold: 'border-accent-500/35 bg-accent-500/10 text-accent-300',
+  copper: 'border-accent-500/35 bg-accent-500/10 text-accent-300',
   blue: 'border-signal-blue/35 bg-signal-blue/10 text-signal-blue',
   coral: 'border-coral-500/35 bg-coral-500/10 text-coral-400',
   slate: 'border-steel-400/30 bg-steel-400/10 text-steel-400',

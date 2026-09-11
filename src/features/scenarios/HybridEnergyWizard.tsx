@@ -481,13 +481,13 @@ export default function HybridEnergyWizard() {
 
             <ChartFrame className="mt-4" height={80}>
               <BarChart data={capacityBarData} layout="vertical" barSize={30}>
-                  <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: '#9ca3af', fontSize: 11 }} width={60} />
-                  <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
+                  <XAxis type="number" tick={{ fill: '#C5C6C7', fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#C5C6C7', fontSize: 11 }} width={60} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }} />
                   <Legend />
-                  <Bar dataKey="base" name="Gen (Base)" stackId="a" fill="#38bdf8" />
-                  <Bar dataKey="peak" name="BESS (Peak)" stackId="a" fill="#c89a3c" />
-                  <Bar dataKey="reserve" name="Redundancy" stackId="a" fill="#6b7280" />
+                  <Bar dataKey="base" name="Gen (Base)" stackId="a" fill="#ABE1FA" />
+                  <Bar dataKey="peak" name="BESS (Peak)" stackId="a" fill="#C27A2C" />
+                  <Bar dataKey="reserve" name="Redundancy" stackId="a" fill="#5B6673" />
                 </BarChart>
             </ChartFrame>
           </Card>
@@ -630,13 +630,13 @@ export default function HybridEnergyWizard() {
                 <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Fuel Comparison</h4>
                 <ChartFrame height={250}>
                   <BarChart data={fuelComparisonData} barGap={8}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
-                    <XAxis dataKey="metric" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#34495E" />
+                    <XAxis dataKey="metric" tick={{ fill: '#C5C6C7', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#C5C6C7', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }} />
                     <Legend />
-                    <Bar dataKey="allGen" name="All Generator" fill="#e07460" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="hybrid" name="Hybrid" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="allGen" name="All Generator" fill="#D88A34" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="hybrid" name="Hybrid" fill="#ABE1FA" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartFrame>
               </div>
@@ -645,11 +645,11 @@ export default function HybridEnergyWizard() {
                 <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Cost Reduction</h4>
                 <ChartFrame height={250}>
                   <AreaChart data={cumulativeSavingsData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
-                    <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }} />
-                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Reduction (gal)" stroke="#c89a3c" fill="#c89a3c" fillOpacity={0.2} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#34495E" />
+                    <XAxis dataKey="date" tick={{ fill: '#C5C6C7', fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fill: '#C5C6C7', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }} />
+                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Reduction (gal)" stroke="#C27A2C" fill="#C27A2C" fillOpacity={0.2} />
                   </AreaChart>
                 </ChartFrame>
               </div>

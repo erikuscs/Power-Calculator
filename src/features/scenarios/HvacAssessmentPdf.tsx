@@ -101,7 +101,7 @@ export function HvacAssessmentPdfDoc({
 
       {/* Disclaimer */}
       <PdfSection title="Disclaimer">
-        <Text style={{ fontSize: 8, color: '#9ca3af' }}>
+        <Text style={{ fontSize: 8, color: '#C5C6C7' }}>
           These calculations are estimates for reference only. Actual HVAC performance depends on site conditions, equipment specifications, and environmental factors. Final sizing must be verified by a licensed professional engineer. Sustainable Gaps is not responsible for equipment failures, safety incidents, or cost overruns resulting from the use of these calculations without professional engineering review.
         </Text>
       </PdfSection>

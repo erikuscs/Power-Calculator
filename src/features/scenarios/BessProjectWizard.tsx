@@ -227,28 +227,28 @@ export default function BessProjectWizard() {
             <CardHeader title="Cumulative Cash Flow" subtitle="Break-even visualization over analysis period" />
             <ChartFrame height={300}>
               <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3548" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#34495E" />
                   <XAxis
                     dataKey="year"
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
-                    label={{ value: 'Year', position: 'insideBottom', offset: -4, fill: '#9ca3af', fontSize: 12 }}
+                    tick={{ fill: '#C5C6C7', fontSize: 12 }}
+                    label={{ value: 'Year', position: 'insideBottom', offset: -4, fill: '#C5C6C7', fontSize: 12 }}
                   />
                   <YAxis
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                    tick={{ fill: '#C5C6C7', fontSize: 12 }}
                     tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#242a38', border: '1px solid #2d3548', borderRadius: 8, color: '#f1f5f9' }}
+                    contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }}
                     formatter={(value: unknown) => [fmtCurrency(Number(value)), 'Cumulative']}
                     labelFormatter={(label: unknown) => `Year ${label}`}
                   />
-                  <ReferenceLine y={0} stroke="#38bdf8" strokeDasharray="3 3" />
+                  <ReferenceLine y={0} stroke="#ABE1FA" strokeDasharray="3 3" />
                   <Line
                     type="monotone"
                     dataKey="cumulative"
-                    stroke="#c89a3c"
+                    stroke="#C27A2C"
                     strokeWidth={2}
-                    dot={{ fill: '#c89a3c', r: 3 }}
+                    dot={{ fill: '#C27A2C', r: 3 }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>

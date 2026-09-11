@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npm run audit:production",
+    "build": "npm run audit:brand && tsc -b && vite build && npm run audit:production",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "node scripts/e2e-smoke.mjs",
+    "audit:brand": "node scripts/brand-asset-audit.mjs",
     "audit:production": "node scripts/production-artifact-audit.mjs",
     "test:watch": "vitest"
   },

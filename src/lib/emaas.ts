@@ -17,7 +17,7 @@ export interface EmaasOutcomeMetric {
   value: string
   context: string
   icon: LucideIcon
-  tone: 'gold' | 'blue' | 'coral' | 'slate'
+  tone: 'copper' | 'blue' | 'coral' | 'slate'
 }
 
 export interface EmaasOperatingVariable {
@@ -35,7 +35,7 @@ export const EMAAS_OUTCOME_METRICS: EmaasOutcomeMetric[] = [
     value: 'kW / kVA',
     context: 'capacity, phase, redundancy, transformer, and parallel-run exposure',
     icon: Gauge,
-    tone: 'gold',
+    tone: 'copper',
   },
   {
     label: 'Stored Energy',

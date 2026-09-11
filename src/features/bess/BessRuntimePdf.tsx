@@ -37,16 +37,16 @@ export function BessRuntimePdfDoc({ inputs, results, clientName, projectName }: 
       </PdfSection>
 
       <PdfSection title="Formula">
-        <Text style={{ fontSize: 9, color: '#9ca3af', marginBottom: 4 }}>
+        <Text style={{ fontSize: 9, color: '#C5C6C7', marginBottom: 4 }}>
           AmpHours = (kWh x 1000) / Voltage
         </Text>
-        <Text style={{ fontSize: 9, color: '#f1f5f9', marginBottom: 8 }}>
+        <Text style={{ fontSize: 9, color: '#F9FAFB', marginBottom: 8 }}>
           = ({inputs.kWh} x 1000) / {inputs.voltage} = {fv(results.ampHours)} Ah
         </Text>
-        <Text style={{ fontSize: 9, color: '#9ca3af', marginBottom: 4 }}>
+        <Text style={{ fontSize: 9, color: '#C5C6C7', marginBottom: 4 }}>
           Runtime = (AmpHours / Amps) x PowerFactor
         </Text>
-        <Text style={{ fontSize: 9, color: '#f1f5f9' }}>
+        <Text style={{ fontSize: 9, color: '#F9FAFB' }}>
           = ({fv(results.ampHours)} / {inputs.amps}) x {inputs.powerFactor} = {fv(results.runtime)} hrs
         </Text>
       </PdfSection>

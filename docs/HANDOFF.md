@@ -14,7 +14,9 @@ Canonical source: `/Users/sustainablegaps/Projects/emaas-pro`
 - Site Fit & One-Line links each electrical node to a dimensioned site block and customer explanation. Conservative two-dimensional packing includes access, exclusions, equipment, and service clearances; a constrained site produces a bounded power ceiling or a shape conflict rather than an area-only fit claim.
 - Zero requested load withholds equipment, transformer, cable, and fit conclusions. Step-up and step-down transformer language is direction-sensitive.
 - Independent cold review and focused regression review informed the corrections. The final third-party recheck reported no remaining P0-P2 findings in the reviewed Site Fit workflow and no interference with existing calculations.
+- Current SG brand reconciliation replaced the unregistered gold lightning favicon with the exact registered 96 px bridge icon, migrated active chart/diagram/PDF colors to the controlled copper, blue, slate, silver, bone, and white palette, and added a build-blocking checksum/retired-color audit. The header logo remains an exact registered derivative.
 - Release-candidate verification passed: 25 test files / 156 tests, ESLint, TypeScript/Vite production build, production artifact audit, and desktop/mobile E2E smoke checks. Browser review showed no console errors or warnings.
+- Application-level brand checks pass. The separate controlled-brand-tree release gate is still blocked by retired colors in two governed source-master SVGs outside this repository; brand-steward resolution and a passing rerun are required before channel release.
 - This checkpoint is prepared locally only. It has not been pushed, merged to `main`, deployed to Azure Static Web Apps, synchronized into a new native build, or accepted on a production device.
 
 ## 2026-08-22 Production Bundle Hardening

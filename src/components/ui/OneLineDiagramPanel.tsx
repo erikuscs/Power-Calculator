@@ -236,14 +236,14 @@ export function PrintableOneLine({
         >
           <defs>
             <marker id="one-line-dot" markerWidth="8" markerHeight="8" refX="4" refY="4">
-              <circle cx="4" cy="4" r="2.5" fill="#111827" />
+              <circle cx="4" cy="4" r="2.5" fill="#0E151C" />
             </marker>
           </defs>
 
-          <rect x="0" y="0" width={width} height={height} fill="#ffffff" />
+          <rect x="0" y="0" width={width} height={height} fill="#F9FAFB" />
 
-          <text x="28" y={compact ? 27 : 34} fontSize="18" fontWeight="700" fill="#111827">{diagram.title}</text>
-          {!compact && <text x="28" y="56" fontSize="10" fill="#4b5563">{clampText(diagram.caption, 140)}</text>}
+          <text x="28" y={compact ? 27 : 34} fontSize="18" fontWeight="700" fill="#0E151C">{diagram.title}</text>
+          {!compact && <text x="28" y="56" fontSize="10" fill="#5B6673">{clampText(diagram.caption, 140)}</text>}
 
           {!compact && diagram.stages.map((stage, index) => (
             <g key={stage.label}>
@@ -254,7 +254,7 @@ export function PrintableOneLine({
                 fontSize="10"
                 fontWeight="700"
                 letterSpacing="1.2"
-                fill="#6b7280"
+                fill="#5B6673"
               >
                 {stage.label.toUpperCase()}
               </text>
@@ -263,7 +263,7 @@ export function PrintableOneLine({
                 y1={compact ? 58 : 82}
                 x2={leftPad + index * columnWidth + 70}
                 y2={compact ? 58 : 82}
-                stroke="#d1d5db"
+                stroke="#E9E4D6"
                 strokeWidth="1"
               />
             </g>
@@ -283,7 +283,7 @@ export function PrintableOneLine({
                 <path
                   d={`M ${from.x + 42} ${from.y} H ${midX} V ${to.y} H ${to.x - 42}`}
                   fill="none"
-                  stroke={isSignal ? '#6b7280' : '#111827'}
+                  stroke={isSignal ? '#5B6673' : '#0E151C'}
                   strokeWidth={isSignal ? '1.4' : '2'}
                   strokeDasharray={isSignal ? '6 5' : undefined}
                   markerStart={isSignal ? undefined : 'url(#one-line-dot)'}
@@ -295,7 +295,7 @@ export function PrintableOneLine({
                     y={labelY}
                     textAnchor="middle"
                     fontSize="8"
-                    fill="#4b5563"
+                    fill="#5B6673"
                   >
                     {clampText(edge.label, 28)}
                   </text>
@@ -307,14 +307,14 @@ export function PrintableOneLine({
           {placements.map((placement) => (
             <g key={placement.node.id}>
               <StandardSymbol placement={placement} />
-              <text x={placement.x} y={placement.y + 52} textAnchor="middle" fontSize={compact ? 12 : 10} fontWeight="700" fill="#111827">
+              <text x={placement.x} y={placement.y + 52} textAnchor="middle" fontSize={compact ? 12 : 10} fontWeight="700" fill="#0E151C">
                 {clampText(placement.node.label, 24)}
               </text>
-              <text x={placement.x} y={placement.y + 67} textAnchor="middle" fontSize={compact ? 9 : 8} fill="#4b5563">
+              <text x={placement.x} y={placement.y + 67} textAnchor="middle" fontSize={compact ? 9 : 8} fill="#5B6673">
                 {clampText(placement.node.detail, 34)}
               </text>
               {placement.node.meta && !compact && (
-                <text x={placement.x} y={placement.y + 81} textAnchor="middle" fontSize="7" fill="#6b7280">
+                <text x={placement.x} y={placement.y + 81} textAnchor="middle" fontSize="7" fill="#5B6673">
                   {clampText(placement.node.meta, 38)}
                 </text>
               )}
@@ -323,7 +323,7 @@ export function PrintableOneLine({
 
           {!compact && <Legend x={28} y={height - 86} />}
           {!compact && (
-            <text x="28" y={height - 18} fontSize="8" fill="#6b7280">
+            <text x="28" y={height - 18} fontSize="8" fill="#5B6673">
               Planning one-line only. Final conductor sizing, OCPD ratings, grounding, fault current, protection settings, selective coordination, and labels require licensed engineering review.
             </text>
           )}
@@ -358,8 +358,8 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'generator') {
     return (
       <g>
-        <circle cx={x} cy={y} r="28" fill="#fff" stroke="#111827" strokeWidth="2.5" />
-        <text x={x} y={y + 6} textAnchor="middle" fontSize="20" fontWeight="700" fill="#111827">G</text>
+        <circle cx={x} cy={y} r="28" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2.5" />
+        <text x={x} y={y + 6} textAnchor="middle" fontSize="20" fontWeight="700" fill="#0E151C">G</text>
         <Breaker x={x + 62} y={y} label="52G" />
         <Ground x={x} y={y + 34} />
         <DeviceTag x={x} y={y - 38} label={tag} />
@@ -370,13 +370,13 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'bess') {
     return (
       <g>
-        <rect x={x - 36} y={y - 22} width="44" height="44" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <line x1={x - 25} y1={y - 10} x2={x - 25} y2={y + 10} stroke="#111827" strokeWidth="2" />
-        <line x1={x - 14} y1={y - 14} x2={x - 14} y2={y + 14} stroke="#111827" strokeWidth="2" />
-        <text x={x - 14} y={y + 34} textAnchor="middle" fontSize="8" fill="#111827">BAT</text>
-        <rect x={x + 10} y={y - 22} width="44" height="44" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <path d={`M ${x + 17} ${y + 2} Q ${x + 26} ${y - 12} ${x + 35} ${y + 2} T ${x + 50} ${y + 2}`} fill="none" stroke="#111827" strokeWidth="1.8" />
-        <text x={x + 32} y={y + 34} textAnchor="middle" fontSize="8" fill="#111827">PCS</text>
+        <rect x={x - 36} y={y - 22} width="44" height="44" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+        <line x1={x - 25} y1={y - 10} x2={x - 25} y2={y + 10} stroke="#0E151C" strokeWidth="2" />
+        <line x1={x - 14} y1={y - 14} x2={x - 14} y2={y + 14} stroke="#0E151C" strokeWidth="2" />
+        <text x={x - 14} y={y + 34} textAnchor="middle" fontSize="8" fill="#0E151C">BAT</text>
+        <rect x={x + 10} y={y - 22} width="44" height="44" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+        <path d={`M ${x + 17} ${y + 2} Q ${x + 26} ${y - 12} ${x + 35} ${y + 2} T ${x + 50} ${y + 2}`} fill="none" stroke="#0E151C" strokeWidth="1.8" />
+        <text x={x + 32} y={y + 34} textAnchor="middle" fontSize="8" fill="#0E151C">PCS</text>
         <Disconnect x={x + 72} y={y} label="89B" />
         <Ground x={x - 14} y={y + 42} />
         <DeviceTag x={x} y={y - 38} label={tag} />
@@ -387,9 +387,9 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'controller') {
     return (
       <g>
-        <rect x={x - 42} y={y - 26} width="84" height="52" rx="4" fill="#fff" stroke="#111827" strokeWidth="2" strokeDasharray="5 4" />
-        <text x={x} y={y - 3} textAnchor="middle" fontSize="14" fontWeight="700" fill="#111827">EMS</text>
-        <text x={x} y={y + 13} textAnchor="middle" fontSize="8" fill="#4b5563">SOC / remote start</text>
+        <rect x={x - 42} y={y - 26} width="84" height="52" rx="4" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" strokeDasharray="5 4" />
+        <text x={x} y={y - 3} textAnchor="middle" fontSize="14" fontWeight="700" fill="#0E151C">EMS</text>
+        <text x={x} y={y + 13} textAnchor="middle" fontSize="8" fill="#5B6673">SOC / remote start</text>
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
     )
@@ -398,11 +398,11 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'transfer') {
     return (
       <g>
-        <rect x={x - 34} y={y - 28} width="68" height="56" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <path d={`M ${x - 20} ${y + 12} L ${x + 18} ${y - 12}`} stroke="#111827" strokeWidth="2.5" />
-        <circle cx={x - 22} cy={y + 14} r="3" fill="#111827" />
-        <circle cx={x + 20} cy={y - 14} r="3" fill="#111827" />
-        <text x={x} y={y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#111827">{node.label.toUpperCase().includes('PARALLEL') ? 'PAR' : 'ATS'}</text>
+        <rect x={x - 34} y={y - 28} width="68" height="56" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+        <path d={`M ${x - 20} ${y + 12} L ${x + 18} ${y - 12}`} stroke="#0E151C" strokeWidth="2.5" />
+        <circle cx={x - 22} cy={y + 14} r="3" fill="#0E151C" />
+        <circle cx={x + 20} cy={y - 14} r="3" fill="#0E151C" />
+        <text x={x} y={y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0E151C">{node.label.toUpperCase().includes('PARALLEL') ? 'PAR' : 'ATS'}</text>
         <DeviceTag x={x} y={y - 40} label={tag} />
       </g>
     )
@@ -411,10 +411,10 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'switchgear') {
     return (
       <g>
-        <line x1={x} y1={y - 36} x2={x} y2={y + 36} stroke="#111827" strokeWidth="7" />
+        <line x1={x} y1={y - 36} x2={x} y2={y + 36} stroke="#0E151C" strokeWidth="7" />
         <Breaker x={x - 48} y={y - 18} label="52" />
         <Breaker x={x - 48} y={y + 18} label="52" />
-        <text x={x + 30} y={y + 4} fontSize="9" fontWeight="700" fill="#111827">BUS</text>
+        <text x={x + 30} y={y + 4} fontSize="9" fontWeight="700" fill="#0E151C">BUS</text>
         <Ground x={x} y={y + 42} />
         <DeviceTag x={x} y={y - 46} label={tag} />
       </g>
@@ -424,8 +424,8 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'transformer') {
     return (
       <g>
-        <circle cx={x - 12} cy={y} r="20" fill="none" stroke="#111827" strokeWidth="2.2" />
-        <circle cx={x + 12} cy={y} r="20" fill="none" stroke="#111827" strokeWidth="2.2" />
+        <circle cx={x - 12} cy={y} r="20" fill="none" stroke="#0E151C" strokeWidth="2.2" />
+        <circle cx={x + 12} cy={y} r="20" fill="none" stroke="#0E151C" strokeWidth="2.2" />
         <Ground x={x} y={y + 30} />
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
@@ -435,10 +435,10 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'panel') {
     return (
       <g>
-        <rect x={x - 32} y={y - 28} width="64" height="56" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <line x1={x - 18} y1={y - 18} x2={x - 18} y2={y + 18} stroke="#111827" strokeWidth="3" />
-        <line x1={x - 4} y1={y - 18} x2={x - 4} y2={y + 18} stroke="#111827" strokeWidth="3" />
-        <line x1={x + 10} y1={y - 18} x2={x + 10} y2={y + 18} stroke="#111827" strokeWidth="3" />
+        <rect x={x - 32} y={y - 28} width="64" height="56" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+        <line x1={x - 18} y1={y - 18} x2={x - 18} y2={y + 18} stroke="#0E151C" strokeWidth="3" />
+        <line x1={x - 4} y1={y - 18} x2={x - 4} y2={y + 18} stroke="#0E151C" strokeWidth="3" />
+        <line x1={x + 10} y1={y - 18} x2={x + 10} y2={y + 18} stroke="#0E151C" strokeWidth="3" />
         <DeviceTag x={x} y={y - 40} label={tag} />
       </g>
     )
@@ -447,8 +447,8 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'motor') {
     return (
       <g>
-        <circle cx={x} cy={y} r="28" fill="#fff" stroke="#111827" strokeWidth="2.5" />
-        <text x={x} y={y + 6} textAnchor="middle" fontSize="20" fontWeight="700" fill="#111827">M</text>
+        <circle cx={x} cy={y} r="28" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2.5" />
+        <text x={x} y={y + 6} textAnchor="middle" fontSize="20" fontWeight="700" fill="#0E151C">M</text>
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
     )
@@ -457,9 +457,9 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'load') {
     return (
       <g>
-        <rect x={x - 34} y={y - 24} width="68" height="48" rx="3" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <path d={`M ${x - 18} ${y - 2} H ${x + 18} M ${x + 8} ${y - 12} L ${x + 18} ${y - 2} L ${x + 8} ${y + 8}`} fill="none" stroke="#111827" strokeWidth="2" />
-        <text x={x} y={y + 18} textAnchor="middle" fontSize="8" fill="#111827">LOAD</text>
+        <rect x={x - 34} y={y - 24} width="68" height="48" rx="3" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+        <path d={`M ${x - 18} ${y - 2} H ${x + 18} M ${x + 8} ${y - 12} L ${x + 18} ${y - 2} L ${x + 8} ${y + 8}`} fill="none" stroke="#0E151C" strokeWidth="2" />
+        <text x={x} y={y + 18} textAnchor="middle" fontSize="8" fill="#0E151C">LOAD</text>
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
     )
@@ -468,8 +468,8 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
   if (kind === 'service') {
     return (
       <g>
-        <rect x={x - 40} y={y - 24} width="80" height="48" rx="4" fill="#fff" stroke="#111827" strokeWidth="2" strokeDasharray="4 3" />
-        <text x={x} y={y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#111827">SVC</text>
+        <rect x={x - 40} y={y - 24} width="80" height="48" rx="4" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" strokeDasharray="4 3" />
+        <text x={x} y={y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#0E151C">SVC</text>
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
     )
@@ -477,8 +477,8 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
 
   return (
     <g>
-      <rect x={x - 32} y={y - 24} width="64" height="48" rx="3" fill="#fff" stroke="#111827" strokeWidth="2" />
-      <text x={x} y={y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#111827">EQ</text>
+      <rect x={x - 32} y={y - 24} width="64" height="48" rx="3" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+      <text x={x} y={y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#0E151C">EQ</text>
       <DeviceTag x={x} y={y - 38} label={tag} />
     </g>
   )
@@ -487,9 +487,9 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
 function Breaker({ x, y, label }: DiagramPoint & { label: string }) {
   return (
     <g>
-      <rect x={x - 13} y={y - 13} width="26" height="26" fill="#fff" stroke="#111827" strokeWidth="2" />
-      <path d={`M ${x - 8} ${y - 8} L ${x + 8} ${y + 8} M ${x + 8} ${y - 8} L ${x - 8} ${y + 8}`} stroke="#111827" strokeWidth="1.8" />
-      <text x={x} y={y + 27} textAnchor="middle" fontSize="8" fontWeight="700" fill="#111827">{label}</text>
+      <rect x={x - 13} y={y - 13} width="26" height="26" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+      <path d={`M ${x - 8} ${y - 8} L ${x + 8} ${y + 8} M ${x + 8} ${y - 8} L ${x - 8} ${y + 8}`} stroke="#0E151C" strokeWidth="1.8" />
+      <text x={x} y={y + 27} textAnchor="middle" fontSize="8" fontWeight="700" fill="#0E151C">{label}</text>
     </g>
   )
 }
@@ -497,10 +497,10 @@ function Breaker({ x, y, label }: DiagramPoint & { label: string }) {
 function Disconnect({ x, y, label }: DiagramPoint & { label: string }) {
   return (
     <g>
-      <line x1={x - 16} y1={y + 12} x2={x + 12} y2={y - 12} stroke="#111827" strokeWidth="2.2" />
-      <circle cx={x - 18} cy={y + 14} r="3" fill="#111827" />
-      <circle cx={x + 15} cy={y - 14} r="3" fill="#fff" stroke="#111827" strokeWidth="2" />
-      <text x={x} y={y + 31} textAnchor="middle" fontSize="8" fontWeight="700" fill="#111827">{label}</text>
+      <line x1={x - 16} y1={y + 12} x2={x + 12} y2={y - 12} stroke="#0E151C" strokeWidth="2.2" />
+      <circle cx={x - 18} cy={y + 14} r="3" fill="#0E151C" />
+      <circle cx={x + 15} cy={y - 14} r="3" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
+      <text x={x} y={y + 31} textAnchor="middle" fontSize="8" fontWeight="700" fill="#0E151C">{label}</text>
     </g>
   )
 }
@@ -508,10 +508,10 @@ function Disconnect({ x, y, label }: DiagramPoint & { label: string }) {
 function Ground({ x, y }: DiagramPoint) {
   return (
     <g>
-      <line x1={x} y1={y} x2={x} y2={y + 7} stroke="#111827" strokeWidth="1.5" />
-      <line x1={x - 12} y1={y + 7} x2={x + 12} y2={y + 7} stroke="#111827" strokeWidth="1.5" />
-      <line x1={x - 8} y1={y + 12} x2={x + 8} y2={y + 12} stroke="#111827" strokeWidth="1.5" />
-      <line x1={x - 4} y1={y + 17} x2={x + 4} y2={y + 17} stroke="#111827" strokeWidth="1.5" />
+      <line x1={x} y1={y} x2={x} y2={y + 7} stroke="#0E151C" strokeWidth="1.5" />
+      <line x1={x - 12} y1={y + 7} x2={x + 12} y2={y + 7} stroke="#0E151C" strokeWidth="1.5" />
+      <line x1={x - 8} y1={y + 12} x2={x + 8} y2={y + 12} stroke="#0E151C" strokeWidth="1.5" />
+      <line x1={x - 4} y1={y + 17} x2={x + 4} y2={y + 17} stroke="#0E151C" strokeWidth="1.5" />
     </g>
   )
 }
@@ -519,8 +519,8 @@ function Ground({ x, y }: DiagramPoint) {
 function DeviceTag({ x, y, label }: DiagramPoint & { label: string }) {
   return (
     <g>
-      <rect x={x - 28} y={y - 10} width="56" height="18" rx="3" fill="#f3f4f6" stroke="#9ca3af" strokeWidth="1" />
-      <text x={x} y={y + 3} textAnchor="middle" fontSize="8" fontWeight="700" fill="#111827">{label}</text>
+      <rect x={x - 28} y={y - 10} width="56" height="18" rx="3" fill="#F9FAFB" stroke="#C5C6C7" strokeWidth="1" />
+      <text x={x} y={y + 3} textAnchor="middle" fontSize="8" fontWeight="700" fill="#0E151C">{label}</text>
     </g>
   )
 }
@@ -539,12 +539,12 @@ function Legend({ x, y }: DiagramPoint) {
 
   return (
     <g>
-      <text x={x} y={y} fontSize="10" fontWeight="700" fill="#111827">Legend</text>
+      <text x={x} y={y} fontSize="10" fontWeight="700" fill="#0E151C">Legend</text>
       {items.map(([tag, label], index) => (
         <g key={tag} transform={`translate(${x + (index % 4) * 250}, ${y + 18 + Math.floor(index / 4) * 24})`}>
-          <rect x="0" y="-10" width="42" height="18" rx="3" fill="#f3f4f6" stroke="#9ca3af" strokeWidth="1" />
-          <text x="21" y="3" textAnchor="middle" fontSize="7" fontWeight="700" fill="#111827">{tag}</text>
-          <text x="48" y="3" fontSize="8" fill="#4b5563">{label}</text>
+          <rect x="0" y="-10" width="42" height="18" rx="3" fill="#F9FAFB" stroke="#C5C6C7" strokeWidth="1" />
+          <text x="21" y="3" textAnchor="middle" fontSize="7" fontWeight="700" fill="#0E151C">{tag}</text>
+          <text x="48" y="3" fontSize="8" fill="#5B6673">{label}</text>
         </g>
       ))}
     </g>

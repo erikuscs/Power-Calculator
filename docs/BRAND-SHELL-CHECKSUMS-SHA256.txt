@@ -1,4 +1,5 @@
-# EMaaS Pro web-shell brand correction — review evidence
+# EMaaS Pro web-shell brand correction — frozen 2026-08-30 review evidence
+# Historical checksums below are retained for provenance and do not describe the current 2026-09-11 release candidate.
 # Status: REVIEW / NOT RELEASED / NOT DEPLOYED
 e393dddc0070c0f4eb873f97a1394d9db607987d6a2c6c5d6dda4ca6005f96f6  index.html
 87b50e3612fb21cc23e8bf44308c46861e639e441961eca83b25c788372297f7  src/index.css

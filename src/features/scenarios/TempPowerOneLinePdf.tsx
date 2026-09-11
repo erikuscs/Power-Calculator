@@ -14,9 +14,9 @@ interface TempPowerOneLinePdfProps {
   architecture?: TempPowerArchitecturePlan
 }
 
-const ink = '#111827'
-const muted = '#4b5563'
-const panel = '#f8fafc'
+const ink = '#0E151C'
+const muted = '#5B6673'
+const panel = '#F9FAFB'
 
 function SvgText({
   x,
@@ -50,7 +50,7 @@ function SvgText({
 function DeviceTag({ x, y, label }: { x: number; y: number; label: string }) {
   return (
     <G>
-      <Rect x={x - 18} y={y - 7} width={36} height={12} rx={2} fill="#ffffff" stroke="#9ca3af" strokeWidth={0.8} />
+      <Rect x={x - 18} y={y - 7} width={36} height={12} rx={2} fill="#F9FAFB" stroke="#C5C6C7" strokeWidth={0.8} />
       <SvgText x={x} y={y + 1.5} textAnchor="middle" fontSize={5.2} fontFamily="Helvetica-Bold" fill={ink}>{label}</SvgText>
     </G>
   )
@@ -70,7 +70,7 @@ function Ground({ x, y }: { x: number; y: number }) {
 function Breaker({ x, y, tag }: { x: number; y: number; tag: string }) {
   return (
     <G>
-      <Rect x={x - 8} y={y - 8} width={16} height={16} fill="#ffffff" stroke={ink} strokeWidth={1.2} />
+      <Rect x={x - 8} y={y - 8} width={16} height={16} fill="#F9FAFB" stroke={ink} strokeWidth={1.2} />
       <Line x1={x - 5} y1={y - 5} x2={x + 5} y2={y + 5} stroke={ink} strokeWidth={1.1} />
       <Line x1={x + 5} y1={y - 5} x2={x - 5} y2={y + 5} stroke={ink} strokeWidth={1.1} />
       <SvgText x={x} y={y + 15} textAnchor="middle" fontSize={5} fontFamily="Helvetica-Bold" fill={ink}>{tag}</SvgText>
@@ -87,9 +87,9 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
   const parallelSource = generatorUnitCount > 1
 
   return (
-    <View style={{ borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', padding: 6 }}>
+    <View style={{ borderWidth: 1, borderColor: '#E9E4D6', backgroundColor: '#F9FAFB', padding: 6 }}>
       <Svg viewBox="0 0 520 238" style={{ width: '100%', height: 238 }}>
-        <Rect x={0} y={0} width={520} height={238} fill="#ffffff" />
+        <Rect x={0} y={0} width={520} height={238} fill="#F9FAFB" />
         <SvgText x={12} y={16} fontSize={9} fontFamily="Helvetica-Bold" fill={ink}>Temporary Power Conceptual One-Line</SvgText>
         <SvgText x={508} y={16} textAnchor="end" fontSize={5.5} fill={muted}>Planning drawing - engineering review required</SvgText>
 
@@ -116,7 +116,7 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
           </G>
         )}
 
-        <Circle cx={42} cy={70} r={20} fill="#ffffff" stroke={ink} strokeWidth={1.6} />
+        <Circle cx={42} cy={70} r={20} fill="#F9FAFB" stroke={ink} strokeWidth={1.6} />
         <SvgText x={42} y={75} textAnchor="middle" fontSize={14} fontFamily="Helvetica-Bold" fill={ink}>G</SvgText>
         <Ground x={42} y={92} />
         <DeviceTag x={42} y={42} label="GEN" />
@@ -133,7 +133,7 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
         <SvgText x={145} y={101} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>{parallelSource ? 'Paralleling Controls' : 'Generator Controller'}</SvgText>
         <SvgText x={145} y={109} textAnchor="middle" fontSize={4.8} fill={muted}>{parallelSource ? 'sync + load share + protection' : 'start + protection logic'}</SvgText>
 
-        <Rect x={122} y={120} width={46} height={26} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1} strokeDasharray="3 2" />
+        <Rect x={122} y={120} width={46} height={26} rx={2} fill="#F9FAFB" stroke={ink} strokeWidth={1} strokeDasharray="3 2" />
         <SvgText x={145} y={132} textAnchor="middle" fontSize={6} fontFamily="Helvetica-Bold" fill={ink}>EMaaS</SvgText>
         <SvgText x={145} y={140} textAnchor="middle" fontSize={4.3} fill={muted}>telemetry / alarms</SvgText>
         <Line x1={145} y1={120} x2={145} y2={90} stroke={muted} strokeWidth={0.9} strokeDasharray="3 2" />
@@ -165,7 +165,7 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
         <SvgText x={406} y={104} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>Branch Panels</SvgText>
         <SvgText x={406} y={112} textAnchor="middle" fontSize={4.8} fill={muted}>{`${loadVoltage} V final distribution`}</SvgText>
 
-        <Rect x={448} y={51} width={54} height={38} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1.2} />
+        <Rect x={448} y={51} width={54} height={38} rx={2} fill="#F9FAFB" stroke={ink} strokeWidth={1.2} />
         <Line x1={459} y1={70} x2={487} y2={70} stroke={ink} strokeWidth={1.2} />
         <Path d="M 480 63 L 488 70 L 480 77" fill="none" stroke={ink} strokeWidth={1.2} />
         <DeviceTag x={475} y={42} label="LOAD" />
@@ -174,7 +174,7 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
 
         {includeCooling && (
           <G>
-            <Rect x={448} y={129} width={54} height={38} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1.2} />
+            <Rect x={448} y={129} width={54} height={38} rx={2} fill="#F9FAFB" stroke={ink} strokeWidth={1.2} />
             <Circle cx={475} cy={148} r={11} fill="none" stroke={ink} strokeWidth={1} />
             <Line x1={475} y1={137} x2={475} y2={159} stroke={ink} strokeWidth={0.8} />
             <Line x1={464} y1={148} x2={486} y2={148} stroke={ink} strokeWidth={0.8} />
@@ -186,7 +186,7 @@ export function TempPowerOneLinePdf({ inputs, results, sourceSizing = results, a
 
         <Line x1={250} y1={92} x2={250} y2={203} stroke={muted} strokeWidth={0.8} strokeDasharray="3 2" />
         <Line x1={250} y1={203} x2={448} y2={203} stroke={muted} strokeWidth={0.8} strokeDasharray="3 2" />
-        <Rect x={448} y={193} width={54} height={20} rx={2} fill="#ffffff" stroke={ink} strokeWidth={1} strokeDasharray="3 2" />
+        <Rect x={448} y={193} width={54} height={20} rx={2} fill="#F9FAFB" stroke={ink} strokeWidth={1} strokeDasharray="3 2" />
         <SvgText x={475} y={205.5} textAnchor="middle" fontSize={5.5} fontFamily="Helvetica-Bold" fill={ink}>EMaaS SERVICE</SvgText>
         <SvgText x={250} y={218} textAnchor="middle" fontSize={4.6} fill={muted}>Dashed lines indicate control, telemetry, and service relationships.</SvgText>
 

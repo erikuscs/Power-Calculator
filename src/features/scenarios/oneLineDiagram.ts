@@ -69,12 +69,12 @@ function buildMermaid(stages: OneLineStage[], edges: OneLineEdge[]) {
       : `-->${label}`
     lines.push(`  ${edge.from} ${connector} ${edge.to}`)
   }
-  lines.push('  classDef source fill:#1a1f2e,stroke:#c89a3c,color:#f1f5f9')
-  lines.push('  classDef storage fill:#102333,stroke:#38bdf8,color:#f1f5f9')
-  lines.push('  classDef control fill:#141a25,stroke:#d4ad52,color:#f1f5f9')
-  lines.push('  classDef distribution fill:#101827,stroke:#94a3b8,color:#f1f5f9')
-  lines.push('  classDef load fill:#241719,stroke:#e07460,color:#f1f5f9')
-  lines.push('  classDef service fill:#151515,stroke:#6b7280,color:#f1f5f9')
+  lines.push('  classDef source fill:#141D26,stroke:#C27A2C,color:#F9FAFB')
+  lines.push('  classDef storage fill:#1E2A38,stroke:#ABE1FA,color:#F9FAFB')
+  lines.push('  classDef control fill:#1C2732,stroke:#CCD2E9,color:#F9FAFB')
+  lines.push('  classDef distribution fill:#1E2A38,stroke:#C5C6C7,color:#F9FAFB')
+  lines.push('  classDef load fill:#141D26,stroke:#D88A34,color:#F9FAFB')
+  lines.push('  classDef service fill:#0E151C,stroke:#5B6673,color:#F9FAFB')
   for (const stage of stages) {
     for (const node of stage.nodes) {
       lines.push(`  class ${node.id} ${node.tone}`)

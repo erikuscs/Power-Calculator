@@ -24,7 +24,7 @@
   --color-sg-600: #34495e;
   --color-sg-500: #5b6673;
 
-  --color-accent-600: #8e4f1b;
+  --color-accent-600: #c27a2c;
   --color-accent-500: #c27a2c;
   --color-accent-400: #d88a34;
   --color-accent-300: #d88a34;
@@ -96,8 +96,8 @@ input[type="number"] {
 
 @media print {
   body.printing-one-line {
-    background: #ffffff;
-    color: #111827;
+    background: #f9fafb;
+    color: #0e151c;
     padding: 0;
   }
 
@@ -118,8 +118,8 @@ input[type="number"] {
     border-radius: 0 !important;
     box-shadow: none !important;
     padding: 0.35in !important;
-    background: #ffffff !important;
-    color: #111827 !important;
+    background: #f9fafb !important;
+    color: #0e151c !important;
   }
 
   body.printing-one-line .printable-one-line svg {

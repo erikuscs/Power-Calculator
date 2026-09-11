@@ -4,16 +4,16 @@ import { APP_BRAND } from '../../lib/brand'
 
 // ── Brand Tokens ───────────────────────────────────────────────────
 const BRAND = {
-  darkNavy: '#1a1f2e',
-  gold: '#c89a3c',
-  text: '#f1f5f9',
-  muted: '#9ca3af',
-  warningBg: '#44300a',
-  warningBorder: '#c89a3c',
-  sectionBorder: '#2d3548',
-  tableBorder: '#374151',
-  tableHeaderBg: '#242a38',
-  tableStripeBg: '#1f2535',
+  darkNavy: '#0E151C',
+  copper: '#C27A2C',
+  text: '#F9FAFB',
+  muted: '#C5C6C7',
+  warningBg: '#1C2732',
+  warningBorder: '#C27A2C',
+  sectionBorder: '#34495E',
+  tableBorder: '#5B6673',
+  tableHeaderBg: '#1C2732',
+  tableStripeBg: '#141D26',
 }
 
 // ── Styles ─────────────────────────────────────────────────────────
@@ -28,13 +28,13 @@ const s = StyleSheet.create({
   header: {
     marginBottom: 24,
     borderBottomWidth: 2,
-    borderBottomColor: BRAND.gold,
+    borderBottomColor: BRAND.copper,
     paddingBottom: 12,
   },
   headerCompany: {
     fontSize: 18,
     fontFamily: 'Helvetica-Bold',
-    color: BRAND.gold,
+    color: BRAND.copper,
     marginBottom: 2,
   },
   headerTitle: {
@@ -80,7 +80,7 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontFamily: 'Helvetica-Bold',
-    color: BRAND.gold,
+    color: BRAND.copper,
     marginBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: BRAND.sectionBorder,
@@ -99,14 +99,14 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: BRAND.tableHeaderBg,
     borderBottomWidth: 1,
-    borderBottomColor: BRAND.gold,
+    borderBottomColor: BRAND.copper,
     minHeight: 22,
     alignItems: 'center',
   },
   tableHeaderCell: {
     fontFamily: 'Helvetica-Bold',
     fontSize: 9,
-    color: BRAND.gold,
+    color: BRAND.copper,
     paddingVertical: 4,
     paddingHorizontal: 6,
   },
@@ -146,7 +146,7 @@ const s = StyleSheet.create({
   },
   warningText: {
     fontSize: 9,
-    color: BRAND.gold,
+    color: BRAND.copper,
   },
 })
 

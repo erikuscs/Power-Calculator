@@ -89,7 +89,7 @@ export function BessProjectPdfDoc({
 
       {/* Disclaimer */}
       <PdfSection title="Disclaimer">
-        <Text style={{ fontSize: 8, color: '#9ca3af' }}>
+        <Text style={{ fontSize: 8, color: '#C5C6C7' }}>
           These calculations are estimates for reference only. Actual BESS performance depends on site conditions, equipment specifications, and operational parameters. Revenue projections assume consistent market rates and do not account for regulatory changes. Final sizing and financial analysis must be verified by a licensed professional engineer and qualified financial advisor. Sustainable Gaps is not responsible for investment decisions made based on these estimates.
         </Text>
       </PdfSection>

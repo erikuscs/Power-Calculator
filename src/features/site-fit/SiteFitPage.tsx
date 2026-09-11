@@ -126,7 +126,7 @@ function SitePlan({
         </span>
       </div>
       <div className="relative aspect-[16/10] min-h-[360px] overflow-hidden rounded-lg border-2 border-sg-500/60 bg-sg-900 shadow-inner">
-        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(#697586 1px, transparent 1px), linear-gradient(90deg, #697586 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(#5B6673 1px, transparent 1px), linear-gradient(90deg, #5B6673 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
         <div className="absolute left-3 top-3 z-20 rounded bg-sg-950/85 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">Customer site boundary</div>
         <div
           className="absolute bottom-0 right-0 z-[1] border-l border-t border-dashed border-coral-400/70 bg-coral-500/10 p-2 text-right text-[10px] font-bold uppercase tracking-wide text-coral-400"

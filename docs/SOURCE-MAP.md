@@ -6,7 +6,7 @@ Controlled destination: `/Users/sustainablegaps/Projects/emaas-pro`
 
 Owner and release gate: Erik Herring; exact-file owner review, target-surface evidence, and a separate deployment decision remain required.
 
-Scope: brand-only web-shell correction. Formulas, data, charts, engineering diagrams, PDF rendering/content, Xcode/iOS/Capacitor files, app/favicon/splash assets, connectivity, menu/link/focus behavior, and deployment remain outside this record.
+Scope: current digital-brand implementation across the web shell, registered favicon, charts, one-line diagrams, and PDF presentation tokens. Formulas, calculation data, engineering logic, Xcode/iOS/Capacitor files, connectivity, and deployment remain outside this record.
 
 ## Source Use Record
 
@@ -19,8 +19,16 @@ Scope: brand-only web-shell correction. Formulas, data, charts, engineering diag
 | Source Sans 3 web variable font | Controlled font binary | `13-Font-Package/Web/source-sans-3-latin-var.woff2` | Source Sans 3 web benchmark | `ac057a5593cbe3df0d2585da5dd5f33b8efa84aa30550c710fe061b37fc5c54b` | Controlled website benchmark; OFL rights record applies | Copied byte-for-byte; loaded for body, UI, and form roles | `public/fonts/source-sans-3-latin-var.woff2` | EMaaS Pro web-shell SME, 2026-08-30 |
 | Font rights and redistribution conditions | Rights record | `13-Font-Package/FONT-RIGHTS-RECORD-20260829.md` | SG font rights record | `dd5d19bb2bf8d7d307d62dd99135ccdc70c44e7b9079639a689a15eab29e834f` | Controlled rights evidence; OFL conditions apply; no client/vendor font package | Governs local web embedding; no separate font distribution package created | `public/fonts/` and this record | EMaaS Pro web-shell SME, 2026-08-30 |
 | SG horizontal reversed-dark logo | Registered production derivative | `03-Web-Assets/Logo-System/SVG/sg-logo-horizontal-reversed-dark.svg` | `SG-LOGO-MASTER-001` registered derivative | `7ae7b68b6e67266fb5f4abd48c6ea18d67618c01c64976b288460dfc7ceb8ce1` | Approved production family; dark digital field; horizontal minimum 160 px | Copied byte-for-byte and placed at 160 px in the existing home-link brand block without redrawing, recoloring, plate, shadow, or distortion | `public/brand/sg-logo-horizontal-reversed-dark.svg`; `src/components/layout/Header.tsx` | EMaaS Pro web-shell SME, 2026-08-30 |
+| SG bridge deep-blue 96 px icon | Registered production derivative | `03-Web-Assets/Logo-System/Icons/sg-logo-bridge-1c-deep-blue-96.png` | `SG-LOGO-MASTER-001` registered derivative | `3bac1bc001d24963ed7a7aeb1094948349c4d022a666fac3b965bbdd584b944f` | Approved production family; controlled bridge-only raster size | Copied byte-for-byte to replace the unregistered gold lightning favicon; no redraw, recolor, plate, shadow, or distortion | `public/brand/sg-logo-bridge-1c-deep-blue-96.png`; `index.html` | EMaaS Pro release-candidate review, 2026-09-11 |
 | EMaaS first-reference naming | Controlled messaging | `07-Evidence/messaging-system.md` | `MSG-03` | `db4c43d307219fe29e5880b8dbbca908b3f8768ffc595db038aa4fe7b82b08f4` | Approved controlled terminology | Metadata and first display use `Energy Management as a Service (EMaaS) Pro`; later web-shell references use `EMaaS Pro`; `emaas.pro` URL retained | `index.html`; `src/lib/brand.ts`; `src/features/dashboard/DashboardPage.tsx`; `src/components/ui/DisclaimerModal.tsx`; `src/components/layout/Header.tsx`; `src/features/legal/PrivacyPage.tsx`; `src/features/learn/LearnHubPage.tsx` | EMaaS Pro web-shell SME, 2026-08-30 |
 | D-01 through D-09 correction scope | Owner correction matrix | `17-Brand-Governance-Operations-2026/02-Change-Control/BRAND-MANUAL-AND-DIGITAL-GUIDANCE-CORRECTION-MATRIX-20260829.md` | `MSG-03` and related digital-brand controls | `0528209ad49ea8d42f7f6331fc2a0756c573aaaf1f219d0d070597839e98bbce` | Approved internal correction scope; destination release remains separate | Confirms capability naming and first-reference expansion without creating a new offering or changing behavior | This implementation | EMaaS Pro web-shell SME, 2026-08-30 |
+
+## 2026-09-11 Current-Brand Reconciliation
+
+- Active application colors now use the controlled palette: Conductive Copper `#C27A2C`, Copper Hover `#D88A34`, Executive Blue `#1E2A38`, Blackout `#0E151C`, Motion Ink `#141D26`, Dark Raised `#1C2732`, Source Slate `#34495E`, Pewter `#5B6673`, Silver `#C5C6C7`, Bone `#E9E4D6`, Brand White `#F9FAFB`, Proof Blue `#CCD2E9`, and Skyway Light `#ABE1FA`.
+- Retired gold naming and legacy gold tokens were removed from active application source, diagrams, charts, and PDF presentation styles.
+- `npm run audit:brand` now blocks a production build if either registered implementation asset changes checksum or a retired gold token returns to active application files.
+- The controlled-brand-tree release gate was run on 2026-09-11 and remains blocked by retired tokens in `02-Source-Masters/sg-bridge-mark-master.svg` and `02-Source-Masters/sg-bridge-mark-web.svg`. Those governed source-master files were not altered from this application repository. Brand-steward resolution and a passing rerun remain required before channel release.
 
 ## Release Boundary
 
@@ -36,3 +44,5 @@ This source map documents a local implementation candidate only. A passing build
 - Review screenshots are retained under `output/playwright/emaas-brand-shell-*-20260830.png`; `output/` remains ignored review evidence and is not a release package.
 
 Remaining release holds: owner exact-file review; public font-license/copyright accompaniment; assistive-technology/device review beyond the automated focus checks; deployment decision; and cache-busted live verification after any separately authorized deployment.
+
+Current 2026-09-11 verification: Node `v22.23.2`; 25 test files / 156 tests; ESLint; brand asset audit; TypeScript/Vite production build; production artifact audit; and desktop/mobile E2E smoke checks all passed. The separate controlled-brand-tree gate remains blocked as documented above.

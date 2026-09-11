@@ -103,14 +103,14 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       <PdfEquipmentRecommendationSection recommendation={recommendation} />
 
       <PdfSection title="One-Line Diagram">
-        <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6 }}>
+        <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 6 }}>
           {diagram.caption}
         </Text>
         <PdfTable
           headers={['Stage', 'Element', 'Detail']}
           rows={flattenDiagramRows(diagram)}
         />
-        <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 6, fontFamily: 'Courier' }}>
+        <Text style={{ fontSize: 7, color: '#5B6673', marginTop: 6, fontFamily: 'Courier' }}>
           {diagram.mermaid}
         </Text>
       </PdfSection>
@@ -148,7 +148,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
 
       {/* Fuel Projection — first 30 days */}
       <PdfSection title="Fuel Projection (First 30 Days)">
-        <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 4 }}>
+        <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 4 }}>
           Daily fuel consumption comparison and cumulative fuel reduction over the project.
         </Text>
         <PdfTable
@@ -192,7 +192,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
 
       {/* Disclaimer */}
       <PdfSection title="Disclaimer">
-        <Text style={{ fontSize: 8, color: '#9ca3af' }}>
+        <Text style={{ fontSize: 8, color: '#C5C6C7' }}>
           These are estimates for reference only. Final system design must be verified by a licensed professional engineer. Sustainable Gaps is not responsible for equipment failures, safety incidents, or cost overruns resulting from the use of these calculations without professional engineering review.
         </Text>
       </PdfSection>

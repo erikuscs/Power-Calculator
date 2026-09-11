@@ -23,10 +23,10 @@ import {
 } from './bess.formulas'
 
 const CHART_COLORS = {
-  gold: '#c89a3c',
-  signalBlue: '#38bdf8',
-  grid: '#2d3548',
-  background: '#242a38',
+  copper: '#C27A2C',
+  signalBlue: '#ABE1FA',
+  grid: '#34495E',
+  background: '#1C2732',
 } as const
 
 export default function BessRoiPage() {
@@ -221,26 +221,26 @@ export default function BessRoiPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                     <XAxis
                       dataKey="year"
-                      stroke="#8894a8"
-                      tick={{ fill: '#8894a8', fontSize: 12 }}
-                      label={{ value: 'Year', position: 'insideBottom', offset: -2, fill: '#8894a8', fontSize: 12 }}
+                      stroke="#C5C6C7"
+                      tick={{ fill: '#C5C6C7', fontSize: 12 }}
+                      label={{ value: 'Year', position: 'insideBottom', offset: -2, fill: '#C5C6C7', fontSize: 12 }}
                     />
                     <YAxis
-                      stroke="#8894a8"
-                      tick={{ fill: '#8894a8', fontSize: 12 }}
+                      stroke="#C5C6C7"
+                      tick={{ fill: '#C5C6C7', fontSize: 12 }}
                       tickFormatter={(v: number) =>
                         v >= 1000 || v <= -1000
                           ? `$${(v / 1000).toFixed(0)}k`
                           : `$${v}`
                       }
-                      label={{ value: 'Cumulative ($)', angle: -90, position: 'insideLeft', offset: 0, fill: '#8894a8', fontSize: 12 }}
+                      label={{ value: 'Cumulative ($)', angle: -90, position: 'insideLeft', offset: 0, fill: '#C5C6C7', fontSize: 12 }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#1a1f2e',
-                        border: '1px solid #2d3548',
+                        backgroundColor: '#0E151C',
+                        border: '1px solid #34495E',
                         borderRadius: '8px',
-                        color: '#e2e8f0',
+                        color: '#F9FAFB',
                       }}
                       formatter={(value: unknown) => [fmtCurrency(Number(value)), 'Cumulative']}
                       labelFormatter={(label: unknown) => `Year ${label}`}
@@ -249,10 +249,10 @@ export default function BessRoiPage() {
                     <Line
                       type="monotone"
                       dataKey="cumulative"
-                      stroke={CHART_COLORS.gold}
+                      stroke={CHART_COLORS.copper}
                       strokeWidth={2.5}
-                      dot={{ fill: CHART_COLORS.gold, r: 3 }}
-                      activeDot={{ r: 5, fill: CHART_COLORS.gold }}
+                      dot={{ fill: CHART_COLORS.copper, r: 3 }}
+                      activeDot={{ r: 5, fill: CHART_COLORS.copper }}
                     />
                   </LineChart>
                 </ChartFrame>
