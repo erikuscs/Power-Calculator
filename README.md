@@ -15,7 +15,7 @@ All results are planning estimates. Equipment selection, electrical design, proc
 
 The SG brand source of truth is outside this repository at:
 
-`/Users/sustainablegaps/SG-OFFICE/Brand Guidelines/01-Current-SG-Brand`
+`/Volumes/SG-Clean/SG-OFFICE/Company and Brand/02 Brand Guidelines/01-Current-SG-Brand`
 
 This repository contains only implementation copies and its source-use record. It is never the identity master.
 

@@ -53,8 +53,18 @@ The current correction addresses these items in source.
 - `shasum -a 256 -c docs/BRAND-ASSET-MANIFEST-SHA256.txt`: passed for every registered web, PWA, font, Capacitor, and iOS asset.
 - PWA manifest readback: passed; all declared icons exist in the built artifact and the current name/theme values are present.
 - Compiled web and copied iOS bundle scan: passed; no retired SG color value was found.
-- Unsigned iOS Simulator compilation with Xcode: passed (`** BUILD SUCCEEDED **`). Derived data is isolated at `/Users/sustainablegaps/SG-OFFICE/tmp/agent-work/emaas-brand-qa-20260911/DerivedData`.
+- Unsigned iOS Simulator compilation with Xcode: passed (`** BUILD SUCCEEDED **`). Its isolated DerivedData was removed from the controlled disposable scratch lane after verification.
+
+## Released V3 artwork alignment — 2026-09-11
+
+- The complete released V3 monogram family passed its authoritative 55-file checksum manifest before promotion into EMaaS Pro.
+- Browser, PWA, maskable, Safari pinned-tab, Capacitor, iOS app-icon, and iOS launch-screen assets are registered in the local checksum gate.
+- The 1024 px app icon and 2732 px light and dark launch screens were visually inspected for centering, clipping, contrast, and absence of obsolete artwork.
+- `npm test`, `npm run lint`, `npm run build`, and `npm run test:e2e` passed after the V3 replacement. The existing calculation suite remains at 25 files and 156 passing tests.
+- The built PWA contains every declared manifest icon and the complete browser icon set, including the 20, 24, 128, and monochrome Safari variants.
+- `npx cap sync ios`, the post-sync brand audit, and the registered-asset checksum verification passed.
+- A fresh unsigned iOS Simulator compilation passed (`** BUILD SUCCEEDED **`) with DerivedData kept in the controlled disposable scratch lane and removed after verification.
 
 The four PDF component smoke tests use React PDF's built-in Helvetica only inside the Node test environment; browser E2E performs the actual PDF download with Sora and Source Sans 3. This keeps unit tests filesystem-independent while preserving a real target-surface font check.
 
-Remaining release work is deliberately separate: exact-file owner review of the micro-identity candidate, brand-steward resolution of the two blocked central source masters, signed-device/App Store review, assistive-technology review, deployment authorization, and cache-busted live verification.
+Remaining release work is deliberately separate: resolution of the central logo-manifest ledger drift and broader brand-integrity findings, signed physical iPhone/iPad icon and launch-screen review, assistive-technology review, deployment authorization, and cache-busted live verification.

@@ -19,12 +19,12 @@ Independent estimator and regression reviews informed the implementation. The ca
 ## Brand state
 
 - The header uses the exact registered horizontal reversed-dark SG logo.
-- Browser/PWA implementation copies use the selected files from the governed SG Micro Identity System V2 candidate.
-- Native icon and launch-screen files use the same governed candidate geometry and current palette.
+- Browser/PWA implementation copies use exact files from the released SG Favicon and App Icon Family V3 (`SG-FAVICON-FAMILY-001`).
+- Native icon and launch-screen files are 1024 px and 2732 px implementation renders derived from the exact outlined V3 app-icon vector and current palette.
 - Sora and Source Sans 3 controlled binaries are used for web and PDF presentation roles.
 - The build blocks missing or changed controlled implementation assets, off-palette color literals, RGB/HSL bypasses, and retired gold terminology.
 
-The micro-identity family remains an owner-review candidate until its small-size and device proofs are accepted. The central SG brand release gate also has unresolved source-master findings outside this repository. Both gates remain separate from this local correction.
+The V3 family is released for the Sustainable Gaps website and allowed for PWA and app-store icon use, but EMaaS remains a separate destination. The central SG brand release gate is currently blocked by logo-manifest ledger drift, and the broader SG brand integrity gate has unresolved rights, live-type badge, and hosted-signature findings outside this repository. Those central controls and EMaaS device proofs remain separate from this local implementation.
 
 ## Release boundary
 
@@ -33,7 +33,7 @@ No current commit has been pushed, merged, deployed, submitted to App Store Conn
 Before any release:
 
 1. confirm the exact commit and target;
-2. obtain a passing central SG brand gate and exact micro-identity owner decision;
+2. obtain a passing central SG brand gate and confirm the exact V3 files for the EMaaS destination;
 3. run the Node 22 gates from a clean checkout;
 4. verify the generated PWA manifest and brand assets in `dist/`;
 5. sync and build iOS, then verify iPhone and iPad target surfaces;

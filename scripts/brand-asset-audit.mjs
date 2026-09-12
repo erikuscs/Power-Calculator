@@ -6,32 +6,36 @@ const root = process.cwd()
 const findings = []
 const expectedAssets = new Map([
   ['public/brand/sg-logo-horizontal-reversed-dark.svg', '7ae7b68b6e67266fb5f4abd48c6ea18d67618c01c64976b288460dfc7ceb8ce1'],
-  ['public/brand/favicon.ico', 'fce0ff25881c99188791ab1b894220852c0f1679b4a992f10af6c20bf7f66ec0'],
-  ['public/brand/favicon.svg', '81589bf6c59791df20ae637861ec4ae5e4b11e1d70d18907adbe86f913c73897'],
-  ['public/brand/favicon-16x16.png', '2bb8a2bce7b26aacc7966b12f08f11d720f1bdb3aedaf66c43b24a270a54c640'],
-  ['public/brand/favicon-32x32.png', 'e3f3a6a9c9c7f191651b55ac0d9dd5b4fc019040eb3c4d1fa015959ecb6cf36b'],
-  ['public/brand/favicon-48x48.png', '79af7ffda0eee76ebf673fc19a0133d7aa38b3c312a94a3150acc00668e0495b'],
-  ['public/brand/favicon-96x96.png', '2df5e82ab66e79c1832a266435b7c6632e3cad054643e2a09321bdcc8b1629d1'],
-  ['public/brand/apple-touch-icon.png', '8521bd750beac5b81e2e4ab467657a9ff77b66951965d3e8af657ba954bc0b6e'],
-  ['public/brand/android-chrome-192x192.png', 'd8c2a762aab9de98178a97fd8d505dcf617795df30ce89f78c30124035ef1e9b'],
-  ['public/brand/android-chrome-512x512.png', '1ced33bd2374f861898bcdb217ee9ac9991f26a943883aaa83030fb21249a8ca'],
-  ['public/brand/maskable-icon-512x512.png', 'd29a68dd678dabd2df2c60319a74309ef0cc8b8b00ea4048d778bfd46024a08b'],
+  ['public/brand/favicon.ico', '7c2097a1086fd4d71350e37befac73226ba797321568e7ddcbfd061daefb2741'],
+  ['public/brand/favicon.svg', 'ac6d9ffc97737223b2570423631192a14fd3d9f12e33760950ee0acb5c71d17a'],
+  ['public/brand/safari-pinned-tab.svg', '42b81639fa1867031a89e9189e25cb57408ebb04bfbc05aa54eb79c6166ec1bf'],
+  ['public/brand/favicon-16x16.png', 'e2ddb0132aa88415abc8913c1c855b7e559138b46dee2a577406535533e2c25c'],
+  ['public/brand/favicon-20x20.png', '880a1c03960368d31192f924a09cc680d88b269e9603fcad469b0608207e1395'],
+  ['public/brand/favicon-24x24.png', '81e949a1e538d33a6cd50d2c1df6998b00146c049b410f46c4e63a3dcf5699e9'],
+  ['public/brand/favicon-32x32.png', 'd349383c3b321777d196ac6cfddc1d04faaaa3f9dba9e14a2b0b26ec1dbf3c86'],
+  ['public/brand/favicon-48x48.png', '8d895c4492023541c98bd42beeedd97d6e72f456e932a4ec72e5f66d03e707cd'],
+  ['public/brand/favicon-96x96.png', '6a1a3ada300e49db355323d459b7ba6bf4b3dc33a9fb7221e79e36214bc6689f'],
+  ['public/brand/favicon-128x128.png', '7667e92e4758f88fa09acbbecfa5e2f6ce5421f2c54ea5049e2935a8cf8a8f91'],
+  ['public/brand/apple-touch-icon.png', 'f580cf9165b4237d97d209061faac6003902b150404ea619559e62e56784165e'],
+  ['public/brand/android-chrome-192x192.png', 'e9e5225a544bbd4180a5d0166fc3c10db80b196b5c358a6bd2bc15b0abac8bbb'],
+  ['public/brand/android-chrome-512x512.png', '8c419ecb5b46d3a0f797282701439065a735145b752e8e5e57d470949584bae0'],
+  ['public/brand/maskable-icon-512x512.png', '0389419861a0a2ba1f2f9e11777eb7913d0264f620dc1d3784985d45f738dcc3'],
   ['public/fonts/SORA-OFL.txt', 'ba0b9729c9428ba79a0459ab8ec575791b51509dbec213e383d0316d37fec299'],
   ['public/fonts/SOURCE-SANS-3-OFL.md', '56af9b9c6715597e458284a474dc118a50a4150e9d547c70f7b4a33c3e6a9328'],
   ['public/fonts/sora-latin-var.woff2', 'd2909123a6a8ed2f928055f002c32f63ee93496b470c1a344873f955111fca53'],
   ['public/fonts/source-sans-3-latin-var.woff2', 'ac057a5593cbe3df0d2585da5dd5f33b8efa84aa30550c710fe061b37fc5c54b'],
-  ['assets/icon.svg', '4c14fd0d5f57712ccd46ca992058070ede9ceff7f366973309a733a22109a0ec'],
-  ['assets/icon-only.png', '781559e2fe412b3574b7d1cfe3e64aa42d4b0f38a9ce9ec39689eb29fab0fc10'],
+  ['assets/icon.svg', 'bbe61101ff1aa76057d9b7572738e1ed8ad0a82a1725b5a3179b96d02f280a01'],
+  ['assets/icon-only.png', '0ae057eb7a000e91144dd5db3c1ce61d4475a06b3c21d286bf4eb0c6d917efb6'],
   ['assets/splash.svg', 'fb9ca2470085b158dca4655b14404bf0492d37d565dd5d8867da00d8abdc167d'],
-  ['assets/splash.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['assets/splash-dark.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', '781559e2fe412b3574b7d1cfe3e64aa42d4b0f38a9ce9ec39689eb29fab0fc10'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@1x~universal~anyany.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@2x~universal~anyany.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@3x~universal~anyany.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@1x~universal~anyany-dark.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@2x~universal~anyany-dark.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
-  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@3x~universal~anyany-dark.png', '87c3f0486c734aae62c467bd7a4bd5a3027029d49deb22078333b5cd1dc1dbe5'],
+  ['assets/splash.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['assets/splash-dark.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', '0ae057eb7a000e91144dd5db3c1ce61d4475a06b3c21d286bf4eb0c6d917efb6'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@1x~universal~anyany.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@2x~universal~anyany.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@3x~universal~anyany.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@1x~universal~anyany-dark.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@2x~universal~anyany-dark.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
+  ['ios/App/App/Assets.xcassets/Splash.imageset/Default@3x~universal~anyany-dark.png', 'cf926f6bc602cc5a03ad1ac432eeef2e7063bac7022cc4a7bcd7e72de1e757b2'],
 ])
 const retiredTokens = [
   '#E8A33D',
@@ -56,6 +60,7 @@ const allowedHexColors = new Set([
   '#D88A34',
   '#E9E4D6',
   '#F9FAFB',
+  '#FFFBF4',
 ])
 const textExtensions = new Set(['.css', '.html', '.js', '.json', '.mjs', '.pbxproj', '.plist', '.storyboard', '.svg', '.ts', '.tsx', '.xcconfig'])
 
@@ -80,14 +85,21 @@ const implementationRequirements = new Map([
   ['index.html', [
     '/brand/favicon.ico',
     '/brand/favicon.svg',
+    '/brand/favicon-48x48.png',
     '/brand/favicon-32x32.png',
+    '/brand/favicon-16x16.png',
     '/brand/apple-touch-icon.png',
+    '/brand/safari-pinned-tab.svg',
   ]],
   ['vite.config.ts', [
     "name: 'Energy Management as a Service (EMaaS) Pro — Sustainable Gaps'",
     "short_name: 'EMaaS Pro'",
     "theme_color: '#0E151C'",
     "background_color: '#0E151C'",
+    "'brand/favicon-20x20.png'",
+    "'brand/favicon-24x24.png'",
+    "'brand/favicon-128x128.png'",
+    "'brand/safari-pinned-tab.svg'",
     "src: 'brand/android-chrome-192x192.png'",
     "src: 'brand/android-chrome-512x512.png'",
     "src: 'brand/maskable-icon-512x512.png'",
@@ -126,6 +138,7 @@ for (const file of activeFiles) {
   if (/\bgold\b/i.test(content)) findings.push(`Retired gold terminology in ${displayPath}`)
   for (const match of content.matchAll(/#[0-9a-f]{3,8}\b/gi)) {
     const color = match[0].toUpperCase()
+    if (displayPath === 'public/brand/safari-pinned-tab.svg' && color === '#000000') continue
     if (!allowedHexColors.has(color)) findings.push(`Off-palette color ${match[0]} in ${displayPath}`)
   }
   if (/(?:rgb|hsl)a?\s*\(/i.test(content)) {
