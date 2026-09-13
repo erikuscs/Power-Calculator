@@ -1,10 +1,9 @@
 import { PdfDocument, PdfSection, PdfTable, PdfKeyValue, PdfWarning } from '../../components/pdf/PdfReportShell'
 import { Text } from '@react-pdf/renderer'
 import { SQRT3 } from '../../lib/constants'
-import { recommendEquipment } from '../../lib/equipmentRecommendations'
 import type { HybridWizardInputs, HybridWizardResults } from './scenario.formulas'
+import { buildHybridProjectPlan } from './hybridProjectPlan'
 import { buildHybridOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
-import { PdfEquipmentRecommendationSection } from './pdfRecommendations'
 
 export interface HybridEnergyPdfDocProps {
   inputs: HybridWizardInputs
@@ -19,23 +18,21 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
   const fv = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
-  const redundancyLabel = inputs.redundancy === '2n' ? '2N (Full Redundancy)' : inputs.redundancy === 'n1' ? 'N+1' : 'N (No Redundancy)'
+  const redundancyLabel = inputs.redundancy === '2n'
+    ? '2N (Full Redundancy)'
+    : inputs.redundancy === 'n1'
+      ? 'N+1'
+      : inputs.redundancy === 'field_verify'
+        ? 'Field verify (N+1 planning basis)'
+        : 'N (No Redundancy)'
   const coverageStatusLabel = {
     '24_7_ready': '24/7 ready',
     conditional: 'Conditional',
     not_feasible: 'Not feasible',
   } as const
   const diagram = buildHybridOneLineDiagram(inputs, results, zones ?? [])
-  const recommendation = recommendEquipment({
-    peakKw: inputs.peakLoadKw,
-    baseKw: inputs.baseLoadKw,
-    runtimeHours: inputs.peakHoursPerDay,
-    projectDurationHours: inputs.projectDurationDays * 24,
-    peakHoursPerDay: inputs.peakHoursPerDay,
-    preferredBessKw: inputs.bessUnitSize,
-    redundancyFactor: results.redundancyFactor,
-    siteVoltage: inputs.siteVoltage,
-  })
+  const projectPlan = buildHybridProjectPlan(inputs, results, zones ?? [])
+  const difference = (value: number, unit = '') => `${fi(Math.abs(value))}${unit ? ` ${unit}` : ''} ${value >= 0 ? 'lower' : 'higher'}`
 
   return (
     <PdfDocument title="EMaaS Hybrid Energy Report" clientName={clientName} projectName={projectName}>
@@ -58,9 +55,9 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           headers={['Parameter', 'Value']}
           rows={[
             ['BESS Units', `${results.bessUnits} x ${inputs.bessUnitSize} kW`],
-            ['Generator Units', `${results.genUnits} x ${results.genUnitSizeKw} kW`],
+            ['Generator Units', `${results.genUnits} x ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`],
             ['Total System Capacity', `${fi(results.totalCapacityKw)} kW`],
-            ['Redundancy Factor', `${results.redundancyFactor}x`],
+            ['Firm Generator Capacity', `${fi(results.generatorFirmCapacityKw)} kW`],
             ['BESS Energy Needed', `${fi(results.bessEnergyKwh)} kWh`],
             ['Generator Capacity', `${fi(results.genCapacityKw)} kW`],
             [`Peak Amps/Phase (3Φ ${inputs.siteVoltage}V)`, `${fi(results.peakAmpsPerPhase)} A${results.parallelRunsNeeded ? ' — PARALLEL RUNS NEEDED' : ''}`],
@@ -100,7 +97,15 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         </PdfWarning>
       </PdfSection>
 
-      <PdfEquipmentRecommendationSection recommendation={recommendation} />
+      <PdfSection title="Reconciled Equipment Package">
+        <PdfTable
+          headers={['ID', 'Equipment', 'Rating', 'Estimated Dimensions']}
+          rows={projectPlan.equipment.map((item) => [item.id, item.label, item.detail, `${item.lengthFt} x ${item.widthFt} x ${item.heightFt} ft`])}
+        />
+        <PdfWarning>
+          {`Conceptual ${projectPlan.siteLengthFt} x ${projectPlan.siteWidthFt} ft site envelope: ${projectPlan.layoutFits ? 'package fits the entered envelope' : 'package has an envelope conflict'}. Verify delivered dimensions, clearances, access, fire separation, soil bearing, and cable paths.`}
+        </PdfWarning>
+      </PdfSection>
 
       <PdfSection title="One-Line Diagram">
         <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 6 }}>
@@ -113,6 +118,35 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         <Text style={{ fontSize: 7, color: '#5B6673', marginTop: 6, fontFamily: 'Courier' }}>
           {diagram.mermaid}
         </Text>
+      </PdfSection>
+
+      <PdfSection title="Source and Branch Cable Schedule">
+        <PdfTable
+          headers={['Circuit', 'Load', 'A/Phase', 'Runs/Phase', '50-ft Pieces']}
+          rows={projectPlan.cableSchedule.map((row) => [
+            `${row.id} - ${row.circuit}`,
+            `${fi(row.loadKw)} kW at ${row.voltage} V`,
+            fi(row.ampsPerPhase),
+            `${row.runsPerPhase}`,
+            row.pieces === null ? `${row.pieceRange?.[0]}-${row.pieceRange?.[1]}` : `${row.pieces}`,
+          ])}
+        />
+        <PdfWarning>{projectPlan.neutralExplanation}</PdfWarning>
+      </PdfSection>
+
+      <PdfSection title="Budgetary Estimate Basis">
+        <PdfTable
+          headers={['Item', 'Qty', 'Rate', 'Extended', 'Confirmation']}
+          rows={projectPlan.quoteItems.map((item) => [
+            `${item.description} (${item.modelSku})`,
+            fv(item.quantity),
+            item.rate > 0 ? `${fc(item.rate)}/${item.rateUnit}` : 'TBD',
+            item.total > 0 ? fc(item.total) : 'TBD',
+            item.confirmation === 'entered_rate' ? 'Entered rate' : 'Vendor required',
+          ])}
+        />
+        <PdfKeyValue label="Known-rate subtotal" value={fc(projectPlan.budgetaryTotal)} />
+        <PdfWarning>Zero-rate lines are unresolved vendor scope, not free equipment. Delivery, labor, taxes, availability, cable ampacity, protection, and final model/SKU remain outside this subtotal.</PdfWarning>
       </PdfSection>
 
       {/* Motor Inrush Analysis */}
@@ -134,14 +168,13 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {/* Financial Comparison */}
       <PdfSection title="Financial Comparison">
         <PdfTable
-          headers={['Metric', 'All Generator', 'Hybrid', 'Cost Reduction']}
+          headers={['Metric', 'All Generator', 'Hybrid', 'Difference vs All-Gen']}
           rows={[
-            ['Daily Fuel', `${fi(results.allGenFuelPerDay)} gal`, `${fi(results.hybridFuelPerDay)} gal`, `${fi(results.dailyFuelReduction)} gal/day`],
-            ['30-Day Fuel', `${fi(results.allGenFuel30Day)} gal`, `${fi(results.hybridFuelPerDay * 30)} gal`, `${fi(results.dailyFuelReduction * 30)} gal`],
-            ['30-Day Total Cost', fc(results.allGenCost30Day), fc(results.hybridCost30Day), fc(results.costSavings30Day)],
-            ['Estimated Fuel Cost Reduction', '-', `${fi(results.totalFuelSavingsGal)} gal reduction`, fc(results.totalFuelSavingsDollars)],
-            ['CO2 Avoided', '--', `${fi(results.co2AvoidedLbs)} lbs`, '--'],
-            ['CO2 Avoided', '--', `${(results.co2AvoidedTons).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tons`, '--'],
+            ['Daily Fuel', `${fi(results.allGenFuelPerDay)} gal`, `${fi(results.hybridFuelPerDay)} gal`, difference(results.dailyFuelReduction, 'gal/day')],
+            ['30-Day Fuel', `${fi(results.allGenFuel30Day)} gal`, `${fi(results.hybridFuelPerDay * 30)} gal`, difference(results.dailyFuelReduction * 30, 'gal')],
+            ['30-Day Total Cost', fc(results.allGenCost30Day), fc(results.hybridCost30Day), `${fc(Math.abs(results.costSavings30Day))} ${results.costSavings30Day >= 0 ? 'lower' : 'higher'}`],
+            ['Project Fuel Difference', '-', `${fi(Math.abs(results.totalFuelSavingsGal))} gal`, `${fc(Math.abs(results.totalFuelSavingsDollars))} ${results.totalFuelSavingsDollars >= 0 ? 'lower' : 'higher'}`],
+            ['CO2 Difference', '--', `${fi(Math.abs(results.co2AvoidedLbs))} lbs`, results.co2AvoidedLbs >= 0 ? 'lower' : 'higher'],
           ]}
         />
       </PdfSection>
@@ -149,10 +182,10 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {/* Fuel Projection — first 30 days */}
       <PdfSection title="Fuel Projection (First 30 Days)">
         <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 4 }}>
-          Daily fuel consumption comparison and cumulative fuel reduction over the project.
+          Daily fuel consumption comparison and cumulative all-generator minus hybrid difference over the project. Negative values mean the hybrid case uses more fuel after recharge losses.
         </Text>
         <PdfTable
-          headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'Cumulative Reduction (gal)']}
+          headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'All-Gen Minus Hybrid (gal)']}
           rows={results.dailyFuelData.slice(0, 30).map((d) => [
             `${d.day}`,
             d.date,
@@ -167,9 +200,10 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {zones && zones.length > 0 && (
         <PdfSection title="Power Zone Breakdown">
           <PdfTable
-            headers={['Zone Name', 'kW', `Amps/Phase (${inputs.siteVoltage}V)`, 'Legs/Phase']}
+            headers={['Zone Name', 'kW', `Amps/Phase (${inputs.loadVoltage ?? inputs.siteVoltage}V)`, 'Legs/Phase']}
             rows={zones.map((z) => {
-              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * inputs.siteVoltage * 0.8)
+              const branchVoltage = inputs.loadVoltage ?? inputs.siteVoltage
+              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * branchVoltage * (inputs.powerFactor ?? 0.8))
               const legs = Math.ceil(ampsPerPhase / 400)
               return [z.name, fi(z.kw), fi(ampsPerPhase), `${legs}`]
             })}
@@ -180,7 +214,9 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {/* Distribution Notes */}
       <PdfSection title="Distribution Notes">
         <PdfWarning>
-          {`Your site needs step-down transformers for ${inputs.siteVoltage}V to 240V to 120V distribution. Confirm with your electrician.`}
+          {inputs.siteVoltage === (inputs.loadVoltage ?? inputs.siteVoltage)
+            ? `Source and load voltage are both ${inputs.siteVoltage} V; no step-down transformer is shown in this planning package.`
+            : `The planning package includes transformation from ${inputs.siteVoltage} V to ${inputs.loadVoltage ?? inputs.siteVoltage} V. Confirm the delivered transformer, grounding, and protection with the engineer and vendor.`}
         </PdfWarning>
         <PdfWarning>
           N+1/2N redundancy requires Automatic Transfer Switch(es) — include in your equipment order.

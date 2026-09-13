@@ -9,13 +9,16 @@ import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { ReportContextFields } from '../../components/ui/ReportContextFields'
 import { ChartFrame } from '../../components/ui/ChartFrame'
 import { OneLineDiagramPanel } from '../../components/ui/OneLineDiagramPanel'
-import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
+import { HybridSiteLayout3D } from '../../components/ui/HybridSiteLayout3D'
 import { SpecSummaryPanel, type SpecSummaryTone } from '../../components/ui/SpecSummaryPanel'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
+import { buildHybridProjectPlan } from './hybridProjectPlan'
 import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { BESS_UNIT_SIZES, RATE_PERIOD_OPTIONS, VOLTAGE_OPTIONS, type RatePeriod, SQRT3 } from '../../lib/constants'
-import { BESS_FLEET, normalizeRateToDaily, recommendEquipment, type EquipmentRecommendation } from '../../lib/equipmentRecommendations'
+import { BESS_FLEET, normalizeRateToDaily } from '../../lib/equipmentRecommendations'
+import { addPlanningRequirement } from '../estimate/estimateDraft'
+import { DEFAULT_SITE_FIT_INPUTS } from '../site-fit/siteFit'
 import { fmt, fmtInt, fmtCurrency } from '../../lib/formatters'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -36,10 +39,6 @@ const coverageStatusClass = {
   conditional: 'border-warning/35 bg-warning/10 text-warning',
   not_feasible: 'border-error/35 bg-error/10 text-error',
 } as const
-
-function preferredOption(recommendation: EquipmentRecommendation) {
-  return recommendation[recommendation.preferred]
-}
 
 export default function HybridEnergyWizard() {
   const [peakLoadKw, setPeakLoadKw] = useState('800')
@@ -64,6 +63,12 @@ export default function HybridEnergyWizard() {
   const [zonesExpanded, setZonesExpanded] = useState(false)
   const [clientName, setClientName] = useState('')
   const [projectName, setProjectName] = useState('')
+  const [powerFactor, setPowerFactor] = useState('0.8')
+  const [loadVoltage, setLoadVoltage] = useState('208')
+  const [longestCableRouteFt, setLongestCableRouteFt] = useState('100')
+  const [neutralPlan, setNeutralPlan] = useState<'required' | 'not_carried' | 'review'>('review')
+  const [siteLengthFt, setSiteLengthFt] = useState('200')
+  const [siteWidthFt, setSiteWidthFt] = useState('120')
 
   let nextZoneId = 1
 
@@ -104,6 +109,12 @@ export default function HybridEnergyWizard() {
     startDate,
     endDate,
     motors,
+    powerFactor: parseFloat(powerFactor) || 0.8,
+    loadVoltage: parseInt(loadVoltage) || 208,
+    longestCableRouteFt: parseFloat(longestCableRouteFt) || 100,
+    neutralPlan,
+    siteLengthFt: parseFloat(siteLengthFt) || 200,
+    siteWidthFt: parseFloat(siteWidthFt) || 120,
   }
 
   const calculate = useCallback((inp: HybridWizardInputs) => {
@@ -113,18 +124,9 @@ export default function HybridEnergyWizard() {
   }, [])
   const results = useCalculator(inputs, calculate)
   const oneLineDiagram = results ? buildHybridOneLineDiagram(inputs, results, zones) : null
-  const recommendation = results
-    ? recommendEquipment({
-        peakKw: inputs.peakLoadKw,
-        baseKw: inputs.baseLoadKw,
-        runtimeHours: inputs.peakHoursPerDay,
-        projectDurationHours: inputs.projectDurationDays * 24,
-        peakHoursPerDay: inputs.peakHoursPerDay,
-        preferredBessKw: inputs.bessUnitSize,
-        redundancyFactor: results.redundancyFactor,
-        siteVoltage: inputs.siteVoltage,
-      })
-    : null
+  const projectPlan = results ? buildHybridProjectPlan(inputs, results, zones) : null
+  const zonesTotalKw = zones.reduce((sum, zone) => sum + zone.kw, 0)
+  const zonesBalanced = zones.length === 0 || (zones.every((zone) => zone.kw > 0) && Math.abs(zonesTotalKw - inputs.peakLoadKw) <= 1)
 
   const fuelComparisonData = useMemo(() => {
     if (!results) return []
@@ -146,11 +148,10 @@ export default function HybridEnergyWizard() {
     ]
   }, [results, inputs.bessUnitSize])
 
-  const hybridSpecSummary = results && recommendation
+  const hybridSpecSummary = results && projectPlan
     ? (() => {
         const primaryScenario = results.coverage.scenarios[0]
         const fallbackScenario = results.coverage.scenarios.find((scenario) => scenario.label.includes('Generator-backed'))
-        const recommended = preferredOption(recommendation)
         const cableLegs = Math.max(1, Math.ceil(results.peakAmpsPerPhase / 400))
         const rechargeWindow = results.coverage.estimatedRechargeHours === null
           ? 'No reserve'
@@ -168,8 +169,8 @@ export default function HybridEnergyWizard() {
           metrics: [
             {
               label: 'Recommended Package',
-              value: recommended.units,
-              detail: `${recommended.label} using Sunbelt-style fleet classes`,
+              value: `${results.genUnits} × ${results.genUnitSizeKw} kW gen + ${results.bessUnits} × ${inputs.bessUnitSize} kW BESS`,
+              detail: `${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby generator unit(s); BESS uses the selected fleet unit's actual kWh rating`,
             },
             {
               label: 'Load Profile',
@@ -179,12 +180,12 @@ export default function HybridEnergyWizard() {
             {
               label: 'Installed Capacity',
               value: `${results.bessUnits} BESS + ${results.genUnits} gen`,
-              detail: `${fmtInt(results.coverage.bessInstalledKw)} kW BESS, ${fmtInt(results.coverage.generatorOnlineKw)} kW generator`,
+              detail: `${fmtInt(results.coverage.bessInstalledKw)} kW BESS, ${fmtInt(results.genCapacityKw)} kW installed / ${fmtInt(results.generatorFirmCapacityKw)} kW firm generator`,
             },
             {
               label: 'Footprint',
-              value: `~${fmtInt(recommended.footprintSqFt)} sq ft`,
-              detail: 'Planning space before clearances and fuel logistics',
+              value: `~${fmtInt(projectPlan.equipmentEnvelopeSqFt)} sq ft`,
+              detail: `${projectPlan.siteLengthFt} × ${projectPlan.siteWidthFt} ft site envelope; includes planning clearances`,
             },
             {
               label: 'Distribution',
@@ -203,8 +204,8 @@ export default function HybridEnergyWizard() {
             },
             {
               label: 'Fuel Signal',
-              value: `${fmtInt(results.dailyFuelReduction)} gal/day`,
-              detail: `${fmtCurrency(results.totalFuelSavingsDollars)} estimated project fuel cost reduction`,
+              value: `${fmtInt(Math.abs(results.dailyFuelReduction))} gal/day ${results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}`,
+              detail: `${fmtCurrency(Math.abs(results.totalFuelSavingsDollars))} estimated project fuel cost ${results.totalFuelSavingsDollars >= 0 ? 'reduction' : 'increase'} after recharge losses`,
             },
           ],
           steps: [
@@ -240,6 +241,75 @@ export default function HybridEnergyWizard() {
         }
       })()
     : null
+
+  const syncToSiteFit = () => {
+    if (!results || !projectPlan || !zonesBalanced) return
+    let current = DEFAULT_SITE_FIT_INPUTS
+    try {
+      const saved = window.localStorage.getItem('power-calc:site-fit:inputs')
+      if (saved) current = { ...current, ...JSON.parse(saved) }
+    } catch {
+      current = DEFAULT_SITE_FIT_INPUTS
+    }
+    const bessFleet = BESS_FLEET.find((unit) => unit.kw === inputs.bessUnitSize)
+    window.localStorage.setItem('power-calc:site-fit:inputs', JSON.stringify({
+      ...current,
+      requestedPowerKw: inputs.peakLoadKw,
+      sourceVoltage: inputs.siteVoltage,
+      loadVoltage: inputs.loadVoltage,
+      powerFactor: inputs.powerFactor,
+      longestRouteFt: inputs.longestCableRouteFt,
+      neutralPlan: inputs.neutralPlan,
+      siteLengthFt: inputs.siteLengthFt,
+      siteWidthFt: inputs.siteWidthFt,
+      scenario: 'hybrid',
+      continuity: inputs.redundancy === 'n1' || inputs.redundancy === 'field_verify' ? 'n_plus_1' : 'standard',
+      packageOverride: {
+        source: 'hybrid',
+        generatorCount: results.genUnits,
+        generatorRequiredUnits: results.generatorRequiredUnits,
+        generatorUnitKw: results.genUnitSizeKw,
+        generatorFirmCapacityKw: results.generatorFirmCapacityKw,
+        bessCount: results.bessUnits,
+        bessUnitKw: inputs.bessUnitSize,
+        bessUnitKwh: bessFleet?.kwh ?? 0,
+        layoutFits: projectPlan.layoutFits,
+        equipmentEnvelopeSqFt: projectPlan.equipmentEnvelopeSqFt,
+        totalCablePieces: projectPlan.totalCablePieces,
+        totalCablePieceRange: projectPlan.totalCablePieceRange,
+        layoutEquipment: projectPlan.equipment,
+      },
+    }))
+    window.history.pushState({}, '', '/site-fit')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const addPackageToEstimate = () => {
+    if (!results || !projectPlan || !zonesBalanced) return
+    const cableCount = projectPlan.totalCablePieces ?? `${projectPlan.totalCablePieceRange?.[0]}-${projectPlan.totalCablePieceRange?.[1]}`
+    const added = addPlanningRequirement({
+      source: 'hybrid',
+      title: 'Reconciled hybrid generator + BESS package',
+      summary: `${results.genUnits} × ${results.genUnitSizeKw} kW generators and ${results.bessUnits} × ${inputs.bessUnitSize} kW BESS units for ${inputs.peakLoadKw.toLocaleString()} kW peak / ${inputs.baseLoadKw.toLocaleString()} kW base.`,
+      details: [
+        { label: 'Generator topology', value: `${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby; ${results.generatorFirmCapacityKw.toLocaleString()} kW firm` },
+        { label: 'BESS installed', value: `${results.coverage.bessInstalledKw.toLocaleString()} kW / ${results.coverage.bessInstalledKwh.toLocaleString()} kWh` },
+        { label: 'Cable schedule', value: `${cableCount} planning 50-ft pieces; neutral ${inputs.neutralPlan}` },
+        { label: 'Budgetary entered-rate total', value: fmtCurrency(projectPlan.budgetaryTotal) },
+      ],
+      assumptions: [projectPlan.neutralExplanation, 'Vendor availability, model/SKU, cable ampacity, protection, delivery, labor, taxes, and every zero-rate line remain unconfirmed.'],
+    }, { clientName, projectName }, projectPlan.quoteItems.map((item) => ({
+      id: `hybrid-${item.id}`,
+      category: item.category,
+      description: item.description,
+      modelSku: item.modelSku,
+      quantity: item.quantity,
+      rate: item.rate,
+      periods: item.periods,
+      rateUnit: item.rateUnit,
+    })))
+    window.alert(added ? 'Reconciled hybrid package added to Build Estimate. Vendor-required lines remain at $0 until confirmed.' : 'The current estimate belongs to another client or project. Open Build Estimate and start a new estimate before importing this package.')
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -313,6 +383,22 @@ export default function HybridEnergyWizard() {
               options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             />
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <InputField label="Power Factor" value={powerFactor} onChange={setPowerFactor} min={0.1} max={1} step="0.01" />
+            <SelectField label="Load Voltage" value={loadVoltage} onChange={setLoadVoltage} options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))} />
+            <InputField label="Longest Cable Route" unit="ft" value={longestCableRouteFt} onChange={setLongestCableRouteFt} min={1} />
+            <SelectField label="Neutral Plan" value={neutralPlan} onChange={(value) => setNeutralPlan(value as typeof neutralPlan)} options={[
+              { value: 'required', label: 'Carry neutral — A/B/C/N/G' },
+              { value: 'not_carried', label: 'No neutral — line-to-line only' },
+              { value: 'review', label: 'Unresolved — show range' },
+            ]} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField label="Available Site Length" unit="ft" value={siteLengthFt} onChange={setSiteLengthFt} min={40} />
+            <InputField label="Available Site Width" unit="ft" value={siteWidthFt} onChange={setSiteWidthFt} min={30} />
+          </div>
           {redundancy === 'field_verify' && (
             <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-sm text-info">
               <Info size={14} className="mt-0.5 shrink-0" />
@@ -321,11 +407,17 @@ export default function HybridEnergyWizard() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <InputField label="Peak Hours/Day" unit="hrs" value={peakHoursPerDay} onChange={setPeakHoursPerDay} />
+            <InputField label="Peak Hours/Day" unit="hrs" value={peakHoursPerDay} onChange={setPeakHoursPerDay} min={0} max={24} />
             <InputField label="Project Duration" unit="days" value={projectDays} onChange={setProjectDays} />
             <InputField label="Start Date" type="date" value={startDate} onChange={setStartDate} />
             <InputField label="End Date" type="date" value={endDate} onChange={setEndDate} tooltip="Or use duration" />
           </div>
+          {inputs.peakHoursPerDay >= 24 && inputs.peakLoadKw > inputs.baseLoadKw && (
+            <div className="flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              A 24-hour peak leaves no daily BESS recharge window. The calculator treats the generator plant as the continuous peak source; revise the load profile before relying on battery-first dispatch.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} />
@@ -361,7 +453,7 @@ export default function HybridEnergyWizard() {
           metrics={hybridSpecSummary.metrics}
           steps={hybridSpecSummary.steps}
           notes={hybridSpecSummary.notes}
-          action={
+          action={zonesBalanced ? (
             <PdfExportButton
               createDocument={async () => {
                 const { HybridEnergyPdfDoc } = await import('./HybridEnergyPdf')
@@ -370,7 +462,7 @@ export default function HybridEnergyWizard() {
               filename="emaas-hybrid-energy-report.pdf"
               label="Generate Report"
             />
-          }
+          ) : <p role="alert" className="max-w-xs text-right text-xs font-semibold text-warning">Balance the named power zones to the peak load before generating the report.</p>}
         />
       )}
 
@@ -430,8 +522,8 @@ export default function HybridEnergyWizard() {
               {zones.map((z) => (
                 <div key={z.id} className="bg-sg-800 rounded-lg p-3">
                   <div className="grid grid-cols-3 gap-3 items-end">
-                    <InputField label="Zone Name" value={z.name} onChange={(v) => updateZone(z.id, 'name', v)} />
-                    <InputField label="Load" unit="kW" value={z.kw} onChange={(v) => updateZone(z.id, 'kw', v)} />
+                    <InputField label="Zone Name" type="text" value={z.name} onChange={(v) => updateZone(z.id, 'name', v)} />
+                    <InputField label="Load" unit="kW" value={z.kw} onChange={(v) => updateZone(z.id, 'kw', v)} min={0} />
                     <button onClick={() => removeZone(z.id)} className="text-text-dim hover:text-error mb-2">
                       <Trash2 size={14} />
                     </button>
@@ -464,10 +556,10 @@ export default function HybridEnergyWizard() {
             <ResultGrid>
               <ResultItem label="BESS Units" value={`${results.bessUnits} × ${inputs.bessUnitSize} kW`} highlight />
               <ResultItem label="BESS Energy Needed" value={fmtInt(results.bessEnergyKwh)} unit="kWh" />
-              <ResultItem label="Generator Capacity" value={fmtInt(results.genCapacityKw)} unit="kW" />
-              <ResultItem label="Generator Units" value={`${results.genUnits} × ${results.genUnitSizeKw} kW`} />
+              <ResultItem label="Installed Generator Capacity" value={fmtInt(results.genCapacityKw)} unit="kW" />
+              <ResultItem label="Generator Units" value={`${results.genUnits} × ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`} />
               <ResultItem label="Total System Capacity" value={fmtInt(results.totalCapacityKw)} unit="kW" highlight />
-              <ResultItem label="Redundancy Factor" value={`${results.redundancyFactor}x`} />
+              <ResultItem label="Firm Generator Capacity" value={fmtInt(results.generatorFirmCapacityKw)} unit="kW" />
               <ResultItem label={`Peak Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.peakAmpsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
               <ResultItem label={`Base Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.baseAmpsPerPhase, 0)} unit="A" />
             </ResultGrid>
@@ -537,9 +629,39 @@ export default function HybridEnergyWizard() {
             )}
           </Card>
 
-          {recommendation && <EquipmentRecommendationPanel recommendation={recommendation} />}
-
           {oneLineDiagram && <OneLineDiagramPanel diagram={oneLineDiagram} />}
+
+          {projectPlan && (
+            <Card>
+              <CardHeader title="Source + Branch Cable Schedule" subtitle="50-ft planning pieces; final gauge, ampacity, voltage drop, connector, neutral, and grounding decisions require technical review." />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-sg-600">
+                    <th className="py-2 text-left text-text-muted">Circuit</th><th className="py-2 text-right text-text-muted">Load</th><th className="py-2 text-right text-text-muted">A/phase</th><th className="py-2 text-right text-text-muted">Runs/phase</th><th className="py-2 text-right text-text-muted">50-ft pieces</th>
+                  </tr></thead>
+                  <tbody>{projectPlan.cableSchedule.map((row) => (
+                    <tr key={row.id} className="border-b border-sg-700">
+                      <td className="py-2 text-text"><span className="font-bold">{row.id}</span> · {row.circuit}<span className="block text-xs text-text-dim">{row.voltage} V · neutral {row.neutral.replace('_', ' ')}</span></td>
+                      <td className="text-right text-text">{fmtInt(row.loadKw)} kW</td><td className="text-right text-text">{fmt(row.ampsPerPhase, 0)}</td><td className="text-right text-text">{row.runsPerPhase}</td><td className="text-right font-bold text-accent-300">{row.pieces ?? `${row.pieceRange?.[0]}-${row.pieceRange?.[1]}`}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-warning">{projectPlan.neutralExplanation}</p>
+            </Card>
+          )}
+
+          {projectPlan && <Card><HybridSiteLayout3D plan={projectPlan} /><div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="secondary" onClick={syncToSiteFit} disabled={!zonesBalanced} className="disabled:cursor-not-allowed disabled:opacity-50">Open Synced Site Fit</Button></div></Card>}
+
+          {projectPlan && (
+            <Card>
+              <CardHeader title="Budgetary Estimate Basis" subtitle="Calculated from the rates entered above; zero-rate lines identify required vendor selections, not free equipment." />
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-sg-600"><th className="py-2 text-left text-text-muted">Item</th><th className="py-2 text-right text-text-muted">Qty</th><th className="py-2 text-right text-text-muted">Rate</th><th className="py-2 text-right text-text-muted">Extended</th><th className="py-2 text-right text-text-muted">Status</th></tr></thead><tbody>
+                {projectPlan.quoteItems.map((item) => <tr key={item.id} className="border-b border-sg-700"><td className="py-2 text-text">{item.description}<span className="block text-xs text-text-dim">{item.modelSku}</span></td><td className="text-right text-text">{fmt(item.quantity, item.quantity < 10 ? 1 : 0)}</td><td className="text-right text-text">{item.rate > 0 ? `${fmtCurrency(item.rate)}/${item.rateUnit}` : 'TBD'}</td><td className="text-right font-bold text-text">{item.total > 0 ? fmtCurrency(item.total) : 'TBD'}</td><td className="text-right text-xs text-text-dim">{item.confirmation === 'entered_rate' ? 'Entered rate' : 'Vendor required'}</td></tr>)}
+              </tbody></table></div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent-500/35 bg-accent-500/10 p-4"><div><div className="text-xs font-bold uppercase tracking-wider text-accent-300">Known-rate subtotal</div><div className="mt-1 text-2xl font-bold text-text">{fmtCurrency(projectPlan.budgetaryTotal)}</div><p className="mt-1 text-xs text-text-muted">Excludes every TBD distribution, logistics, labor, tax, and vendor-confirmation line.</p></div><Button type="button" onClick={addPackageToEstimate} disabled={!zonesBalanced} className="disabled:cursor-not-allowed disabled:opacity-50">Add Package to Estimate</Button></div>
+            </Card>
+          )}
 
           {/* Motor Assignments */}
           {results.motorAssignments.length > 0 && (
@@ -581,7 +703,7 @@ export default function HybridEnergyWizard() {
                     <th className="text-left py-2 text-text-muted">Metric</th>
                     <th className="text-right py-2 text-text-muted">All Generator</th>
                     <th className="text-right py-2 text-accent-400">Hybrid (Gen + BESS)</th>
-                    <th className="text-right py-2 text-signal-blue">Cost Reduction</th>
+                    <th className="text-right py-2 text-signal-blue">Difference vs All-Gen</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -589,36 +711,36 @@ export default function HybridEnergyWizard() {
                     <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />Daily Fuel</td>
                     <td className="text-right text-text">{fmtInt(results.allGenFuelPerDay)} gal</td>
                     <td className="text-right text-accent-300">{fmtInt(results.hybridFuelPerDay)} gal</td>
-                    <td className="text-right text-signal-blue">{fmtInt(results.dailyFuelReduction)} gal/day</td>
+                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.dailyFuelReduction))} gal/day {results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />30-Day Fuel</td>
                     <td className="text-right text-text">{fmtInt(results.allGenFuel30Day)} gal</td>
                     <td className="text-right text-accent-300">{fmtInt(results.hybridFuelPerDay * 30)} gal</td>
-                    <td className="text-right text-signal-blue">{fmtInt(results.dailyFuelReduction * 30)} gal</td>
+                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.dailyFuelReduction * 30))} gal {results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><DollarSign size={14} className="inline mr-1" />30-Day Total Cost</td>
                     <td className="text-right text-text">{fmtCurrency(results.allGenCost30Day)}</td>
                     <td className="text-right text-accent-300">{fmtCurrency(results.hybridCost30Day)}</td>
-                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(results.costSavings30Day)}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.costSavings30Day))} {results.costSavings30Day >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text font-semibold">Estimated Fuel Cost Reduction</td>
+                    <td className="py-2 text-text font-semibold">Project Fuel Difference</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-accent-300">{fmtInt(results.totalFuelSavingsGal)} gal</td>
-                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(results.totalFuelSavingsDollars)}</td>
+                    <td className="text-right text-accent-300">{fmtInt(Math.abs(results.totalFuelSavingsGal))} gal {results.totalFuelSavingsGal >= 0 ? 'lower' : 'higher'}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.totalFuelSavingsDollars))} {results.totalFuelSavingsDollars >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Avoided</td>
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Difference</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-signal-blue">{fmtInt(results.co2AvoidedLbs)} lbs</td>
+                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.co2AvoidedLbs))} lbs {results.co2AvoidedLbs >= 0 ? 'lower' : 'higher'}</td>
                     <td></td>
                   </tr>
                   <tr>
-                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Avoided</td>
+                    <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Difference</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-signal-blue font-semibold">{fmt(results.co2AvoidedTons, 1)} tons</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmt(Math.abs(results.co2AvoidedTons), 1)} tons {results.co2AvoidedTons >= 0 ? 'lower' : 'higher'}</td>
                     <td></td>
                   </tr>
                 </tbody>
@@ -642,14 +764,14 @@ export default function HybridEnergyWizard() {
               </div>
 
               <div>
-                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Cost Reduction</h4>
+                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Difference</h4>
                 <ChartFrame height={250}>
                   <AreaChart data={cumulativeSavingsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#34495E" />
                     <XAxis dataKey="date" tick={{ fill: '#C5C6C7', fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: '#C5C6C7', fontSize: 11 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }} />
-                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="Cumulative Reduction (gal)" stroke="#C27A2C" fill="#C27A2C" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="All-gen minus hybrid (gal)" stroke="#C27A2C" fill="#C27A2C" fillOpacity={0.2} />
                   </AreaChart>
                 </ChartFrame>
               </div>
@@ -662,7 +784,11 @@ export default function HybridEnergyWizard() {
             <div className="space-y-2 text-sm">
               <div className="flex items-start gap-2 px-3 py-2 bg-info/10 border border-info/30 rounded-lg text-info">
                 <Info size={14} className="mt-0.5 shrink-0" />
-                <span>Your site needs step-down transformers for {siteVoltage}V→240V→120V distribution. Confirm with your electrician.</span>
+                <span>
+                  {siteVoltage === loadVoltage
+                    ? `Source and load voltage are both ${siteVoltage} V; no step-down transformer is shown in this planning package.`
+                    : `The planning package includes transformation from ${siteVoltage} V to ${loadVoltage} V. Confirm the delivered transformer, grounding, and protection with the engineer and vendor.`}
+                </span>
               </div>
               <div className="flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-warning">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -678,20 +804,20 @@ export default function HybridEnergyWizard() {
           {/* Per-Zone Breakdown */}
           {zones.length > 0 && (
             <Card>
-              <CardHeader title="Power Zone Breakdown" subtitle={`Per-zone distribution planning (${siteVoltage}V 3-phase)`} />
+              <CardHeader title="Power Zone Breakdown" subtitle={`Per-zone distribution planning (${loadVoltage}V 3-phase)`} />
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-sg-600">
                       <th className="text-left py-2 text-text-muted">Zone Name</th>
                       <th className="text-right py-2 text-text-muted">kW</th>
-                      <th className="text-right py-2 text-text-muted">Amps/Phase ({siteVoltage}V)</th>
+                      <th className="text-right py-2 text-text-muted">Amps/Phase ({loadVoltage}V)</th>
                       <th className="text-right py-2 text-text-muted">Legs/Phase</th>
                     </tr>
                   </thead>
                   <tbody>
                     {zones.map((z) => {
-                      const ampsPerPhase = (z.kw * 1000) / (SQRT3 * inputs.siteVoltage * 0.8)
+                      const ampsPerPhase = (z.kw * 1000) / (SQRT3 * (inputs.loadVoltage ?? inputs.siteVoltage) * (inputs.powerFactor ?? 0.8))
                       const legs = Math.ceil(ampsPerPhase / 400)
                       return (
                         <tr key={z.id} className="border-b border-sg-700">

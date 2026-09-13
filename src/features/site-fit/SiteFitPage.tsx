@@ -207,7 +207,8 @@ export default function SiteFitPage() {
   const selected = result.equipment.find((item) => item.id === selectedId) ?? result.equipment[0]
 
   const update = <K extends keyof SiteFitInputs>(field: K, value: SiteFitInputs[K]) => {
-    setInputs((current) => ({ ...current, [field]: value }))
+    const invalidatesSyncedPackage = ['requestedPowerKw', 'sourceVoltage', 'loadVoltage', 'powerFactor', 'scenario', 'continuity', 'siteLengthFt', 'siteWidthFt', 'exclusionLengthFt', 'exclusionWidthFt', 'accessLaneWidthFt', 'longestRouteFt', 'neutralPlan'].includes(field)
+    setInputs((current) => ({ ...current, [field]: value, ...(invalidatesSyncedPackage ? { packageOverride: undefined } : {}) }))
     setValidationMessage('')
   }
 
@@ -250,6 +251,11 @@ export default function SiteFitPage() {
         <Card className="h-fit" >
           <CardHeader title="Job constraints" subtitle="Use known conditions; unresolved items remain visible for field review." />
           <div ref={requestedPowerRef} className="space-y-4">
+            {inputs.packageOverride && (
+              <div className="rounded-lg border border-signal-blue/35 bg-signal-blue/10 p-3 text-xs leading-relaxed text-signal-blue">
+                Synced hybrid package: {inputs.packageOverride.generatorCount} × {inputs.packageOverride.generatorUnitKw} kW generators and {inputs.packageOverride.bessCount} × {inputs.packageOverride.bessUnitKw} kW / {inputs.packageOverride.bessUnitKwh} kWh BESS units. Changing electrical sizing inputs clears this link.
+              </div>
+            )}
             <InputField label="Requested power" unit="kW" value={inputs.requestedPowerKw} min={0} onChange={(value) => update('requestedPowerKw', numberFrom(value))} />
             <SelectField label="Package" value={inputs.scenario} onChange={(value) => update('scenario', value as SiteFitInputs['scenario'])} options={[
               { value: 'power', label: 'Temporary power' },
@@ -337,7 +343,7 @@ export default function SiteFitPage() {
                 value={!result.validDemand ? 'Awaiting load' : result.fits ? `${Math.round(result.remainingAreaSqFt).toLocaleString()} sq ft` : result.shortfallSqFt > 0 ? `${Math.round(result.shortfallSqFt).toLocaleString()} sq ft` : 'Layout blocked'}
                 tone={result.fits ? 'good' : 'warning'}
               />
-              <Metric label="Planning ceiling" value={result.validDemand ? `${result.planningPowerCeilingKw.toLocaleString()} kW` : 'Withheld'} tone={result.validDemand && result.planningPowerCeilingKw >= inputs.requestedPowerKw ? 'good' : 'warning'} />
+              <Metric label="Planning ceiling" value={result.validDemand ? `${result.planningPowerCeilingKw.toLocaleString()} kW` : 'Withheld'} tone={result.fits && result.planningPowerCeilingKw >= inputs.requestedPowerKw ? 'good' : 'warning'} />
             </div>
           </Card>
 
@@ -369,7 +375,7 @@ export default function SiteFitPage() {
                 </div>
                 <div>
                   <div className="font-bold text-text">Cable schedule</div>
-                  <p className="mt-1">{Math.round(result.ampsPerPhase).toLocaleString()} A/phase requires {result.cableRunsPerPhase} planning run{result.cableRunsPerPhase === 1 ? '' : 's'}/phase. For {result.routeSections} × 50 ft route section{result.routeSections === 1 ? '' : 's'}, plan {cableTotal}.</p>
+                  <p className="mt-1">{inputs.packageOverride ? `The synced source + branch schedule requires ${cableTotal}. The ${Math.round(result.ampsPerPhase).toLocaleString()} A/phase main source circuit uses ${result.cableRunsPerPhase} run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase across ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}.` : `${Math.round(result.ampsPerPhase).toLocaleString()} A/phase requires ${result.cableRunsPerPhase} planning run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase. For ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}, plan ${cableTotal}.`}</p>
                 </div>
               </div>
             </Card>

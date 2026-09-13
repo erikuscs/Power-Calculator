@@ -175,18 +175,101 @@ async function run() {
     }
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
-    await page.getByLabel('Site Voltage').selectOption('208')
+    await page.evaluate(() => window.localStorage.removeItem('power-calc:/estimate:draft'))
+    await page.getByLabel('Client / Account').fill('Data Center Construction')
+    await page.getByLabel('Project / Phase').fill('Commissioning Block A')
+    await page.getByLabel('Peak Load Demand').fill('1200')
+    await page.getByLabel('Base/Continuous Load').fill('800')
+    await page.getByLabel('BESS Unit Size').selectOption('250')
+    await page.getByLabel('Site Voltage').selectOption('480')
+    await page.getByLabel('Load Voltage').selectOption('208')
+    await page.getByLabel('Power Factor').fill('0.8')
+    await page.getByLabel('Longest Cable Route').fill('100')
+    await page.getByLabel('Neutral Plan').selectOption('required')
+    await page.getByLabel('Available Site Length').fill('200')
+    await page.getByLabel('Available Site Width').fill('120')
+    await page.getByLabel('Peak Hours/Day').fill('8')
+    await page.getByLabel('Project Duration').fill('30')
     await page.getByLabel('BESS Rate Period').selectOption('weekly')
     await page.getByLabel('Generator Rate Period').selectOption('monthly')
-    await page.getByLabel('Redundancy Level').selectOption('field_verify')
-    await expectText(page, /Field verify uses N\+1 planning capacity/i, 'field-verify redundancy note')
+    await page.getByLabel('Redundancy Level').selectOption('n1')
     await expectText(page, /Streamlined Hybrid Spec/i, 'streamlined hybrid spec summary')
     await expectText(page, /Operating Path/i, 'streamlined operating path')
     await expectText(page, /24\/7 Hybrid Coverage Scenarios/i, 'hybrid 24/7 coverage scenarios')
     await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
     await expectText(page, /Printable Electrical One-Line/i, 'printable electrical one-line diagram')
     await expectText(page, /Print One-Line/i, 'one-line print action')
-    await expectText(page, /300 kW legacy \/ large-system BESS/i, 'selected legacy BESS recommendation')
+    await expectText(page, /4 × 500 kW gen \+ 7 × 250 kW BESS/i, 'reconciled hybrid package')
+    await expectText(page, /3 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
+    await expectText(page, /2,000 kW installed \/ 1,500 kW firm generator/i, 'installed and firm generator distinction')
+    await expectText(page, /Source \+ Branch Cable Schedule/i, 'source and branch cable schedule')
+    await expectText(page, /160 pieces/i, 'default protected-load cable count')
+    await expectText(page, /Conceptual 3D Equipment Envelope/i, 'dimensioned 3D equipment envelope')
+    await expectText(page, /Budgetary Estimate Basis/i, 'hybrid quote basis')
+    await expectText(page, /Vendor required/i, 'unpriced vendor-required estimate lines')
+    await expectText(page, /transformation from 480 V to 208 V/i, 'selected-voltage transformer explanation')
+
+    await page.getByRole('button', { name: /Split into Power Zones/i }).click()
+    await page.getByRole('button', { name: 'Add Zone' }).click()
+    await page.getByRole('button', { name: 'Add Zone' }).click()
+    await page.getByLabel('Zone Name').nth(0).fill('Critical commissioning')
+    await page.getByLabel('Load', { exact: true }).nth(0).fill('700')
+    if (await page.getByRole('button', { name: 'Generate Report' }).count()) {
+      throw new Error('Hybrid report should be withheld while named power zones do not balance to peak load')
+    }
+    if (await page.getByRole('button', { name: 'Open Synced Site Fit' }).isEnabled()) {
+      throw new Error('Site Fit handoff should be disabled while named power zones do not balance to peak load')
+    }
+    await page.getByLabel('Zone Name').nth(1).fill('Support systems')
+    await page.getByLabel('Load', { exact: true }).nth(1).fill('500')
+    await expectText(page, /Zones total: 1,200 kW vs Peak Load: 1,200 kW/i, 'balanced power-zone total')
+    await expectText(page, /Amps\/Phase \(208V\)/i, 'branch current at selected load voltage')
+    await expectText(page, /2,429/i, '700 kW branch current using selected load voltage and power factor')
+    await expectText(page, /BR-1/i, 'first branch cable schedule')
+    await expectText(page, /BR-2/i, 'second branch cable schedule')
+
+    await page.getByLabel('Load', { exact: true }).nth(0).fill('1300')
+    await page.getByLabel('Load', { exact: true }).nth(1).fill('-100')
+    if (await page.getByRole('button', { name: 'Generate Report' }).count()) {
+      throw new Error('Negative power zones must not satisfy the hybrid handoff balance gate')
+    }
+    await page.getByLabel('Load', { exact: true }).nth(0).fill('700')
+    await page.getByLabel('Load', { exact: true }).nth(1).fill('500')
+
+    const [hybridReportDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Generate Report' }).click(),
+    ])
+    if (!hybridReportDownload.suggestedFilename().toLowerCase().endsWith('.pdf')) {
+      throw new Error('Hybrid planning report did not download as a PDF')
+    }
+    await hybridReportDownload.createReadStream()
+
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Add Package to Estimate' }).click()
+    await page.getByRole('button', { name: 'Open Synced Site Fit' }).click()
+    await page.getByRole('heading', { name: /Site Fit/i }).waitFor()
+    await expectText(page, /Synced hybrid package: 4 × 500 kW generators and 7 × 250 kW \/ 575 kWh BESS units/i, 'hybrid package handoff to site fit')
+    await expectText(page, /Planning ceiling/i, 'synced site-fit planning ceiling')
+    await expectText(page, /Package fits the entered planning area/i, 'reconciled hybrid site-fit status')
+    await expectText(page, /synced source \+ branch schedule requires 170 pieces/i, 'reconciled site-fit cable total')
+    await page.getByLabel('Longest cable route').fill('200')
+    if (await page.getByText(/Synced hybrid package:/i).count()) {
+      throw new Error('Editing Site Fit cable assumptions must invalidate the frozen hybrid package handoff')
+    }
+
+    await page.goto(`${baseUrl}/estimate`, { waitUntil: 'networkidle' })
+    await expectText(page, /Reconciled hybrid generator \+ BESS package/i, 'hybrid requirement imported to estimate')
+    const hybridEstimateDescriptions = await page.getByLabel('Description').evaluateAll((inputs) => inputs.map((input) => input.value))
+    for (const [pattern, label] of [
+      [/500 kW generator rental/i, 'generator quote line'],
+      [/250 kW \/ 575 kWh BESS rental/i, 'BESS quote line'],
+      [/4\/0 planning cable schedule/i, 'cable quote line'],
+    ]) {
+      if (!hybridEstimateDescriptions.some((description) => pattern.test(description))) {
+        throw new Error(`Expected ${label} to be imported to the estimate; found ${JSON.stringify(hybridEstimateDescriptions)}`)
+      }
+    }
 
     await page.goto(`${baseUrl}/scenarios/bess-project`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: /Next: Financial Parameters/i }).click()

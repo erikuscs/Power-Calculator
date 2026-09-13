@@ -1,6 +1,6 @@
 # EMaaS Pro Quality Assurance
 
-Status: `CURRENT LOCAL QA PASSED 2026-09-11 / NOT RELEASED OR DEPLOYED`
+Status: `CURRENT LOCAL QA PASSED 2026-09-13 / NOT RELEASED OR DEPLOYED`
 
 ## Required automated gates
 
@@ -54,6 +54,19 @@ The current correction addresses these items in source.
 - PWA manifest readback: passed; all declared icons exist in the built artifact and the current name/theme values are present.
 - Compiled web and copied iOS bundle scan: passed; no retired SG color value was found.
 - Unsigned iOS Simulator compilation with Xcode: passed (`** BUILD SUCCEEDED **`). Its isolated DerivedData was removed from the controlled disposable scratch lane after verification.
+
+## Reconciled hybrid-planning correction — 2026-09-13
+
+- The generator duty/standby calculation, actual BESS energy rating, recharge accounting, and all-generator comparison now use one shared calculation basis.
+- The representative 1,200/800 kW N+1 regression resolves to four 500 kW generators (three duty and one standby), seven 250 kW / 575 kWh BESS units, and 1,500 kW firm generator capacity.
+- The one-line, source/branch 50-foot cable schedule, neutral explanation, dimensioned 3D envelope, Site Fit handoff, PDF, and Build Estimate all consume the reconciled package. The balanced acceptance case carries the same 170-piece total and fit verdict into Site Fit.
+- The browser workflow verifies named 700 kW and 500 kW branches, a balanced 1,200 kW zone total, a real PDF download, exact-package Site Fit synchronization, and imported generator, BESS, fuel, distribution, and cable quote lines.
+- Browser testing identified and corrected a numeric `Zone Name` input and voltage-independent transformer reminder before acceptance.
+- Fuel comparison labels report either higher or lower use/cost after recharge losses; they do not imply savings when the entered scenario does not produce them.
+- A cold independent review found five cross-surface/edge-case contradictions, then three follow-up edge cases and one final visualization mismatch. Every item was corrected and independently rechecked before commit, with no remaining P0/P1 finding. The fixes cover Site Fit cable/layout/constraint reconciliation, constrained placement coordinates, PDF branch-voltage labeling, equal-load zero-window 24-hour comparisons, stale-package invalidation, and malformed or unbalanced-zone handoff blocking.
+- `npm test` passed all 26 files and 163 tests; `npm run lint`, `npm run build`, and the expanded `npm run test:e2e` suite passed.
+- `npx cap sync ios` and the post-sync controlled brand audit passed. A fresh unsigned iOS Simulator build also completed with `** BUILD SUCCEEDED **`; its isolated DerivedData was removed after verification.
+- Final engineering, manufacturer selection, cable ampacity/voltage drop, protection, grounding, site clearances, rates, logistics, physical-device verification, and deployment remain separate gates.
 
 ## Released V3 artwork alignment — 2026-09-11
 

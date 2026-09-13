@@ -178,11 +178,16 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.getByText('Peak Load Demand')).toBeInTheDocument()
     expect(screen.getByText('Power Zones (Optional)', { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Streamlined Hybrid Spec')).toBeInTheDocument()
-    expect(screen.getByText('24/7 hybrid ready')).toBeInTheDocument()
+    expect(screen.getByText('Full 24/7 fallback ready')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Hybrid Energy One-Line Diagram' })).toBeInTheDocument()
     expect(screen.getByText('Printable Electrical One-Line')).toBeInTheDocument()
     expect(screen.getByText('For engineering review')).toBeInTheDocument()
     expect(screen.getByLabelText('Mermaid one-line diagram source')).toBeInTheDocument()
+    expect(screen.getByText('Source + Branch Cable Schedule')).toBeInTheDocument()
+    expect(screen.getByText('Conceptual 3D equipment envelope')).toBeInTheDocument()
+    expect(screen.getByText('Budgetary Estimate Basis')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Synced Site Fit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Package to Estimate' })).toBeInTheDocument()
   })
 
   it('renders report context fields on BESS economics and cooling workflows', () => {

@@ -1,6 +1,6 @@
 export const ESTIMATE_DRAFT_KEY = 'power-calc:/estimate:draft'
 
-export type EstimateSource = 'temporary_power' | 'cooling' | 'heating'
+export type EstimateSource = 'temporary_power' | 'cooling' | 'heating' | 'hybrid'
 export type EstimateStatus = 'needs_confirmation' | 'technical_review' | 'approved_for_quote'
 export type EstimateLineCategory = 'equipment' | 'accessory' | 'fuel' | 'delivery' | 'labor' | 'service' | 'other'
 
@@ -97,6 +97,7 @@ export function readEstimateDraft(): EstimateDraft {
 export function addPlanningRequirement(
   requirement: Omit<PlanningRequirement, 'id' | 'importedAt'>,
   context?: { clientName?: string; projectName?: string },
+  suggestedLineItems?: EstimateLineItem[],
 ) {
   const draft = readEstimateDraft()
   const contextConflicts = Boolean(
@@ -115,8 +116,12 @@ export function addPlanningRequirement(
     clientName: draft.clientName || context?.clientName || '',
     projectName: draft.projectName || context?.projectName || '',
     planningRequirements: [...withoutSameSource, next],
+    lineItems: suggestedLineItems
+      ? [...draft.lineItems.filter((item) => !item.id.startsWith(`${requirement.source}-`)), ...suggestedLineItems]
+      : draft.lineItems,
     status: 'needs_confirmation',
     technicalReviewComplete: false,
+    availabilityAndRatesConfirmed: false,
   }))
   return true
 }

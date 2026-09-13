@@ -385,6 +385,12 @@ export interface HybridWizardInputs {
   startDate: string
   endDate: string
   motors: MotorEntry[]
+  powerFactor?: number
+  loadVoltage?: number
+  longestCableRouteFt?: number
+  neutralPlan?: 'required' | 'not_carried' | 'review'
+  siteLengthFt?: number
+  siteWidthFt?: number
 }
 
 export interface MotorEntry {
@@ -402,12 +408,20 @@ export interface HybridWizardResults {
   genCapacityKw: number
   genUnits: number
   genUnitSizeKw: number
+  generatorRequiredUnits: number
+  generatorStandbyUnits: number
+  generatorFirmCapacityKw: number
+  allGenUnits: number
   totalCapacityKw: number
   redundancyFactor: number
   allGenFuelPerDay: number
   allGenFuel30Day: number
   hybridFuelPerDay: number
   hybridFuelTotal: number
+  allGeneratorDailyEnergyKwh: number
+  hybridGeneratorDailyEnergyKwh: number
+  batteryDailyEnergyKwh: number
+  rechargeEnergyKwh: number
   dailyFuelReduction: number
   totalFuelSavingsGal: number
   totalFuelSavingsDollars: number
@@ -453,35 +467,57 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 
   const redundancyFactor = redundancy === '2n' ? 2.0 : redundancy === 'n1' || redundancy === 'field_verify' ? 1.25 : 1.0
   const peakDelta = Math.max(0, peakLoadKw - baseLoadKw)
+  const peakWindowHours = Math.max(0, Math.min(24, peakHoursPerDay))
+  const hasDailyRechargeWindow = peakWindowHours < 24 || peakDelta === 0
 
   const bessUnitsForPeak = Math.ceil(peakDelta / bessUnitSize)
-  const bessEnergyKwh = peakDelta * peakHoursPerDay
-  const batteryDuration = 4
-  const bessUnitsForEnergy = Math.ceil(bessEnergyKwh / (bessUnitSize * batteryDuration))
+  const bessEnergyKwh = hasDailyRechargeWindow ? peakDelta * peakWindowHours : 0
+  const bessUsableUnitKwh = BESS_UNIT_ENERGY_KWH[bessUnitSize] * 0.85
+  const bessUnitsForEnergy = Math.ceil(bessEnergyKwh / Math.max(1, bessUsableUnitKwh))
   const bessUnits = Math.max(bessUnitsForPeak, bessUnitsForEnergy)
 
-  const genCapacityKw = baseLoadKw * redundancyFactor
   const genUnitSizeKw = 500
-  const genUnits = Math.max(1, Math.ceil(genCapacityKw / genUnitSizeKw))
+  const rechargeEfficiency = 0.9
+  const rechargeHoursPerDay = Math.max(0, 24 - peakWindowHours)
+  const rechargeEnergyKwh = bessEnergyKwh / rechargeEfficiency
+  const rechargePowerKw = rechargeHoursPerDay > 0 ? rechargeEnergyKwh / rechargeHoursPerDay : 0
+  const generatorDutyBasisKw = hasDailyRechargeWindow ? baseLoadKw + rechargePowerKw : peakLoadKw
+  const generatorRequiredUnits = Math.max(1, Math.ceil(generatorDutyBasisKw / genUnitSizeKw))
+  const generatorStandbyUnits = redundancy === '2n'
+    ? generatorRequiredUnits
+    : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0
+  const genUnits = generatorRequiredUnits + generatorStandbyUnits
+  const genCapacityKw = genUnits * genUnitSizeKw
+  const generatorFirmCapacityKw = generatorRequiredUnits * genUnitSizeKw
+  const allGenRequiredUnits = Math.max(1, Math.ceil(peakLoadKw / genUnitSizeKw))
+  const allGenUnits = allGenRequiredUnits + (redundancy === '2n' ? allGenRequiredUnits : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0)
   const totalCapacityKw = (bessUnits * bessUnitSize) + (genUnits * genUnitSizeKw)
 
   const altDerate = 1 + Math.max(0, (altitude - 1000) / 1000) * 0.03
   const tempDerate = 1 + Math.max(0, (ambientTemp - 77) / 10) * 0.02
 
-  const allGenSizeKw = peakLoadKw * redundancyFactor
-  const allGenLoadFactor = peakLoadKw / allGenSizeKw
+  const servedPeakEnergyKwh = peakDelta * peakWindowHours
+  const batteryDailyEnergyKwh = bessEnergyKwh
+  const allGeneratorDailyEnergyKwh = (baseLoadKw * 24) + servedPeakEnergyKwh
+  const hybridGeneratorDailyEnergyKwh = hasDailyRechargeWindow
+    ? (baseLoadKw * 24) + rechargeEnergyKwh
+    : peakLoadKw * 24
+  const allGenActiveCapacityKw = allGenRequiredUnits * genUnitSizeKw
+  const allGenAverageKw = allGeneratorDailyEnergyKwh / 24
+  const allGenLoadFactor = allGenAverageKw / allGenActiveCapacityKw
   const allGenBsfc = interpolateBSFC(allGenLoadFactor)
-  const allGenFuelPerDay = peakLoadKw * allGenBsfc * altDerate * tempDerate * 24
+  const allGenFuelPerDay = allGeneratorDailyEnergyKwh * allGenBsfc * altDerate * tempDerate
 
-  const hybridGenLoadFactor = baseLoadKw / (genUnits * genUnitSizeKw)
+  const hybridAverageKw = hybridGeneratorDailyEnergyKwh / 24
+  const hybridGenLoadFactor = hybridAverageKw / generatorFirmCapacityKw
   const hybridBsfc = interpolateBSFC(Math.min(1, hybridGenLoadFactor))
-  const hybridFuelPerDay = baseLoadKw * hybridBsfc * altDerate * tempDerate * 24
+  const hybridFuelPerDay = hybridGeneratorDailyEnergyKwh * hybridBsfc * altDerate * tempDerate
 
   const dailyFuelReduction = allGenFuelPerDay - hybridFuelPerDay
   const totalFuelSavingsGal = dailyFuelReduction * projectDurationDays
   const totalFuelSavingsDollars = totalFuelSavingsGal * fuelCostPerGallon
 
-  const allGenCost30Day = allGenFuelPerDay * 30 * fuelCostPerGallon + genUnits * genRentalPerDay * 30
+  const allGenCost30Day = allGenFuelPerDay * 30 * fuelCostPerGallon + allGenUnits * genRentalPerDay * 30
   const hybridCost30Day = hybridFuelPerDay * 30 * fuelCostPerGallon + genUnits * genRentalPerDay * 30 + bessUnits * bessRentalPerDay * 30
   const costSavings30Day = allGenCost30Day - hybridCost30Day
 
@@ -519,8 +555,9 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   })
 
   const siteVoltage3ph = inputs.siteVoltage
-  const peakAmpsPerPhase = (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
-  const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * 0.8)
+  const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
+  const peakAmpsPerPhase = (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
+  const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
   const parallelRunsNeeded = peakAmpsPerPhase > 400
 
   const co2AvoidedLbs = totalFuelSavingsGal * CO2_LBS_PER_GALLON_DIESEL
@@ -533,9 +570,11 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 
   return {
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,
-    genCapacityKw, genUnits, genUnitSizeKw, totalCapacityKw, redundancyFactor,
+    genCapacityKw, genUnits, genUnitSizeKw, generatorRequiredUnits, generatorStandbyUnits,
+    generatorFirmCapacityKw, allGenUnits, totalCapacityKw, redundancyFactor,
     allGenFuelPerDay, allGenFuel30Day: allGenFuelPerDay * 30,
     hybridFuelPerDay, hybridFuelTotal: hybridFuelPerDay * projectDurationDays,
+    allGeneratorDailyEnergyKwh, hybridGeneratorDailyEnergyKwh, batteryDailyEnergyKwh, rechargeEnergyKwh,
     dailyFuelReduction, totalFuelSavingsGal, totalFuelSavingsDollars,
     allGenCost30Day, hybridCost30Day, costSavings30Day,
     peakAmpsPerPhase, baseAmpsPerPhase, parallelRunsNeeded,
@@ -553,7 +592,10 @@ function buildHybridCoverage(
   const bessInstalledKw = sizing.bessUnits * inputs.bessUnitSize
   const bessInstalledKwh = sizing.bessUnits * unitKwh
   const bessUsableKwh = bessInstalledKwh * 0.85
-  const generatorOnlineKw = sizing.genUnits * sizing.genUnitSizeKw
+  const unavailableUnits = inputs.redundancy === '2n'
+    ? sizing.genUnits / 2
+    : inputs.redundancy === 'n1' || inputs.redundancy === 'field_verify' ? 1 : 0
+  const generatorOnlineKw = Math.max(0, sizing.genUnits - unavailableUnits) * sizing.genUnitSizeKw
   const baseLoadKw = Math.max(1, inputs.baseLoadKw)
   const peakLoadKw = Math.max(1, inputs.peakLoadKw)
   const peakDeltaKw = Math.max(0, inputs.peakLoadKw - inputs.baseLoadKw)
@@ -562,26 +604,29 @@ function buildHybridCoverage(
   const peakBatteryHours = bessUsableKwh / peakLoadKw
   const peakShavingHours = peakDeltaKw > 0 ? bessUsableKwh / peakDeltaKw : Infinity
   const estimatedRechargeHours = generatorRechargeReserveKw > 0
-    ? bessUsableKwh / generatorRechargeReserveKw
+    ? inputs.peakHoursPerDay < 24 ? bessUsableKwh / generatorRechargeReserveKw : null
     : null
   const canCarryBaseWhileCharging = generatorOnlineKw >= inputs.baseLoadKw && generatorRechargeReserveKw > 0
   const canCarryPeakOnGenerator = generatorOnlineKw >= inputs.peakLoadKw
   const canCoverPeakWithHybrid = generatorOnlineKw + bessInstalledKw >= inputs.peakLoadKw
   const hasFuelAndServiceWindow = inputs.projectDurationDays >= 1
+  const hasDailyRechargeWindow = inputs.peakHoursPerDay < 24 || peakDeltaKw === 0
 
   const scenarios: HybridCoverageScenario[] = [
     {
       label: 'Battery-first hybrid microgrid',
-      status: canCarryBaseWhileCharging && canCoverPeakWithHybrid && hasFuelAndServiceWindow
+      status: hasDailyRechargeWindow && canCarryBaseWhileCharging && canCoverPeakWithHybrid && hasFuelAndServiceWindow
         ? '24_7_ready'
-        : canCoverPeakWithHybrid
+        : canCoverPeakWithHybrid || canCarryPeakOnGenerator
           ? 'conditional'
           : 'not_feasible',
       dispatch: 'Run BESS first. EMS remote-starts the generator at the low-SOC threshold, carries the customer load, and recharges the BESS.',
       coverage: canCarryBaseWhileCharging
         ? `Generator has ${Math.round(generatorRechargeReserveKw)} kW recharge reserve while serving base load.`
         : 'Generator cannot both serve base load and recharge BESS without reducing customer load.',
-      requirement: 'Needs fuel plan, service window, ATS or parallel gear, charge windows, SOC thresholds, inverter sync, and remote monitoring.',
+      requirement: hasDailyRechargeWindow
+        ? 'Needs fuel plan, service window, ATS or parallel gear, charge windows, SOC thresholds, inverter sync, and remote monitoring.'
+        : 'No daily recharge window exists at 24 peak hours; treat this as a generator-backed design or revise the load profile before release.',
     },
     {
       label: 'Silent overnight with recharge window',
@@ -598,7 +643,7 @@ function buildHybridCoverage(
     },
     {
       label: 'Parallel BESS for peak support',
-      status: sizing.bessUnits > 1 && canCoverPeakWithHybrid
+      status: hasDailyRechargeWindow && sizing.bessUnits > 1 && canCoverPeakWithHybrid
         ? '24_7_ready'
         : canCoverPeakWithHybrid
           ? 'conditional'

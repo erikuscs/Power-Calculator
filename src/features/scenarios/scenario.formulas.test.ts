@@ -275,7 +275,12 @@ describe('calculateHybridWizard', () => {
     expect(result.bessUnits).toBeGreaterThan(0)
     expect(result.genUnits).toBeGreaterThan(0)
     expect(result.totalCapacityKw).toBeGreaterThanOrEqual(800)
-    expect(result.dailyFuelReduction).toBeGreaterThan(0)
+    expect(result.generatorRequiredUnits).toBe(2)
+    expect(result.generatorStandbyUnits).toBe(1)
+    expect(result.genUnits).toBe(3)
+    expect(result.bessUnits).toBe(4)
+    expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
+    expect(Number.isFinite(result.dailyFuelReduction)).toBe(true)
     expect(result.dailyFuelData).toHaveLength(30)
   })
 
@@ -330,7 +335,8 @@ describe('calculateHybridWizard', () => {
 
     expect(result.allGenCost30Day).toBeGreaterThan(0)
     expect(result.hybridCost30Day).toBeGreaterThan(0)
-    expect(result.totalFuelSavingsDollars).toBeGreaterThan(0)
+    expect(result.totalFuelSavingsDollars).toBeCloseTo(result.totalFuelSavingsGal * 4.5, 5)
+    expect(result.costSavings30Day).toBeCloseTo(result.allGenCost30Day - result.hybridCost30Day, 5)
   })
 
   it('handles commissioning-scale hybrid blocks without capping at small event loads', () => {
@@ -355,7 +361,7 @@ describe('calculateHybridWizard', () => {
 
     expect(result.bessUnits).toBeGreaterThan(0)
     expect(result.totalCapacityKw).toBeGreaterThanOrEqual(4500)
-    expect(result.totalFuelSavingsGal).toBeGreaterThan(0)
+    expect(Number.isFinite(result.totalFuelSavingsGal)).toBe(true)
     expect(result.parallelRunsNeeded).toBe(true)
   })
 
@@ -381,7 +387,7 @@ describe('calculateHybridWizard', () => {
 
     expect(result.coverage.bessInstalledKwh).toBe(6000)
     expect(result.coverage.canCarryBaseWhileCharging).toBe(true)
-    expect(result.coverage.canCarryPeakOnGenerator).toBe(true)
+    expect(result.coverage.canCarryPeakOnGenerator).toBe(false)
     expect(result.coverage.scenarios[0].label).toBe('Battery-first hybrid microgrid')
     expect(result.coverage.scenarios[0].status).toBe('24_7_ready')
     expect(result.coverage.scenarios[0].dispatch).toContain('remote-starts the generator')
@@ -408,8 +414,71 @@ describe('calculateHybridWizard', () => {
     })
 
     expect(result.coverage.canCoverPeakWithHybrid).toBe(true)
-    expect(result.coverage.canCarryPeakOnGenerator).toBe(false)
-    expect(result.coverage.scenarios.find((scenario) => scenario.label === 'Generator-backed 24/7 fallback')?.status).toBe('conditional')
+    expect(result.coverage.canCarryPeakOnGenerator).toBe(true)
+    expect(result.coverage.scenarios.find((scenario) => scenario.label === 'Generator-backed 24/7 fallback')?.status).toBe('24_7_ready')
+  })
+
+  it('reconciles the 1200 kW data-center N+1 capture scenario', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
+      loadSource: 'measured',
+      bessUnitSize: 250,
+      peakHoursPerDay: 8,
+      projectDurationDays: 30,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 4.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-13',
+      endDate: '2026-10-13',
+      motors: [],
+    })
+
+    expect(result.generatorRequiredUnits).toBe(3)
+    expect(result.generatorStandbyUnits).toBe(1)
+    expect(result.genUnits).toBe(4)
+    expect(result.generatorFirmCapacityKw).toBe(1500)
+    expect(result.bessUnitsForPeak).toBe(2)
+    expect(result.bessUnitsForEnergy).toBe(7)
+    expect(result.bessUnits).toBe(7)
+    expect(result.coverage.bessInstalledKwh).toBe(4025)
+    expect(result.allGeneratorDailyEnergyKwh).toBe(22400)
+    expect(result.hybridGeneratorDailyEnergyKwh).toBeCloseTo(22755.56, 2)
+  })
+
+  it('does not invent a recharge window for a 24-hour peak load', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
+      loadSource: 'measured',
+      bessUnitSize: 250,
+      peakHoursPerDay: 24,
+      projectDurationDays: 30,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 4.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-13',
+      endDate: '2026-10-13',
+      motors: [],
+    })
+
+    expect(result.bessUnitsForEnergy).toBe(0)
+    expect(result.bessUnits).toBe(2)
+    expect(result.generatorRequiredUnits).toBe(3)
+    expect(result.rechargeEnergyKwh).toBe(0)
+    expect(result.allGeneratorDailyEnergyKwh).toBe(28800)
+    expect(result.hybridGeneratorDailyEnergyKwh).toBe(28800)
+    expect(result.coverage.estimatedRechargeHours).toBeNull()
+    expect(result.coverage.scenarios[0].status).toBe('conditional')
+    expect(result.coverage.scenarios[0].requirement).toContain('No daily recharge window')
   })
 })
 

@@ -67,4 +67,37 @@ describe('site fit planning', () => {
     expect(result.totalCablePieces).toBe(0)
     expect(result.planningPowerCeilingKw).toBe(0)
   })
+
+  it('uses a synced hybrid package instead of independently repicking equipment', () => {
+    const result = calculateSiteFit({
+      ...DEFAULT_SITE_FIT_INPUTS,
+      requestedPowerKw: 1200,
+      scenario: 'hybrid',
+      continuity: 'n_plus_1',
+      packageOverride: {
+        source: 'hybrid',
+        generatorCount: 4,
+        generatorRequiredUnits: 3,
+        generatorUnitKw: 500,
+        generatorFirmCapacityKw: 1500,
+        bessCount: 7,
+        bessUnitKw: 250,
+        bessUnitKwh: 575,
+        layoutFits: true,
+        equipmentEnvelopeSqFt: 4200,
+        totalCablePieces: 170,
+        totalCablePieceRange: null,
+        layoutEquipment: [
+          { id: 'GEN-1', kind: 'generator', label: 'Duty generator', detail: '500 kW', lengthFt: 30, widthFt: 10, xFt: 6, yFt: 6 },
+          { id: 'BESS-1', kind: 'bess', label: 'BESS unit', detail: '250 kW / 575 kWh', lengthFt: 24, widthFt: 10, xFt: 50, yFt: 6 },
+        ],
+      },
+    })
+    expect(result.equipment.find((item) => item.id === 'GEN-1')?.rating).toBe('500 kW')
+    expect(result.equipment.find((item) => item.id === 'BESS-1')?.rating).toBe('250 kW / 575 kWh')
+    expect(result.totalCablePieces).toBe(170)
+    expect(result.fits).toBe(true)
+    expect(result.planningPowerCeilingKw).toBe(1500)
+    expect(result.equipment.every((item) => item.x >= (DEFAULT_SITE_FIT_INPUTS.accessLaneWidthFt / DEFAULT_SITE_FIT_INPUTS.siteLengthFt) * 100)).toBe(true)
+  })
 })

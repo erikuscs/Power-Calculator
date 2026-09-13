@@ -41,4 +41,16 @@ describe('estimate draft', () => {
     expect(deriveEstimateStatus({ ...emptyEstimateDraft, scopeConfirmed: true })).toBe('technical_review')
     expect(deriveEstimateStatus({ ...emptyEstimateDraft, scopeConfirmed: true, technicalReviewComplete: true, availabilityAndRatesConfirmed: true })).toBe('approved_for_quote')
   })
+
+  it('replaces one hybrid package and its suggested estimate lines without duplicating them', () => {
+    const requirement = { source: 'hybrid' as const, title: 'Hybrid', summary: 'Current package', details: [], assumptions: [] }
+    const line = { id: 'hybrid-generator-rental', category: 'equipment' as const, description: 'Generator', modelSku: 'VERIFY', quantity: 4, rate: 500, periods: 30, rateUnit: 'day' }
+    addPlanningRequirement(requirement, undefined, [line])
+    addPlanningRequirement({ ...requirement, summary: 'Updated package' }, undefined, [{ ...line, quantity: 5 }])
+    const saved = readEstimateDraft()
+    expect(saved.planningRequirements.filter((item) => item.source === 'hybrid')).toHaveLength(1)
+    expect(saved.lineItems.filter((item) => item.id.startsWith('hybrid-'))).toHaveLength(1)
+    expect(saved.lineItems[0].quantity).toBe(5)
+    expect(saved.availabilityAndRatesConfirmed).toBe(false)
+  })
 })

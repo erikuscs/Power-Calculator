@@ -1,6 +1,6 @@
 # EMaaS Pro Current Handoff
 
-Updated: 2026-09-11
+Updated: 2026-09-13
 Status: `LOCAL RELEASE CANDIDATE / NOT PUSHED / NOT DEPLOYED`
 
 ## Current product scope
@@ -12,9 +12,14 @@ The current candidate includes:
 - cooling planning with area or width/height/depth inputs;
 - integrated estimate preparation;
 - linked site-fit, one-line, equipment explanation, and conceptual space planning;
+- reconciled hybrid project packages that keep generator duty/standby counts, actual BESS kW/kWh, cable pieces, equipment envelopes, site-fit inputs, PDF content, and estimate lines on one calculation basis;
+- named branch power zones with 50-foot source/branch cable-piece schedules and an explicit neutral decision;
+- a dimensioned conceptual 3D equipment envelope that supplements the linked one-line without presenting itself as a construction drawing;
 - planning safeguards that withhold equipment conclusions for zero requested load.
 
 Independent estimator and regression reviews informed the implementation. The calculation suite, brand gate, build audit, and browser smoke suite are the repeatable local acceptance gates.
+
+The representative acceptance case is 1,200 kW peak / 800 kW base, 250 kW / 575 kWh BESS fleet units, 480 V source, 208 V load, 0.8 power factor, 100 ft route, carried neutral, 200 × 120 ft site, eight peak hours, 30 days, and N+1 continuity. It must reconcile to four 500 kW generators (three duty plus one standby), seven BESS units, 1,500 kW firm generator capacity, voltage-specific transformer guidance, balanced 700 kW and 500 kW branch circuits, 170 total 50-foot cable pieces, and the same package and fit verdict in Site Fit, the PDF, and Build Estimate.
 
 ## Brand state
 

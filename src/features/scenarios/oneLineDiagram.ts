@@ -267,12 +267,16 @@ export function buildHybridOneLineDiagram(
   results: HybridWizardResults,
   zones: { id: string; name: string; kw: number }[] = [],
 ): OneLineDiagram {
+  const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
+  const loadVoltage = inputs.loadVoltage ?? inputs.siteVoltage
+  const routeSections = Math.max(1, Math.ceil((inputs.longestCableRouteFt ?? 100) / 50))
+  const neutralConductors = inputs.neutralPlan === 'not_carried' ? 4 : inputs.neutralPlan === 'required' ? 5 : null
   const zoneNodes: OneLineNode[] = zones.length > 0
     ? zones.slice(0, 4).map((zone, index) => ({
         id: `ZONE_${index + 1}`,
         label: zone.name || `Zone ${index + 1}`,
         detail: `${fi(zone.kw)} kW`,
-        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * inputs.siteVoltage * 0.8))} A/phase at ${inputs.siteVoltage}V`,
+        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
         tone: 'load' as const,
       }))
     : [
@@ -293,7 +297,7 @@ export function buildHybridOneLineDiagram(
           id: 'GEN',
           label: 'Generator Plant',
           detail: `${results.genUnits} x ${results.genUnitSizeKw} kW`,
-          meta: `${fi(results.genCapacityKw)} kW base capacity`,
+          meta: `${fi(results.generatorFirmCapacityKw)} kW firm · ${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby`,
           tone: 'source',
         },
         {
@@ -319,7 +323,7 @@ export function buildHybridOneLineDiagram(
           id: 'ATS',
           label: 'ATS / Parallel Gear',
           detail: `${fi(results.peakAmpsPerPhase)} A/phase`,
-          meta: results.parallelRunsNeeded ? `${Math.ceil(results.peakAmpsPerPhase / 400)} cable legs per phase` : 'single cable set check',
+          meta: `${Math.ceil(results.peakAmpsPerPhase / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
           tone: 'control',
         },
       ],
@@ -337,7 +341,7 @@ export function buildHybridOneLineDiagram(
         {
           id: 'XFMR',
           label: 'Transformer / Panels',
-          detail: inputs.siteVoltage === 480 ? '480V to branch distribution' : `${inputs.siteVoltage}V to 480V/120-208V`,
+          detail: inputs.siteVoltage === loadVoltage ? `${loadVoltage}V branch distribution` : `${inputs.siteVoltage}V to ${loadVoltage}V`,
           meta: 'site distribution interface',
           tone: 'distribution',
         },
@@ -356,7 +360,7 @@ export function buildHybridOneLineDiagram(
     { from: 'EMS', to: 'BESS', label: 'SOC telemetry', kind: 'control' },
     { from: 'EMS', to: 'ATS', label: 'dispatch control', kind: 'control' },
     { from: 'ATS', to: 'SWGR', label: `${inputs.siteVoltage}V 3-phase` },
-    { from: 'SWGR', to: 'XFMR', label: 'protected feeders' },
+    { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
     ...zoneNodes.map((node) => ({ from: 'XFMR', to: node.id, label: 'branch feeder' })),
   ]
 
