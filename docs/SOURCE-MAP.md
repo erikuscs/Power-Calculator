@@ -1,14 +1,14 @@
 # EMaaS Pro Brand Implementation Source Use Record
 
-Status: `APPROVED WEB RELEASE / DEPLOYMENT IN PROGRESS`
+Status: `RELEASED WEB/PWA / LIVE VERIFIED`
 
 Controlled destination: `/Users/sustainablegaps/Projects/emaas-pro`
 
 Current SG brand authority: `/Volumes/SG-Clean/SG-OFFICE/Company and Brand/02 Brand Guidelines/01-Current-SG-Brand`
 
-Owner and release gate: Erik Herring authorized the approved-brand live correction on 2026-09-13 after the exact local/live version mismatch was demonstrated. Cache-busted live evidence remains required before the web release is closed.
+Owner and release gate: Erik Herring authorized the approved-brand live correction on 2026-09-13 after the exact local/live version mismatch was demonstrated. The protected remote commit, CI/CD run, Azure target, production domains, cache-busted application routes, controlled assets, and representative calculations were subsequently verified.
 
-Scope: current digital-brand implementation across the web shell, PWA, charts, one-line diagrams, PDF presentation, Capacitor source assets, and iOS implementation copies. Formulas, calculation data, engineering logic, connectivity, signing, distribution, and deployment remain outside this record.
+Scope: current digital-brand implementation across the web shell, PWA, charts, one-line diagrams, PDF presentation, Capacitor source assets, and iOS implementation copies. The browser/PWA publication is now included as target-surface evidence; native signing, App Store distribution, physical-device acceptance, and engineering acceptance remain outside this record.
 
 ## Source Use Record
 
@@ -35,10 +35,10 @@ Scope: current digital-brand implementation across the web shell, PWA, charts, o
 
 ## Release Boundary
 
-This source map documents the web release authorized by Erik Herring on 2026-09-13. Browser/PWA publication to the existing `emaas-power-calculator` target is in scope. Native signing, App Store distribution, procurement, and engineering acceptance remain separate.
+This source map documents the web release authorized by Erik Herring on 2026-09-13. Browser/PWA publication to the existing `emaas-power-calculator` target completed through GitHub Actions run `34803577367` from reviewed release commit `bb1b77010e365cf8b20dc08e0956050a2fed0052`. Both production domains and the released brand assets were verified on the live surface. Native signing, App Store distribution, procurement, and engineering acceptance remain separate.
 
 ## Target-Surface Review Evidence
 
 The exact 2026-09-11 reconciliation passed 156 unit/regression tests, lint, the production build and artifact audit, desktop/mobile browser E2E, browser PDF download with the controlled fonts, PWA manifest/icon readback, Capacitor iOS sync, post-sync brand audit and checksum verification, compiled-bundle retired-token scan, and an unsigned iOS Simulator build. Detailed commands and boundaries are in `docs/QA.md`. Dated material under `docs/release-candidates/` remains historical evidence only and does not prove this tree.
 
-Current web release gates: repeat the Node 22 suite from the exact release tree, publish through the existing protected GitHub-to-Azure workflow, and verify cache-busted production routes, assets, PWA behavior, and representative calculations. Signed-device and assistive-technology review remain future native/accessibility gates and do not block this browser correction.
+The current web release gates are closed: the Node 22 suite passed from the exact release tree, the protected GitHub-to-Azure workflow completed, and cache-busted production routes, approved assets, PWA update behavior, and representative calculations were verified. Signed-device and assistive-technology review remain future native/accessibility gates and do not block this browser correction.

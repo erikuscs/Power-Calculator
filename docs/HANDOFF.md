@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
 Updated: 2026-09-13
-Status: `WEB RELEASE AUTHORIZED / VALIDATION IN PROGRESS`
+Status: `WEB/PWA RELEASED / LIVE VERIFIED`
 
 ## Current product scope
 
@@ -35,13 +35,18 @@ The 2026-09-13 independent brand review matched the current logo, all 14 V3 brow
 
 Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 
-Before any release:
+## Live release evidence
 
-1. run the Node 22 gates from the exact release tree;
-2. verify the generated PWA manifest and brand assets in `dist/`;
-3. fast-forward `main` to the reviewed release commit and let the existing GitHub Actions workflow publish it;
-4. confirm the workflow, Azure resource, custom domains, remote commit, and cache-busted production surface;
-5. record the final live evidence and recovery commit.
+- Release commit `bb1b77010e365cf8b20dc08e0956050a2fed0052` was pushed to the protected GitHub `main` branch and independently read back before publication.
+- GitHub Actions run `34803577367` completed successfully and published to the existing Azure Static Web App `emaas-power-calculator` in `rg-sg-bess-platform`.
+- `https://emaas.pro/` and `https://www.emaas.pro/` returned HTTP 200, the current application title, security headers, current PWA manifest, and current bundle after publication.
+- The released logo, favicon, controlled webfonts, and both OFL notices matched the reviewed local production files byte-for-byte.
+- Cache-busted live browser review passed the dashboard, cooling dimensions/cubic-feet option, propane/electric heating, Site Fit and one-line, conceptual equipment envelope, and hybrid workflow.
+- The live 1,200/800 kW case with 250 kW / 575 kWh BESS and carried neutral returned four 500 kW generators, seven BESS units, 1,500 kW firm generation, and 160 unzoned 50-foot cable pieces. The automated named 700/500 kW branch-zone case remains the authoritative 170-piece cross-surface acceptance because it adds the two branch feeder schedules to the source schedule.
+- An already-open browser tab initially retained the previous service-worker shell, then updated to the released application after one normal reload. Staff with a tab left open from before the release may need that single reload.
+- Recovery reference for the former production build is commit `d51cb37d1af9699bcb1db30fe2d0faa25a3db64f`.
+
+The browser/PWA release is closed. Native signing, App Store submission, physical-device acceptance, final engineering, and vendor selection remain separate gates.
 
 ## Resume here
 

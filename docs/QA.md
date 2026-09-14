@@ -1,6 +1,6 @@
 # EMaaS Pro Quality Assurance
 
-Status: `WEB RELEASE VALIDATION IN PROGRESS 2026-09-13`
+Status: `WEB/PWA RELEASE LIVE VERIFIED 2026-09-13`
 
 ## Required automated gates
 
@@ -85,6 +85,12 @@ The four PDF component smoke tests use React PDF's built-in Helvetica only insid
 - Independent comparison matched the exact registered horizontal reversed-dark logo, all 14 V3 browser/PWA assets, four font binaries, and both complete OFL notices across the controlled brand source, repository implementation, and production build.
 - Current authority hashes: logo-system manifest `ae3a0020b75d13d20a32c1e8898b74ef94e9bcb7a44d00a0c1a5a7e54d1a234b`, V3 release manifest `8ec3b63b91749374bb9d55a2c7c5576df4b857729c1c8c1eb0872e0d5a1c8396`, font-rights record `71e2adace4831122d377a89452143a2eec74614ec4edd5cefe277f13872a6dc0`, and release ledger `4e8ccc1c457057043cea9065725b238a797fcda9dcff293ee330a487208539d6`.
 - The broader brand integrity gate completed with 12 PASS, one `.DS_Store` warning, and zero failures. The central release gate completed with zero errors and zero warnings after a quarantined-evidence classification correction that also prohibits quarantine paths from becoming active ledger sources.
-- The existing Azure resource, subscription, domains, and account authority were read back using official Az PowerShell modules. Final Node 22, CI/CD, remote-commit, and cache-busted live evidence will close this web release.
+- The existing Azure resource, subscription, domains, and account authority were read back using official Az PowerShell modules.
+- Final Node 22 gates passed: 26 test files and 163 tests, lint, controlled-brand production build and artifact audit, and the expanded browser E2E suite.
+- Protected-branch release commit `bb1b77010e365cf8b20dc08e0956050a2fed0052` was read back from GitHub; Actions run `34803577367` completed successfully against the existing Azure Static Web App.
+- Both production domains returned HTTP 200 with the current title, security headers, current PWA manifest, and current bundle. Released logo, favicon, controlled webfonts, and both font-license files matched the local production assets byte-for-byte.
+- Cache-busted production browser review passed the new dashboard navigation, cooling dimensions/cubic-feet input, heating plan, Site Fit/one-line/3D envelope, and hybrid workflow.
+- The live 1,200/800 kW hybrid case with 250 kW / 575 kWh BESS and a carried neutral returned four 500 kW generators, seven BESS units, 1,500 kW firm generation, A/B/C/N/G guidance, and 160 unzoned 50-foot cable pieces. The automated named 700/500 kW branch case passed the complete 170-piece Site Fit/PDF/estimate reconciliation.
+- Service-worker upgrade behavior was observed: one normal reload replaced a previously open legacy shell with the released build.
 
 Signed physical iPhone/iPad review and assistive-technology review remain open for their respective native/accessibility release lanes.
