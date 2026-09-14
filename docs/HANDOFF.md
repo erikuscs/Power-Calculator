@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
 Updated: 2026-09-13
-Status: `LOCAL RELEASE CANDIDATE / NOT PUSHED / NOT DEPLOYED`
+Status: `WEB RELEASE AUTHORIZED / VALIDATION IN PROGRESS`
 
 ## Current product scope
 
@@ -29,21 +29,19 @@ The representative acceptance case is 1,200 kW peak / 800 kW base, 250 kW / 575 
 - Sora and Source Sans 3 controlled binaries are used for web and PDF presentation roles.
 - The build blocks missing or changed controlled implementation assets, off-palette color literals, RGB/HSL bypasses, and retired gold terminology.
 
-The V3 family is released for the Sustainable Gaps website and allowed for PWA and app-store icon use, but EMaaS remains a separate destination. The central SG brand release gate is currently blocked by logo-manifest ledger drift, and the broader SG brand integrity gate has unresolved rights, live-type badge, and hosted-signature findings outside this repository. Those central controls and EMaaS device proofs remain separate from this local implementation.
+The 2026-09-13 independent brand review matched the current logo, all 14 V3 browser/PWA assets, four font binaries, and both complete OFL notices to the controlled source and built output. The former logo-ledger and font-rights holds are resolved. The broader brand integrity gate has zero failures, and the central release gate passes after the quarantined-SVG classification correction.
 
 ## Release boundary
 
-No current commit has been pushed, merged, deployed, submitted to App Store Connect, or accepted on a physical device as part of this work.
+Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 
 Before any release:
 
-1. confirm the exact commit and target;
-2. obtain a passing central SG brand gate and confirm the exact V3 files for the EMaaS destination;
-3. run the Node 22 gates from a clean checkout;
-4. verify the generated PWA manifest and brand assets in `dist/`;
-5. sync and build iOS, then verify iPhone and iPad target surfaces;
-6. perform the separately authorized push/PR/deployment;
-7. verify the cache-busted production or distribution surface.
+1. run the Node 22 gates from the exact release tree;
+2. verify the generated PWA manifest and brand assets in `dist/`;
+3. fast-forward `main` to the reviewed release commit and let the existing GitHub Actions workflow publish it;
+4. confirm the workflow, Azure resource, custom domains, remote commit, and cache-busted production surface;
+5. record the final live evidence and recovery commit.
 
 ## Resume here
 

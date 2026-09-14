@@ -1,6 +1,6 @@
 # EMaaS Pro Quality Assurance
 
-Status: `CURRENT LOCAL QA PASSED 2026-09-13 / NOT RELEASED OR DEPLOYED`
+Status: `WEB RELEASE VALIDATION IN PROGRESS 2026-09-13`
 
 ## Required automated gates
 
@@ -80,4 +80,11 @@ The current correction addresses these items in source.
 
 The four PDF component smoke tests use React PDF's built-in Helvetica only inside the Node test environment; browser E2E performs the actual PDF download with Sora and Source Sans 3. This keeps unit tests filesystem-independent while preserving a real target-surface font check.
 
-Remaining release work is deliberately separate: resolution of the central logo-manifest ledger drift and broader brand-integrity findings, signed physical iPhone/iPad icon and launch-screen review, assistive-technology review, deployment authorization, and cache-busted live verification.
+## Web release brand clearance — 2026-09-13
+
+- Independent comparison matched the exact registered horizontal reversed-dark logo, all 14 V3 browser/PWA assets, four font binaries, and both complete OFL notices across the controlled brand source, repository implementation, and production build.
+- Current authority hashes: logo-system manifest `ae3a0020b75d13d20a32c1e8898b74ef94e9bcb7a44d00a0c1a5a7e54d1a234b`, V3 release manifest `8ec3b63b91749374bb9d55a2c7c5576df4b857729c1c8c1eb0872e0d5a1c8396`, font-rights record `71e2adace4831122d377a89452143a2eec74614ec4edd5cefe277f13872a6dc0`, and release ledger `4e8ccc1c457057043cea9065725b238a797fcda9dcff293ee330a487208539d6`.
+- The broader brand integrity gate completed with 12 PASS, one `.DS_Store` warning, and zero failures. The central release gate completed with zero errors and zero warnings after a quarantined-evidence classification correction that also prohibits quarantine paths from becoming active ledger sources.
+- The existing Azure resource, subscription, domains, and account authority were read back using official Az PowerShell modules. Final Node 22, CI/CD, remote-commit, and cache-busted live evidence will close this web release.
+
+Signed physical iPhone/iPad review and assistive-technology review remain open for their respective native/accessibility release lanes.
