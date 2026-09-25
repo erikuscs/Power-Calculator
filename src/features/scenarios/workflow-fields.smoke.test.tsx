@@ -35,6 +35,10 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.getByText('Data center centric')).toBeInTheDocument()
     expect(screen.getByText('Operating Variables Covered')).toBeInTheDocument()
     expect(screen.getByText('Service Cadence')).toBeInTheDocument()
+    expect(screen.getByText('2,000 A peak · 500 A continuous · 480 V three-phase')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open linked plan + one-line' })).toHaveAttribute('href', '/examples/2000a-hybrid')
+    expect(screen.getByRole('img', { name: /^Three-dimensional hybrid equipment planning layout/ })).toBeInTheDocument()
+    expect(screen.queryByAltText(/data center energy operations model/i)).not.toBeInTheDocument()
   })
 
   it('renders temporary power commercial fields used in EMaaS reports', () => {
@@ -92,45 +96,61 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.queryByLabelText('Conditioned Area')).not.toBeInTheDocument()
   })
 
-  it('loads the 56 kW jobsite trailer example with a 28-day rental cycle', () => {
+  it('loads the 24/7 data-center example with a 28-day rental cycle', () => {
     renderTempPower()
 
     expect(screen.getByText('Worked Example')).toBeInTheDocument()
-    expect(screen.getByText(/no equipment package has been selected/i)).toBeInTheDocument()
+    expect(screen.getByText(/no equipment package has been approved/i)).toBeInTheDocument()
     expect(screen.getByText('Field Verification')).toBeInTheDocument()
     expect(screen.queryByText('RV Service')).not.toBeInTheDocument()
     expect(screen.getByText('Motor / Compressor Starting')).toBeInTheDocument()
     expect(screen.getAllByText('672 scheduled hours').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('1 28-day cycle').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/synthetic data center commissioning/i)).toBeInTheDocument()
   })
 
-  it('stops labeling the plan as the 56 kW worked example after an input changes', () => {
+  it('replaces a saved untouched 56 kW example without overwriting custom drafts', () => {
+    window.localStorage.setItem('power-calc:/scenarios/temp-power:facilities', JSON.stringify([
+      { id: 'sample-jobsite-trailer-56kw', type: 'jobsite_trailer', label: 'Jobsite Trailer Setup', quantity: 1, kwPerUnit: 56, structureType: 'container', structureMultiplier: 1, loadBasis: 'Old worked example', loadBasisType: 'user-defined' },
+    ]))
+    window.localStorage.setItem('power-calc:/scenarios/temp-power:isWorkedExample', JSON.stringify(true))
+    window.localStorage.setItem('power-calc:/scenarios/temp-power:projectName', JSON.stringify('Jobsite Trailer Planning Brief'))
+    renderTempPower()
+
+    expect(screen.getByText(/synthetic data center commissioning/i)).toBeInTheDocument()
+    expect(screen.queryByText('56.0 kW entered')).not.toBeInTheDocument()
+    expect(JSON.parse(window.localStorage.getItem('power-calc:/scenarios/temp-power:projectName') || 'null')).toBe('Data Center Commissioning - Temporary Power')
+  })
+
+  it('stops labeling the plan as a worked example after an input changes', () => {
     renderTempPower()
 
     fireEvent.click(screen.getByRole('button', { name: 'Review worked example inputs' }))
-    fireEvent.change(screen.getByLabelText('Planned Load'), { target: { value: '32' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Single Load' }))
+    fireEvent.change(screen.getByLabelText('Equipment Load'), { target: { value: '32' } })
     fireEvent.change(screen.getByLabelText('Client / Account'), { target: { value: 'Regression Account' } })
     fireEvent.change(screen.getByLabelText('Project / Phase'), { target: { value: '32 kW Review' } })
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
     expect(screen.getByText('32.0 kW entered')).toBeInTheDocument()
     expect(screen.queryByText('Worked Example')).not.toBeInTheDocument()
-    expect(screen.queryByText(/This 56 kW jobsite example/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/This synthetic data center commissioning/i)).not.toBeInTheDocument()
   })
 
   it('persists a customized temporary-power draft across remounts', () => {
     const first = renderTempPower()
     fireEvent.click(screen.getByRole('button', { name: 'Review worked example inputs' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Single Load' }))
     fireEvent.change(screen.getByLabelText('Client / Account'), { target: { value: 'Persistent Account' } })
     fireEvent.change(screen.getByLabelText('Project / Phase'), { target: { value: 'North Yard' } })
-    fireEvent.change(screen.getByLabelText('Planned Load'), { target: { value: '42' } })
+    fireEvent.change(screen.getByLabelText('Equipment Load'), { target: { value: '42' } })
     first.unmount()
 
     renderTempPower()
     fireEvent.click(screen.getByRole('button', { name: 'Review temporary power inputs' }))
     expect(screen.getByLabelText('Client / Account')).toHaveValue('Persistent Account')
     expect(screen.getByLabelText('Project / Phase')).toHaveValue('North Yard')
-    expect(screen.getByLabelText('Planned Load')).toHaveValue(42)
+    expect(screen.getByLabelText('Equipment Load')).toHaveValue(42)
   })
 
   it('adds a sourced jobsite trailer model without inferring its operating load', () => {
@@ -169,25 +189,23 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
   })
 
-  it('renders hybrid energy fields at commissioning scale', () => {
+  it('renders the amp-first hybrid selector without invented operating claims', () => {
     render(<HybridEnergyWizard />)
 
-    expect(screen.getByText('Hybrid EMaaS Strategy - BESS + Generator')).toBeInTheDocument()
+    expect(screen.getByText('Hybrid Package Selector')).toBeInTheDocument()
     expect(screen.getByText('Client / Account')).toBeInTheDocument()
     expect(screen.getByText('Project / Phase')).toBeInTheDocument()
-    expect(screen.getByText('Peak Load Demand')).toBeInTheDocument()
-    expect(screen.getByText('Power Zones (Optional)', { exact: false })).toBeInTheDocument()
-    expect(screen.getByText('Streamlined Hybrid Spec')).toBeInTheDocument()
-    expect(screen.getByText('Full 24/7 fallback ready')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Hybrid Energy One-Line Diagram' })).toBeInTheDocument()
-    expect(screen.getByText('Printable Electrical One-Line')).toBeInTheDocument()
-    expect(screen.getByText('For engineering review')).toBeInTheDocument()
-    expect(screen.getByLabelText('Mermaid one-line diagram source')).toBeInTheDocument()
-    expect(screen.getByText('Source + Branch Cable Schedule')).toBeInTheDocument()
-    expect(screen.getByText('Conceptual 3D equipment envelope')).toBeInTheDocument()
-    expect(screen.getByText('Budgetary Estimate Basis')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Synced Site Fit' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add Package to Estimate' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Peak Current')).toHaveValue(null)
+    expect(screen.getByLabelText('Continuous Current')).toHaveValue(null)
+    expect(screen.getByLabelText('Voltage')).toHaveValue('')
+    expect(screen.getByLabelText('Phase')).toHaveValue('')
+    expect(screen.getByLabelText('Power Factor')).toHaveValue(null)
+    expect(screen.getByLabelText('Selected BESS 28-Day Rate')).toHaveValue(null)
+    expect(screen.getByLabelText('Selected Generator 28-Day Rate')).toHaveValue(null)
+    expect(screen.queryByText('Power Zones (Optional)', { exact: false })).toBeNull()
+    expect(screen.queryByText('Fuel Cost')).toBeNull()
+    expect(screen.queryByText('Redundancy Level')).toBeNull()
+    expect(screen.queryByText('Peak Hours/Day')).toBeNull()
   })
 
   it('renders report context fields on BESS economics and cooling workflows', () => {

@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
-Updated: 2026-09-13
-Status: `WEB/PWA RELEASED / LIVE VERIFIED`
+Updated: 2026-09-24
+Status: `LIVE BASELINE VERIFIED / CURRENT CONTINUOUS-POWER CORRECTION NOT DEPLOYED`
 
 ## Current product scope
 
@@ -16,10 +16,15 @@ The current candidate includes:
 - named branch power zones with 50-foot source/branch cable-piece schedules and an explicit neutral decision;
 - a dimensioned conceptual 3D equipment envelope that supplements the linked one-line without presenting itself as a construction drawing;
 - planning safeguards that withhold equipment conclusions for zero requested load.
+- one governed diesel-consumption source using the complete Sunbelt Rentals 20-2,250 kW size/load table across the fuel, temporary-power, and hybrid workflows.
+- BESS selection based on verified continuous output and usable energy; motor-start and protection details remain later vendor/engineering verification and do not alter the early estimate.
+- a benchmark architecture review in the hybrid UI and PDF that identifies measured-versus-nameplate load basis, continuous BESS ratings, generator duty/standby counts, firm capacity after one generator is unavailable, controlled recharge, and single-source or no-maintenance-reserve red flags.
 
 Independent estimator and regression reviews informed the implementation. The calculation suite, brand gate, build audit, and browser smoke suite are the repeatable local acceptance gates.
 
-The representative acceptance case is 1,200 kW peak / 800 kW base, 250 kW / 575 kWh BESS fleet units, 480 V source, 208 V load, 0.8 power factor, 100 ft route, carried neutral, 200 × 120 ft site, eight peak hours, 30 days, and N+1 continuity. It must reconcile to four 500 kW generators (three duty plus one standby), seven BESS units, 1,500 kW firm generator capacity, voltage-specific transformer guidance, balanced 700 kW and 500 kW branch circuits, 170 total 50-foot cable pieces, and the same package and fit verdict in Site Fit, the PDF, and Build Estimate.
+The current representative acceptance case is a 2,000 A peak / 500 A continuous request at a 480 V, three-phase source and 0.80 planning power factor. The calculated customer-load bases are 1,330.2 kW protected peak and 332.6 kW continuous. The automatic selector compares all five governed BESS options and chooses two Atlas Copco ZBC 250-575 units for 500 kW continuous capacity. The obtainable package also uses three duty 500 kW generators; both source plants use N with no standby requirement. The generator plant carries the peak load and retains 169.8 kW of controlled recharge headroom; generator and BESS ratings are never summed as customer demand. The source schedule requires five 400 A runs per phase. The linked one-line includes source/BESS breakers, DEIF control, 480 V switchgear, 480-to-240 V transformation, the customer service main, and ten 240 V single-phase trailer connection points. Because trailer nameplates and locations were not provided, the example does not invent per-trailer kW, branch current, branch cable quantity, or phase assignment. Motor-start, protection, exact trailer loads, equipment dimensions, branch conductors, and final phase balance remain later vendor/field/engineering verification boundaries.
+
+The customer-facing example is rendered from the calculator-backed `/examples/2000a-hybrid` route by `npm run generate:2000a-example`. The route contains the graphical electrical one-line, linked site envelope, exact sizing summary, browser print action, and a link to the controlled public PDF. The generator command captures that route into `public/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf` and `.png`, with review copies under `output/`; it is the PDF integration boundary and does not depend on `HybridEnergyPdf.tsx`. Regeneration and visual/byte-identity checks are required whenever the route changes. The controlled example intentionally excludes historical customer telemetry and daily fuel projections.
 
 ## Brand state
 
@@ -33,9 +38,11 @@ The 2026-09-13 independent brand review matched the current logo, all 14 V3 brow
 
 ## Release boundary
 
+The continuous-power, 30%-to-80% battery-first cycle, current-rental-fleet, fuel-reduction terminology, and separate recharge-rate corrections described above are local candidate changes. They have not been pushed or deployed as of 2026-09-24.
+
 Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 
-## Live release evidence
+## Historical live release evidence (2026-09-13 baseline)
 
 - Release commit `bb1b77010e365cf8b20dc08e0956050a2fed0052` was pushed to the protected GitHub `main` branch and independently read back before publication.
 - GitHub Actions run `34803577367` completed successfully and published to the existing Azure Static Web App `emaas-power-calculator` in `rg-sg-bess-platform`.

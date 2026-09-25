@@ -256,6 +256,11 @@ export default function SiteFitPage() {
                 Synced hybrid package: {inputs.packageOverride.generatorCount} × {inputs.packageOverride.generatorUnitKw} kW generators and {inputs.packageOverride.bessCount} × {inputs.packageOverride.bessUnitKw} kW / {inputs.packageOverride.bessUnitKwh} kWh BESS units. Changing electrical sizing inputs clears this link.
               </div>
             )}
+            {inputs.scenario === 'hybrid' && !inputs.packageOverride && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                No BESS model has been assumed. Open Site Fit from Hybrid EMaaS Strategy to carry the selected battery model, quantity, usable energy, and equipment envelope into this plan.
+              </div>
+            )}
             <InputField label="Requested power" unit="kW" value={inputs.requestedPowerKw} min={0} onChange={(value) => update('requestedPowerKw', numberFrom(value))} />
             <SelectField label="Package" value={inputs.scenario} onChange={(value) => update('scenario', value as SiteFitInputs['scenario'])} options={[
               { value: 'power', label: 'Temporary power' },

@@ -48,6 +48,7 @@ function classifySymbol(node: SymbolPlacement['node']) {
   const label = node.label.toUpperCase()
 
   if (id.includes('BESS') || label.includes('BESS')) return 'bess'
+  if (id.includes('_CB') || label.includes('BREAKER')) return 'breaker'
   if (id.includes('ATS') || label.includes('PARALLEL') || label.includes('TRANSFER')) return 'transfer'
   if (id.includes('EMS') || label.includes('CONTROLLER')) return 'controller'
   if (id.includes('GEN') || label.includes('GENERATOR')) return 'generator'
@@ -64,6 +65,7 @@ function symbolTag(node: SymbolPlacement['node']) {
   const kind = classifySymbol(node)
   if (kind === 'generator') return 'GEN'
   if (kind === 'bess') return 'BESS/PCS'
+  if (kind === 'breaker') return 'CB/52'
   if (kind === 'controller') return 'EMS'
   if (kind === 'transfer') return node.label.toUpperCase().includes('PARALLEL') ? 'PAR/52' : 'ATS/52'
   if (kind === 'switchgear') return 'SWGR'
@@ -196,11 +198,11 @@ export function PrintableOneLine({
 }) {
   const columnWidth = compact ? 145 : 210
   const topPad = compact ? 90 : 92
-  const rowGap = compact ? 105 : 120
+  const rowGap = compact ? 135 : 120
   const leftPad = compact ? 55 : 90
   const maxNodes = Math.max(...diagram.stages.map((stage) => stage.nodes.length), 1)
   const width = Math.max(compact ? 880 : 1080, leftPad * 2 + (diagram.stages.length - 1) * columnWidth + 120)
-  const height = compact ? Math.max(300, topPad + maxNodes * rowGap + 8) : Math.max(520, topPad + maxNodes * rowGap + 130)
+  const height = compact ? Math.max(380, topPad + maxNodes * rowGap + 12) : Math.max(520, topPad + maxNodes * rowGap + 130)
   const placements: SymbolPlacement[] = diagram.stages.flatMap((stage, stageIndex) =>
     stage.nodes.map((node, nodeIndex) => ({
       node,
@@ -307,10 +309,10 @@ export function PrintableOneLine({
           {placements.map((placement) => (
             <g key={placement.node.id}>
               <StandardSymbol placement={placement} />
-              <text x={placement.x} y={placement.y + 52} textAnchor="middle" fontSize={compact ? 12 : 10} fontWeight="700" fill="#0E151C">
+              <text x={placement.x} y={placement.y + (compact ? 70 : 52)} textAnchor="middle" fontSize={compact ? 9.5 : 10} fontWeight="700" fill="#0E151C">
                 {clampText(placement.node.label, 24)}
               </text>
-              <text x={placement.x} y={placement.y + 67} textAnchor="middle" fontSize={compact ? 9 : 8} fill="#5B6673">
+              <text x={placement.x} y={placement.y + (compact ? 84 : 67)} textAnchor="middle" fontSize={compact ? 7.5 : 8} fill="#5B6673">
                 {clampText(placement.node.detail, 34)}
               </text>
               {placement.node.meta && !compact && (
@@ -360,7 +362,6 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
       <g>
         <circle cx={x} cy={y} r="28" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2.5" />
         <text x={x} y={y + 6} textAnchor="middle" fontSize="20" fontWeight="700" fill="#0E151C">G</text>
-        <Breaker x={x + 62} y={y} label="52G" />
         <Ground x={x} y={y + 34} />
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
@@ -377,8 +378,16 @@ function StandardSymbol({ placement }: { placement: SymbolPlacement }) {
         <rect x={x + 10} y={y - 22} width="44" height="44" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
         <path d={`M ${x + 17} ${y + 2} Q ${x + 26} ${y - 12} ${x + 35} ${y + 2} T ${x + 50} ${y + 2}`} fill="none" stroke="#0E151C" strokeWidth="1.8" />
         <text x={x + 32} y={y + 34} textAnchor="middle" fontSize="8" fill="#0E151C">PCS</text>
-        <Disconnect x={x + 72} y={y} label="89B" />
         <Ground x={x - 14} y={y + 42} />
+        <DeviceTag x={x} y={y - 38} label={tag} />
+      </g>
+    )
+  }
+
+  if (kind === 'breaker') {
+    return (
+      <g>
+        <Breaker x={x} y={y} label={node.id.includes('BESS') ? '52B' : '52G'} />
         <DeviceTag x={x} y={y - 38} label={tag} />
       </g>
     )
@@ -490,17 +499,6 @@ function Breaker({ x, y, label }: DiagramPoint & { label: string }) {
       <rect x={x - 13} y={y - 13} width="26" height="26" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
       <path d={`M ${x - 8} ${y - 8} L ${x + 8} ${y + 8} M ${x + 8} ${y - 8} L ${x - 8} ${y + 8}`} stroke="#0E151C" strokeWidth="1.8" />
       <text x={x} y={y + 27} textAnchor="middle" fontSize="8" fontWeight="700" fill="#0E151C">{label}</text>
-    </g>
-  )
-}
-
-function Disconnect({ x, y, label }: DiagramPoint & { label: string }) {
-  return (
-    <g>
-      <line x1={x - 16} y1={y + 12} x2={x + 12} y2={y - 12} stroke="#0E151C" strokeWidth="2.2" />
-      <circle cx={x - 18} cy={y + 14} r="3" fill="#0E151C" />
-      <circle cx={x + 15} cy={y - 14} r="3" fill="#F9FAFB" stroke="#0E151C" strokeWidth="2" />
-      <text x={x} y={y + 31} textAnchor="middle" fontSize="8" fontWeight="700" fill="#0E151C">{label}</text>
     </g>
   )
 }

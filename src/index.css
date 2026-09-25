@@ -95,6 +95,26 @@ input[type="number"] {
 }
 
 @media print {
+  body:has(.hybrid-example-report) .app-header,
+  body:has(.hybrid-example-report) .app-sidebar,
+  body:has(.hybrid-example-report) .app-footer {
+    display: none !important;
+  }
+
+  body:has(.hybrid-example-report) .app-main {
+    overflow: visible !important;
+    padding: 0.12in !important;
+  }
+
+  body:has(.hybrid-example-report) .hybrid-example-report {
+    max-width: none !important;
+    gap: 0.08in !important;
+  }
+
+  body:has(.hybrid-example-report) .hybrid-example-report > header {
+    margin-bottom: 0.04in !important;
+  }
+
   body.printing-one-line {
     background: #f9fafb;
     color: #0e151c;

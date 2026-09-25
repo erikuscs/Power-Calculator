@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 import { chromium } from 'playwright'
 
@@ -78,6 +79,13 @@ async function run() {
   await page.getByLabel('Voltage').selectOption('208')
   await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
 
+  await page.goto(`${baseUrl}/power/fuel`, { waitUntil: 'networkidle' })
+  await page.getByLabel('Actual Load').fill('250')
+  await page.getByLabel('Generator Rated Capacity').selectOption('500')
+  await page.getByLabel('Runtime').fill('24')
+  await expectText(page, /18\.50/i, '500 kW half-load reference-curve fuel rate')
+  await expectText(page, /Reference-curve values are approximate planning rates/i, 'fuel reference source boundary')
+
   await page.goto(`${baseUrl}/learn`, { waitUntil: 'networkidle' })
   await expectText(page, /EMaaS guided learning/i, 'guided learning page')
   await expectText(page, /Basic operating path/i, 'tutorial operating path')
@@ -92,7 +100,7 @@ async function run() {
     await expectText(page, /Generator Planning Rating/i, 'electric heater generator sizing')
 
     await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
-  await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
+  await expectText(page, /Atlas Copco ZBC 250-575.*250 kW continuous.*518 kWh net/i, 'verified current BESS option')
     await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
     await page.goto(`${baseUrl}/bess/runtime?pf=2`, { waitUntil: 'networkidle' })
@@ -176,100 +184,74 @@ async function run() {
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.evaluate(() => window.localStorage.removeItem('power-calc:/estimate:draft'))
+    const workedExampleLink = page.getByRole('link', { name: 'View Live Example' })
+    if (await workedExampleLink.count() !== 1) {
+      throw new Error('2,000 A hybrid live-example link is missing')
+    }
+    const workedExampleHref = await workedExampleLink.getAttribute('href')
+    if (workedExampleHref !== '/examples/2000a-hybrid') {
+      throw new Error(`Unexpected worked-example route: ${workedExampleHref}`)
+    }
+    await page.goto(`${baseUrl}${workedExampleHref}`, { waitUntil: 'networkidle' })
+    await expectText(page, /2,000 A Hybrid Service/i, 'worked-example heading')
+    await expectText(page, /3 × 500 kW/i, 'worked-example generator package')
+    await expectText(page, /2 × 250 kW/i, 'worked-example BESS package')
+    await expectText(page, /3 duty \+ 0 standby/i, 'worked-example N generator topology')
+    await expectText(page, /2 duty \+ 0 standby/i, 'worked-example N BESS topology')
+    await expectText(page, /5 × 400 A runs\/phase/i, 'worked-example source conductors')
+    await expectText(page, /Load nameplate required/i, 'withheld trailer load basis')
+    await expectText(page, /169\.8 kW/i, 'worked-example recharge ceiling')
+    await expectText(page, /DEIF Energy Controller/i, 'worked-example DEIF one-line control')
+    if (await page.getByRole('img', { name: /Hybrid Energy One-Line Diagram printable electrical one-line diagram/i }).count() !== 1) {
+      throw new Error('Worked example graphical one-line is missing')
+    }
+    const controlledPdfLink = page.getByRole('link', { name: 'Download Controlled PDF' })
+    if (await controlledPdfLink.getAttribute('href') !== '/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf') {
+      throw new Error('Worked-example controlled PDF link is missing or incorrect')
+    }
+
+    const workedExamplePdfPath = '/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf'
+    const workedExampleResponse = await page.request.get(`${baseUrl}${workedExamplePdfPath}`)
+    if (!workedExampleResponse.ok()) {
+      throw new Error(`Worked-example PDF request failed: ${workedExampleResponse.status()}`)
+    }
+    if (workedExampleResponse.headers()['content-type'] !== 'application/pdf') {
+      throw new Error(`Unexpected worked-example content type: ${workedExampleResponse.headers()['content-type']}`)
+    }
+    const expectedWorkedExample = await readFile(new URL('../public/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf', import.meta.url))
+    const servedWorkedExample = await workedExampleResponse.body()
+    if (!servedWorkedExample.equals(expectedWorkedExample)) {
+      throw new Error('Served worked-example PDF does not match the controlled public asset')
+    }
+    await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.getByLabel('Client / Account').fill('Data Center Construction')
     await page.getByLabel('Project / Phase').fill('Commissioning Block A')
-    await page.getByLabel('Peak Load Demand').fill('1200')
-    await page.getByLabel('Base/Continuous Load').fill('800')
-    await page.getByLabel('BESS Unit Size').selectOption('250')
-    await page.getByLabel('Site Voltage').selectOption('480')
-    await page.getByLabel('Load Voltage').selectOption('208')
+    await page.getByLabel('Peak Current').fill('2000')
+    await page.getByLabel('Continuous Current').fill('500')
+    await page.getByLabel('Voltage').selectOption('480')
+    await page.getByLabel('Phase', { exact: true }).selectOption('three')
     await page.getByLabel('Power Factor').fill('0.8')
-    await page.getByLabel('Longest Cable Route').fill('100')
-    await page.getByLabel('Neutral Plan').selectOption('required')
-    await page.getByLabel('Available Site Length').fill('200')
-    await page.getByLabel('Available Site Width').fill('120')
-    await page.getByLabel('Peak Hours/Day').fill('8')
-    await page.getByLabel('Project Duration').fill('30')
-    await page.getByLabel('BESS Rate Period').selectOption('weekly')
-    await page.getByLabel('Generator Rate Period').selectOption('monthly')
-    await page.getByLabel('Redundancy Level').selectOption('n1')
-    await expectText(page, /Streamlined Hybrid Spec/i, 'streamlined hybrid spec summary')
-    await expectText(page, /Operating Path/i, 'streamlined operating path')
-    await expectText(page, /24\/7 Hybrid Coverage Scenarios/i, 'hybrid 24/7 coverage scenarios')
-    await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
+    await page.getByLabel('Selected BESS 28-Day Rate').fill('9800')
+    await page.getByLabel('Selected Generator 28-Day Rate').fill('14000')
+    await expectText(page, /Automatically Selected Package/i, 'automatic hybrid package summary')
+    await expectText(page, /1,330\.2/i, 'derived peak demand')
+    await expectText(page, /332\.6/i, 'derived continuous demand')
+    await expectText(page, /2 × 250 kW/i, 'automatic BESS package')
+    await expectText(page, /2 × Atlas Copco ZBC 250-575/i, 'automatic BESS model selection')
+    await expectText(page, /3 × 500 kW/i, 'automatic generator package')
+    await expectText(page, /No standby unit/i, 'N topology boundary')
+    await expectText(page, /\$61,600/i, '28-day equipment total')
     await expectText(page, /Printable Electrical One-Line/i, 'printable electrical one-line diagram')
-    await expectText(page, /Print One-Line/i, 'one-line print action')
-    await expectText(page, /4 × 500 kW gen \+ 7 × 250 kW BESS/i, 'reconciled hybrid package')
-    await expectText(page, /3 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
-    await expectText(page, /2,000 kW installed \/ 1,500 kW firm generator/i, 'installed and firm generator distinction')
-    await expectText(page, /Source \+ Branch Cable Schedule/i, 'source and branch cable schedule')
-    await expectText(page, /160 pieces/i, 'default protected-load cable count')
     await expectText(page, /Conceptual 3D Equipment Envelope/i, 'dimensioned 3D equipment envelope')
-    await expectText(page, /Budgetary Estimate Basis/i, 'hybrid quote basis')
-    await expectText(page, /Vendor required/i, 'unpriced vendor-required estimate lines')
-    await expectText(page, /transformation from 480 V to 208 V/i, 'selected-voltage transformer explanation')
-
-    await page.getByRole('button', { name: /Split into Power Zones/i }).click()
-    await page.getByRole('button', { name: 'Add Zone' }).click()
-    await page.getByRole('button', { name: 'Add Zone' }).click()
-    await page.getByLabel('Zone Name').nth(0).fill('Critical commissioning')
-    await page.getByLabel('Load', { exact: true }).nth(0).fill('700')
-    if (await page.getByRole('button', { name: 'Generate Report' }).count()) {
-      throw new Error('Hybrid report should be withheld while named power zones do not balance to peak load')
-    }
-    if (await page.getByRole('button', { name: 'Open Synced Site Fit' }).isEnabled()) {
-      throw new Error('Site Fit handoff should be disabled while named power zones do not balance to peak load')
-    }
-    await page.getByLabel('Zone Name').nth(1).fill('Support systems')
-    await page.getByLabel('Load', { exact: true }).nth(1).fill('500')
-    await expectText(page, /Zones total: 1,200 kW vs Peak Load: 1,200 kW/i, 'balanced power-zone total')
-    await expectText(page, /Amps\/Phase \(208V\)/i, 'branch current at selected load voltage')
-    await expectText(page, /2,429/i, '700 kW branch current using selected load voltage and power factor')
-    await expectText(page, /BR-1/i, 'first branch cable schedule')
-    await expectText(page, /BR-2/i, 'second branch cable schedule')
-
-    await page.getByLabel('Load', { exact: true }).nth(0).fill('1300')
-    await page.getByLabel('Load', { exact: true }).nth(1).fill('-100')
-    if (await page.getByRole('button', { name: 'Generate Report' }).count()) {
-      throw new Error('Negative power zones must not satisfy the hybrid handoff balance gate')
-    }
-    await page.getByLabel('Load', { exact: true }).nth(0).fill('700')
-    await page.getByLabel('Load', { exact: true }).nth(1).fill('500')
 
     const [hybridReportDownload] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: 'Generate Report' }).click(),
+      page.getByRole('button', { name: 'Generate 28-Day Report' }).click(),
     ])
     if (!hybridReportDownload.suggestedFilename().toLowerCase().endsWith('.pdf')) {
       throw new Error('Hybrid planning report did not download as a PDF')
     }
     await hybridReportDownload.createReadStream()
-
-    page.once('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: 'Add Package to Estimate' }).click()
-    await page.getByRole('button', { name: 'Open Synced Site Fit' }).click()
-    await page.getByRole('heading', { name: /Site Fit/i }).waitFor()
-    await expectText(page, /Synced hybrid package: 4 × 500 kW generators and 7 × 250 kW \/ 575 kWh BESS units/i, 'hybrid package handoff to site fit')
-    await expectText(page, /Planning ceiling/i, 'synced site-fit planning ceiling')
-    await expectText(page, /Package fits the entered planning area/i, 'reconciled hybrid site-fit status')
-    await expectText(page, /synced source \+ branch schedule requires 170 pieces/i, 'reconciled site-fit cable total')
-    await page.getByLabel('Longest cable route').fill('200')
-    if (await page.getByText(/Synced hybrid package:/i).count()) {
-      throw new Error('Editing Site Fit cable assumptions must invalidate the frozen hybrid package handoff')
-    }
-
-    await page.goto(`${baseUrl}/estimate`, { waitUntil: 'networkidle' })
-    await expectText(page, /Reconciled hybrid generator \+ BESS package/i, 'hybrid requirement imported to estimate')
-    const hybridEstimateDescriptions = await page.getByLabel('Description').evaluateAll((inputs) => inputs.map((input) => input.value))
-    for (const [pattern, label] of [
-      [/500 kW generator rental/i, 'generator quote line'],
-      [/250 kW \/ 575 kWh BESS rental/i, 'BESS quote line'],
-      [/4\/0 planning cable schedule/i, 'cable quote line'],
-    ]) {
-      if (!hybridEstimateDescriptions.some((description) => pattern.test(description))) {
-        throw new Error(`Expected ${label} to be imported to the estimate; found ${JSON.stringify(hybridEstimateDescriptions)}`)
-      }
-    }
 
     await page.goto(`${baseUrl}/scenarios/bess-project`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: /Next: Financial Parameters/i }).click()

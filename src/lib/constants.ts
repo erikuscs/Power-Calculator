@@ -25,15 +25,11 @@ export const RATE_PERIOD_OPTIONS = [
 ] as const
 export type RatePeriod = (typeof RATE_PERIOD_OPTIONS)[number]['value']
 
-export const BESS_UNIT_SIZES = [5, 24, 30, 75, 250, 300, 600] as const
+// Values identify fleet selections. The MP75 model identifier is retained as
+// 75, but its continuous output is 40 kW; calculation code must use the
+// verified continuous rating rather than this selector value.
+export const BESS_UNIT_SIZES = [5, 24, 30, 75, 250] as const
 export type BessUnitSize = (typeof BESS_UNIT_SIZES)[number]
-
-export const DIESEL_BSFC: Record<number, number> = {
-  25: 0.105,
-  50: 0.085,
-  75: 0.072,
-  100: 0.068,
-}
 
 export const NATURAL_GAS_CFH_PER_KW = 10.58
 

@@ -2,6 +2,13 @@ import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3, BookOpen, ArrowDown, ClipboardList, MapPinned } from 'lucide-react'
 import { APP_BRAND } from '../../lib/brand'
+import { HybridSiteLayout3D } from '../../components/ui/HybridSiteLayout3D'
+import {
+  buildHybrid2000AmpExample,
+  HYBRID_2000A_CONTINUOUS_AMPS,
+  HYBRID_2000A_SERVICE_AMPS,
+  HYBRID_2000A_VOLTAGE,
+} from '../scenarios/hybrid2000AmpExample'
 import {
   EMAAS_FIELD_MODES,
   EMAAS_OPERATING_VARIABLES,
@@ -20,6 +27,8 @@ const scenarios = [
   { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Economics', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
   { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'Cooling Load Strategy', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
 ]
+
+const dashboardHybridExample = buildHybrid2000AmpExample()
 
 const bessCalcs = [
   { to: '/bess/runtime', icon: Battery, title: 'BESS Runtime', desc: 'Battery runtime from kWh, voltage, amps, and power factor' },
@@ -138,11 +147,18 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-sg-600/40 bg-sg-800">
-          <img
-            src="/media/emaas-data-center-ops.webp"
-            alt="Data center energy operations model with BESS, generators, cooling, switchgear, and telemetry"
-            className="h-full min-h-72 w-full object-cover"
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sg-600/40 px-4 py-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-accent-400">Current worked example</div>
+              <div className="mt-1 text-sm font-bold text-text">
+                {HYBRID_2000A_SERVICE_AMPS.toLocaleString()} A peak · {HYBRID_2000A_CONTINUOUS_AMPS.toLocaleString()} A continuous · {HYBRID_2000A_VOLTAGE} V three-phase
+              </div>
+            </div>
+            <Link to="/examples/2000a-hybrid" className="text-xs font-bold text-signal-blue no-underline hover:text-text">
+              Open linked plan + one-line
+            </Link>
+          </div>
+          <HybridSiteLayout3D plan={dashboardHybridExample.plan} compact />
         </div>
       </section>
 

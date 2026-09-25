@@ -265,18 +265,23 @@ export function buildTempPowerOneLineDiagram(
 export function buildHybridOneLineDiagram(
   inputs: HybridWizardInputs,
   results: HybridWizardResults,
-  zones: { id: string; name: string; kw: number }[] = [],
+  zones: { id: string; name: string; kw?: number }[] = [],
 ): OneLineDiagram {
   const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
   const loadVoltage = inputs.loadVoltage ?? inputs.siteVoltage
+  const loadPhase = inputs.loadPhase ?? 'three'
   const routeSections = Math.max(1, Math.ceil((inputs.longestCableRouteFt ?? 100) / 50))
   const neutralConductors = inputs.neutralPlan === 'not_carried' ? 4 : inputs.neutralPlan === 'required' ? 5 : null
   const zoneNodes: OneLineNode[] = zones.length > 0
-    ? zones.slice(0, 4).map((zone, index) => ({
+    ? zones.map((zone, index) => ({
         id: `ZONE_${index + 1}`,
         label: zone.name || `Zone ${index + 1}`,
-        detail: `${fi(zone.kw)} kW`,
-        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
+        detail: typeof zone.kw === 'number' && zone.kw > 0 ? `${fi(zone.kw)} kW` : 'Load nameplate required',
+        meta: typeof zone.kw !== 'number' || zone.kw <= 0
+          ? `${loadVoltage}V ${loadPhase === 'single' ? '1-phase' : '3-phase'} connection point · field verify`
+          : loadPhase === 'single'
+            ? `${fi((zone.kw * 1000) / (loadVoltage * powerFactor))} A branch at ${loadVoltage}V 1-phase`
+            : `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
         tone: 'load' as const,
       }))
     : [
@@ -303,9 +308,28 @@ export function buildHybridOneLineDiagram(
         {
           id: 'BESS',
           label: 'BESS Plant',
-          detail: `${results.bessUnits} x ${inputs.bessUnitSize} kW`,
-          meta: `${fi(results.coverage.bessInstalledKwh)} kWh installed / ${fi(results.coverage.bessUsableKwh)} kWh usable`,
+          detail: `${results.bessUnits} x ${results.bessUnitContinuousKw} kW continuous`,
+          meta: `${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby · ${fi(results.bessFirmCapacityKw)} kW firm`,
           tone: 'storage',
+        },
+      ],
+    },
+    {
+      label: 'Protection',
+      nodes: [
+        {
+          id: 'GEN_CB',
+          label: 'Generator Breaker',
+          detail: '52G source protection',
+          meta: 'rating and settings by engineer',
+          tone: 'distribution',
+        },
+        {
+          id: 'BESS_CB',
+          label: 'BESS Breaker',
+          detail: '52B PCS protection',
+          meta: 'bidirectional duty · verify',
+          tone: 'distribution',
         },
       ],
     },
@@ -314,16 +338,16 @@ export function buildHybridOneLineDiagram(
       nodes: [
         {
           id: 'EMS',
-          label: 'EMaaS Controller',
-          detail: 'SOC threshold / remote start / recharge dispatch',
+          label: 'DEIF Energy Controller',
+          detail: 'SOC threshold / remote start / staged recharge',
           meta: inputs.redundancy === '2n' ? '2N topology' : inputs.redundancy === 'n1' ? 'N+1 topology' : 'N topology',
           tone: 'control',
         },
         {
           id: 'ATS',
-          label: 'ATS / Parallel Gear',
+          label: 'Paralleling Gear',
           detail: `${fi(results.peakAmpsPerPhase)} A/phase`,
-          meta: `${Math.ceil(results.peakAmpsPerPhase / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
+          meta: `${Math.ceil(Math.round(results.peakAmpsPerPhase) / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
           tone: 'control',
         },
       ],
@@ -334,18 +358,37 @@ export function buildHybridOneLineDiagram(
         {
           id: 'SWGR',
           label: `${inputs.siteVoltage}V Switchgear`,
-          detail: `${fi(results.totalCapacityKw)} kW system capacity`,
-          meta: 'main protected bus',
-          tone: 'distribution',
-        },
-        {
-          id: 'XFMR',
-          label: 'Transformer / Panels',
-          detail: inputs.siteVoltage === loadVoltage ? `${loadVoltage}V branch distribution` : `${inputs.siteVoltage}V to ${loadVoltage}V`,
-          meta: 'site distribution interface',
+          detail: `${fi(results.peakAmpsPerPhase)} A protected bus`,
+          meta: `${fi(inputs.peakLoadKw)} kW customer-load basis`,
           tone: 'distribution',
         },
       ],
+    },
+    ...(inputs.siteVoltage !== loadVoltage
+      ? [{
+          label: 'Transformation',
+          nodes: [{
+            id: 'XFMR',
+            label: 'Step-Down Transformer',
+            detail: `${inputs.siteVoltage}V to ${loadVoltage}V`,
+            meta: 'grounding and protection require engineering',
+            tone: 'distribution' as const,
+          }],
+        }]
+      : []),
+    {
+      label: 'Service',
+      nodes: [{
+        id: 'PANEL',
+        label: 'Customer Service Main',
+        detail: loadPhase === 'single'
+          ? `Balanced ${loadVoltage}V single-phase feeder distribution`
+          : `${fi((inputs.peakLoadKw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V, 3-phase`,
+        meta: loadPhase === 'single'
+          ? `${fi((inputs.peakLoadKw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase equivalent · branch nameplates verify`
+          : 'protected load handoff',
+        tone: 'distribution',
+      }],
     },
     {
       label: 'Loads',
@@ -354,25 +397,32 @@ export function buildHybridOneLineDiagram(
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'ATS', label: 'generator feeder' },
-    { from: 'BESS', to: 'ATS', label: 'PCS AC output' },
+    { from: 'GEN', to: 'GEN_CB', label: 'generator feeder' },
+    { from: 'BESS', to: 'BESS_CB', label: 'PCS AC output' },
+    { from: 'GEN_CB', to: 'ATS', label: 'protected source' },
+    { from: 'BESS_CB', to: 'ATS', label: 'bidirectional source' },
     { from: 'EMS', to: 'GEN', label: 'remote start', kind: 'control' },
     { from: 'EMS', to: 'BESS', label: 'SOC telemetry', kind: 'control' },
     { from: 'EMS', to: 'ATS', label: 'dispatch control', kind: 'control' },
     { from: 'ATS', to: 'SWGR', label: `${inputs.siteVoltage}V 3-phase` },
-    { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
-    ...zoneNodes.map((node) => ({ from: 'XFMR', to: node.id, label: 'branch feeder' })),
+    ...(inputs.siteVoltage !== loadVoltage
+      ? [
+          { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
+          { from: 'XFMR', to: 'PANEL', label: loadPhase === 'single' ? `${loadVoltage}V balanced 1-phase feeders` : `${loadVoltage}V secondary` },
+        ] as OneLineEdge[]
+      : [{ from: 'SWGR', to: 'PANEL', label: `${routeSections} x 50 ft protected feeders` }]),
+    ...zoneNodes.map((node) => ({ from: 'PANEL', to: node.id, label: 'branch feeder' })),
   ]
 
   if (results.motorAssignments.length > 0) {
-    stages[3].nodes.push({
+    stages[stages.length - 1].nodes.push({
       id: 'MOTORS',
       label: 'Motor / Compressor Loads',
-      detail: `${results.motorAssignments.length} inrush checks`,
-      meta: `${results.motorAssignments.filter((m) => m.assignment === 'generator').length} generator-assigned`,
+      detail: `${results.motorAssignments.length} motor note(s)`,
+      meta: 'Starting and protection remain vendor/engineering verification',
       tone: 'load',
     })
-    edges.push({ from: 'XFMR', to: 'MOTORS', label: 'inrush-managed feeder' })
+    edges.push({ from: 'PANEL', to: 'MOTORS', label: 'motor feeder - verify' })
   }
 
   return finishDiagram({
@@ -386,6 +436,9 @@ export function buildHybridOneLineDiagram(
       zones.length > 0
         ? 'Zone nodes reflect the optional power-zone schedule entered in the workflow.'
         : 'Critical-load bus is shown when no power zones are entered.',
+      loadPhase === 'single'
+        ? 'Single-phase branch loads must be balanced across the three-phase source; final feeder ratings require the trailer nameplates.'
+        : 'Downstream loads are represented as three-phase distribution.',
     ],
   })
 }

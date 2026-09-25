@@ -119,7 +119,7 @@ describe('interpolateBSFC', () => {
 })
 
 describe('calcFuelConsumption', () => {
-  it('diesel: 500 kW gen at 100% load → BSFC = 0.068 → 34 gal/hr at sea level 77F', () => {
+  it('uses the exact reference-curve full-load value for a 500 kW generator', () => {
     const r = calcFuelConsumption({
       actualKw: 500,
       ratedKw: 500,
@@ -129,14 +129,14 @@ describe('calcFuelConsumption', () => {
       fuelType: 'diesel',
     })
     expect(r.loadFactor).toBe(1.0)
-    expect(r.bsfc).toBe(0.068)
+    expect(r.bsfc).toBeCloseTo(35.7 / 500, 6)
     expect(r.altitudeDerating).toBe(1.0)
     expect(r.tempDerating).toBe(1.0)
-    expect(r.gallonsPerHour).toBeCloseTo(34.0, 1)
-    expect(r.totalFuel).toBeCloseTo(34.0, 1)
+    expect(r.gallonsPerHour).toBe(35.7)
+    expect(r.totalFuel).toBe(35.7)
   })
 
-  it('diesel: 250 kW on 500 kW gen (50% load) → BSFC = 0.085 → 21.25 gal/hr', () => {
+  it('uses the exact reference-curve half-load value for a 500 kW generator', () => {
     const r = calcFuelConsumption({
       actualKw: 250,
       ratedKw: 500,
@@ -146,8 +146,8 @@ describe('calcFuelConsumption', () => {
       fuelType: 'diesel',
     })
     expect(r.loadFactor).toBe(0.5)
-    expect(r.bsfc).toBe(0.085)
-    expect(r.gallonsPerHour).toBeCloseTo(21.25, 2)
+    expect(r.bsfc).toBeCloseTo(18.5 / 250, 6)
+    expect(r.gallonsPerHour).toBe(18.5)
   })
 
   it('diesel with altitude and temperature derating', () => {
@@ -163,9 +163,9 @@ describe('calcFuelConsumption', () => {
     expect(r.altitudeDerating).toBeCloseTo(1.12, 4)
     // tempDerating = 1 + max(0, (97 - 77) / 10) * 0.02 = 1 + 2 * 0.02 = 1.04
     expect(r.tempDerating).toBeCloseTo(1.04, 4)
-    // GPH = 500 * 0.068 * 1.12 * 1.04 = 39.6032
-    expect(r.gallonsPerHour).toBeCloseTo(39.6032, 2)
-    expect(r.totalFuel).toBeCloseTo(396.032, 1)
+    // GPH = reference-curve 35.7 gal/hr x 1.12 x 1.04.
+    expect(r.gallonsPerHour).toBeCloseTo(41.58336, 5)
+    expect(r.totalFuel).toBeCloseTo(415.8336, 4)
   })
 
   it('natural gas fuel consumption', () => {

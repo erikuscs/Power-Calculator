@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildHybridOneLineDiagram, buildTempPowerOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
 import { calculateHybridWizard, calculateTempPower, type HybridWizardInputs, type TempPowerInputs } from './scenario.formulas'
+import { buildHybrid2000AmpExample } from './hybrid2000AmpExample'
 
 describe('one-line diagram builders', () => {
   it('keeps the generator-only one-line free of unselected cooling and battery equipment', () => {
@@ -63,7 +64,7 @@ describe('one-line diagram builders', () => {
       peakLoadKw: 4500,
       baseLoadKw: 50,
       loadSource: 'measured',
-      bessUnitSize: 600,
+      bessUnitSize: 250,
       peakHoursPerDay: 12,
       projectDurationDays: 5,
       redundancy: 'n1',
@@ -85,9 +86,65 @@ describe('one-line diagram builders', () => {
 
     expect(diagram.title).toBe('Hybrid Energy One-Line Diagram')
     expect(diagram.mermaid).toContain('BESS Plant')
-    expect(diagram.mermaid).toContain('EMaaS Controller')
+    expect(diagram.mermaid).toContain('DEIF Energy Controller')
+    expect(diagram.mermaid).toContain('52G source protection')
+    expect(diagram.mermaid).toContain('Customer Service Main')
     expect(diagram.mermaid).toContain('Commissioning Block A')
     expect(diagram.mermaid).toContain('Motor / Compressor Loads')
     expect(flattenDiagramRows(diagram).length).toBeGreaterThan(7)
+  })
+
+  it('retains the separate 480-to-480 N+1 acceptance case without a transformer', () => {
+    const serviceKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const inputs: HybridWizardInputs = {
+      peakLoadKw: serviceKw,
+      baseLoadKw: serviceKw,
+      loadSource: 'panel',
+      bessUnitSize: 250,
+      peakHoursPerDay: 24,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      loadVoltage: 480,
+      powerFactor: 0.8,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 8.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-25',
+      endDate: '2026-10-23',
+      motors: [],
+    }
+    const diagram = buildHybridOneLineDiagram(inputs, calculateHybridWizard(inputs))
+
+    expect(diagram.mermaid).toContain('Generator Breaker')
+    expect(diagram.mermaid).toContain('BESS Breaker')
+    expect(diagram.mermaid).toContain('DEIF Energy Controller')
+    expect(diagram.mermaid).toContain('Customer Service Main')
+    expect(diagram.mermaid).not.toContain('Step-Down Transformer')
+    expect(diagram.edges.some((edge) => edge.from === 'SWGR' && edge.to === 'PANEL')).toBe(true)
+  })
+
+  it('shows all ten 240 V single-phase trailer branches for the 2,000 A hybrid case', () => {
+    const { diagram } = buildHybrid2000AmpExample()
+
+    expect(diagram.mermaid).toContain('Balanced 240V single-phase feeder distribution')
+    expect(diagram.mermaid).toContain('2 x 250 kW continuous')
+    expect(diagram.mermaid).toContain('3 x 500 kW')
+    expect(diagram.mermaid).toContain('3 duty + 0 standby')
+    expect(diagram.mermaid).toContain('2 duty + 0 standby')
+    expect(diagram.mermaid).toContain('Generator Breaker')
+    expect(diagram.mermaid).toContain('BESS Breaker')
+    expect(diagram.mermaid).toContain('DEIF Energy Controller')
+    expect(diagram.mermaid).toContain('480V Switchgear')
+    expect(diagram.mermaid).toContain('Customer Service Main')
+    expect(diagram.mermaid).toContain('Step-Down Transformer')
+    expect(diagram.mermaid).toContain('Load nameplate required')
+    expect(diagram.mermaid).toContain('240V 1-phase connection point · field verify')
+    expect(diagram.mermaid).not.toMatch(/A branch at 240V 1-phase/)
+    expect(diagram.mermaid).toContain('Job Site Trailer 10')
+    expect(diagram.mermaid).not.toContain('240V, 3-phase')
+    expect(diagram.edges.filter((edge) => edge.from === 'PANEL')).toHaveLength(10)
   })
 })

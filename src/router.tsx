@@ -29,6 +29,7 @@ const HvacAssessmentWizard = lazy(() => import('./features/scenarios/HvacAssessm
 const PrivacyPage = lazy(() => import('./features/legal/PrivacyPage'))
 const EstimatePage = lazy(() => import('./features/estimate/EstimatePage'))
 const SiteFitPage = lazy(() => import('./features/site-fit/SiteFitPage'))
+const Hybrid2000AmpExamplePage = lazy(() => import('./features/scenarios/Hybrid2000AmpExamplePage'))
 
 interface AppRoute {
   path: string
@@ -42,6 +43,7 @@ export const routes: AppRoute[] = [
   { path: '/learn', element: <LearnHubPage />, label: 'Start Here', group: 'Overview' },
   { path: '/estimate', element: <EstimatePage />, label: 'Build Estimate', group: 'EMaaS Workflows' },
   { path: '/site-fit', element: <SiteFitPage />, label: 'Site Fit & One-Line', group: 'EMaaS Workflows' },
+  { path: '/examples/2000a-hybrid', element: <Hybrid2000AmpExamplePage /> },
   { path: '/bess/runtime', element: <BessRuntimePage />, label: 'BESS Runtime', group: 'BESS' },
   { path: '/bess/sizing', element: <BessSizingPage />, label: 'Multi-Unit Sizing', group: 'BESS' },
   { path: '/bess/roi', element: <BessRoiPage />, label: 'Revenue / ROI', group: 'BESS' },

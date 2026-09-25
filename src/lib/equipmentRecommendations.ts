@@ -1,4 +1,5 @@
 import { SAFETY_MARGINS } from './constants'
+import { DIESEL_GENERATOR_SIZES_KW } from './dieselFuelCurve'
 
 export interface GeneratorFleetUnit {
   kw: number
@@ -11,10 +12,18 @@ export interface GeneratorFleetUnit {
 export interface BessFleetUnit {
   kw: number
   kwh: number
+  continuousKw?: number
+  chargeKw?: number
+  chargeBasis?: 'published' | 'planning_assumption'
+  usableKwh?: number
+  peakKw?: number
+  peakDurationHours?: number
+  fieldNote?: string
   label: string
   voltage: string
   footprintSqFt: number
   source: string
+  sourceUrl?: string
 }
 
 export interface EquipmentRecommendationInputs {
@@ -52,29 +61,34 @@ export interface EquipmentRecommendationOption {
   notes: string[]
 }
 
-export const GENERATOR_FLEET: GeneratorFleetUnit[] = [
-  { kw: 20, label: '20 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 70, source: 'Sunbelt 20 kW class' },
-  { kw: 45, label: '45 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 90, source: 'Sunbelt 45-80 kW class' },
-  { kw: 80, label: '80 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 110, source: 'Sunbelt 45-80 kW class' },
-  { kw: 100, label: '100 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 135, source: 'Sunbelt 100-119 kW class' },
-  { kw: 150, label: '150 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 160, source: 'Sunbelt 150-200 kW class' },
-  { kw: 200, label: '200 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 175, source: 'Sunbelt 150-200 kW class' },
-  { kw: 300, label: '300 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 210, source: 'Sunbelt 250-350 kW class' },
-  { kw: 500, label: '500 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 260, source: 'Sunbelt 500-700 kW class' },
-  { kw: 700, label: '700 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 300, source: 'Sunbelt 500-700 kW class' },
-  { kw: 1000, label: '1000 kW diesel generator', voltage: '480 V typical', footprintSqFt: 320, source: 'Sunbelt 1000-1200 kW class' },
-  { kw: 1500, label: '1500 kW diesel generator', voltage: '480 V typical', footprintSqFt: 360, source: 'Sunbelt 1300-1500 kW class' },
-  { kw: 2000, label: '2000 kW diesel generator', voltage: '480 V typical', footprintSqFt: 390, source: 'Sunbelt 1700-2000 kW class' },
-]
+function generatorPlanningFootprintSqFt(kw: number): number {
+  if (kw <= 40) return 70
+  if (kw <= 75) return 90
+  if (kw <= 100) return 135
+  if (kw <= 150) return 160
+  if (kw <= 200) return 175
+  if (kw <= 300) return 210
+  if (kw <= 500) return 260
+  if (kw <= 750) return 300
+  if (kw <= 1250) return 320
+  if (kw <= 1750) return 360
+  return 390
+}
+
+export const GENERATOR_FLEET: GeneratorFleetUnit[] = DIESEL_GENERATOR_SIZES_KW.map((kw) => ({
+  kw,
+  label: `${kw} kW diesel generator`,
+  voltage: kw >= 1000 ? '480 V typical' : 'multi-voltage',
+  footprintSqFt: generatorPlanningFootprintSqFt(kw),
+  source: 'Generic rental-market planning class; availability and dimensions require field verification',
+}))
 
 export const BESS_FLEET: BessFleetUnit[] = [
-  { kw: 5, kwh: 7, label: '5 kW / 7 kWh portable BESS', voltage: '120/240 V', footprintSqFt: 12, source: 'Sunbelt 5 kW / 7 kWh BESS' },
-  { kw: 24, kwh: 90, label: '24 kW / 90 kWh BESS', voltage: '208/120 V', footprintSqFt: 80, source: 'Sunbelt 24 kW / 90 kWh BESS' },
-  { kw: 30, kwh: 150, label: '30 kW / 150 kWh BESS', voltage: '208 V typical', footprintSqFt: 100, source: 'Sunbelt 30 kW / 150 kWh BESS' },
-  { kw: 75, kwh: 600, label: '75 kW / 600 kWh BESS', voltage: '480/208 V typical', footprintSqFt: 180, source: 'Sunbelt 75 kW / 600 kWh BESS' },
-  { kw: 250, kwh: 575, label: '250 kW / 575 kWh BESS', voltage: '480 V typical', footprintSqFt: 220, source: 'Sunbelt 250 kW / 575 kWh BESS' },
-  { kw: 300, kwh: 1200, label: '300 kW legacy / large-system BESS', voltage: '480 V typical', footprintSqFt: 300, source: 'Legacy planning option' },
-  { kw: 600, kwh: 2400, label: '600 kW legacy / large-system BESS', voltage: '480 V typical', footprintSqFt: 480, source: 'Legacy planning option' },
+  { kw: 5, kwh: 7, continuousKw: 4.8, chargeKw: 2.6, chargeBasis: 'planning_assumption', peakKw: 5.8, peakDurationHours: 3 / 3600, label: 'Portable 5/7 — 4.8 kW continuous / 7 kWh nominal', voltage: '120 V', footprintSqFt: 12, source: 'Published equipment data; rental availability requires field verification' },
+  { kw: 24, kwh: 90, continuousKw: 24, chargeKw: 24, chargeBasis: 'planning_assumption', usableKwh: 72, label: 'Generac MBE30 — 24 kW continuous / 72 kWh usable', voltage: '208/120 V', footprintSqFt: 80, source: 'Generac MBE30 manufacturer data; rental availability requires field verification' },
+  { kw: 30, kwh: 146.7, continuousKw: 30, chargeKw: 30, chargeBasis: 'published', usableKwh: 132, label: 'Viridi RPS150 — 30 kW continuous / 132 kWh usable', voltage: '480/208 V', footprintSqFt: 100, source: 'Viridi RPS150 manufacturer data; rental availability requires field verification' },
+  { kw: 75, kwh: 600, continuousKw: 40, chargeKw: 19.2, chargeBasis: 'published', usableKwh: 530, peakKw: 75, peakDurationHours: 1, fieldNote: 'Owner field experience reports protective shutdown near 42 kW. Use 40 kW as the planning ceiling; AC charging is 19.2 kW and is modeled after transfer of the customer load to the generator.', label: 'Moxion MP75-600 — 40 kW continuous / 530 kWh usable (75 kW for 1 hr)', voltage: '480 V 3-phase continuous rating', footprintSqFt: 180, source: 'Moxion MP75-600 Rev E manufacturer manual and owner field note; rental availability requires field verification' },
+  { kw: 250, kwh: 575, continuousKw: 250, chargeKw: 250, chargeBasis: 'planning_assumption', usableKwh: 518, peakKw: 275, peakDurationHours: 10 / 60, label: 'Atlas Copco ZBC 250-575 — 250 kW continuous / 518 kWh net', voltage: '480 V 3-phase', footprintSqFt: 220, source: 'Atlas Copco ZBC 250-575 manufacturer data; rental availability requires field verification' },
 ]
 
 export function normalizeRateToDaily(value: number, period: 'daily' | 'weekly' | 'monthly'): number {
@@ -111,7 +125,7 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
   const preferred = hasMeaningfulPeakSwing || longRuntime ? 'hybrid' : peakKw <= 24 && bessAutonomyHours <= 4 ? 'bess' : 'generator'
 
   return {
-    sourceNote: 'Fleet classes modeled from public Sunbelt Rentals generator and BESS catalog groupings. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; footprints are planning allowances and need site verification.',
+    sourceNote: 'Generator classes use the governed diesel reference sizes. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; rental availability, footprints, and dimensions require site and provider verification.',
     preferred,
     generator: {
       label: 'Generator only',
@@ -179,12 +193,14 @@ function pickGenerator(requiredKw: number) {
 function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: number) {
   const preferred = BESS_FLEET.find((unit) => unit.kw === preferredBessKw)
   if (preferred) {
-    const count = Math.max(Math.ceil(requiredKw / preferred.kw), Math.ceil(requiredKwh / preferred.kwh), 1)
+    const continuousKw = preferred.continuousKw ?? preferred.kw
+    const usableKwh = preferred.usableKwh ?? preferred.kwh
+    const count = Math.max(Math.ceil(requiredKw / continuousKw), Math.ceil(requiredKwh / usableKwh), 1)
     return {
       unit: preferred,
       count,
-      capacityKw: preferred.kw * count,
-      energyKwh: preferred.kwh * count,
+      capacityKw: continuousKw * count,
+      energyKwh: usableKwh * count,
       footprintSqFt: preferred.footprintSqFt * count,
     }
   }
@@ -194,8 +210,10 @@ function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: num
   let bestExcess = Infinity
 
   for (const unit of BESS_FLEET) {
-    const count = Math.max(Math.ceil(requiredKw / unit.kw), Math.ceil(requiredKwh / unit.kwh), 1)
-    const excess = (unit.kw * count - requiredKw) + (unit.kwh * count - requiredKwh) / 4
+    const continuousKw = unit.continuousKw ?? unit.kw
+    const usableKwh = unit.usableKwh ?? unit.kwh
+    const count = Math.max(Math.ceil(requiredKw / continuousKw), Math.ceil(requiredKwh / usableKwh), 1)
+    const excess = (continuousKw * count - requiredKw) + (usableKwh * count - requiredKwh) / 4
     if (count < bestCount || (count === bestCount && excess < bestExcess)) {
       best = unit
       bestCount = count
@@ -206,8 +224,8 @@ function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: num
   return {
     unit: best,
     count: bestCount,
-    capacityKw: best.kw * bestCount,
-    energyKwh: best.kwh * bestCount,
+    capacityKw: (best.continuousKw ?? best.kw) * bestCount,
+    energyKwh: (best.usableKwh ?? best.kwh) * bestCount,
     footprintSqFt: best.footprintSqFt * bestCount,
   }
 }

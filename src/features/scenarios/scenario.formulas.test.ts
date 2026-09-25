@@ -1,24 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid, interpolateBSFC } from './scenario.formulas'
+import { ampsToRealKw, calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid, selectCompatibleBessPackage, selectGeneratorPackage } from './scenario.formulas'
 import { calcGeneralPower } from '../power/power.formulas'
-
-describe('interpolateBSFC', () => {
-  it('returns exact values at data points', () => {
-    expect(interpolateBSFC(0.25)).toBe(0.105)
-    expect(interpolateBSFC(0.50)).toBe(0.085)
-    expect(interpolateBSFC(0.75)).toBe(0.072)
-    expect(interpolateBSFC(1.00)).toBe(0.068)
-  })
-
-  it('interpolates between data points', () => {
-    const midpoint = interpolateBSFC(0.375)
-    expect(midpoint).toBeCloseTo(0.095, 3)
-  })
-
-  it('clamps below minimum load factor', () => {
-    expect(interpolateBSFC(0.1)).toBe(0.105)
-  })
-})
+import { estimateDieselFleetFuel } from '../../lib/dieselFuelCurve'
 
 describe('calculateTempPower', () => {
   it('derives operating hours from rental period and schedule', () => {
@@ -235,7 +218,7 @@ describe('evaluateHybrid', () => {
     const result = evaluateHybrid(1000, 400, 720, 1, 1)
     expect(result).not.toBeNull()
     expect(result!.recommended).toBe(true)
-    expect(result!.hybrid.fuelSavingsPercent).toBeGreaterThan(0)
+    expect(result!.hybrid.fuelReductionPercent).toBeGreaterThan(0)
   })
 
   it('recommends hybrid for long-duration jobs', () => {
@@ -244,7 +227,7 @@ describe('evaluateHybrid', () => {
     expect(result!.recommended).toBe(true)
   })
 
-  it('shows fuel savings in hybrid mode', () => {
+  it('shows fuel reduction in hybrid mode', () => {
     const result = evaluateHybrid(800, 300, 720, 1, 1)
     expect(result).not.toBeNull()
     expect(result!.hybrid.fuel30Day).toBeLessThan(result!.allGen.fuel30Day)
@@ -252,12 +235,96 @@ describe('evaluateHybrid', () => {
 })
 
 describe('calculateHybridWizard', () => {
+  it('derives and automatically selects the exact amp-first 2,000 A package without invented scope', () => {
+    const peakLoadKw = ampsToRealKw(2000, 480, 'three', 0.8)
+    const baseLoadKw = ampsToRealKw(500, 480, 'three', 0.8)
+    const result = calculateHybridWizard({
+      peakAmps: 2000,
+      continuousAmps: 500,
+      phase: 'three',
+      bess28DayRate: 9800,
+      generator28DayRate: 14000,
+      peakLoadKw,
+      baseLoadKw,
+      loadSource: 'measured',
+      bessUnitSize: 5,
+      peakHoursPerDay: 0,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 77,
+      fuelCostPerGallon: 0,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '',
+      endDate: '',
+      motors: [],
+      powerFactor: 0.8,
+    })
+
+    expect(peakLoadKw).toBeCloseTo(1330.22, 2)
+    expect(baseLoadKw).toBeCloseTo(332.55, 2)
+    expect(result.selectedBessUnitSize).toBe(250)
+    expect(result.bessUnits).toBe(2)
+    expect(result.bessStandbyUnits).toBe(0)
+    expect(result.genUnitSizeKw).toBe(500)
+    expect(result.genUnits).toBe(3)
+    expect(result.generatorStandbyUnits).toBe(0)
+    expect(result.equipment28DayTotal).toBe(61600)
+    expect(result.allGenFuelPerDay).toBe(0)
+    expect(result.hybridFuelPerDay).toBe(0)
+  })
+
+  it('converts single- and three-phase current correctly and refuses incompatible BESS voltage', () => {
+    expect(ampsToRealKw(100, 240, 'single', 0.8)).toBeCloseTo(19.2, 6)
+    expect(ampsToRealKw(100, 480, 'three', 0.8)).toBeCloseTo(66.5108, 4)
+    expect(selectCompatibleBessPackage(332.55, 480, 'three')).toMatchObject({ units: 2, unit: { kw: 250 } })
+    expect(selectCompatibleBessPackage(50, 240, 'three')).toBeNull()
+    expect(selectGeneratorPackage(1330.22)).toMatchObject({ units: 3, unit: { kw: 500 } })
+  })
+
+  it('derives the 2,000 A / 480 V N+1 benchmark from continuous ratings', () => {
+    const serviceKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const result = calculateHybridWizard({
+      peakLoadKw: serviceKw,
+      baseLoadKw: serviceKw,
+      loadSource: 'panel',
+      bessUnitSize: 250,
+      peakHoursPerDay: 24,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      loadVoltage: 480,
+      powerFactor: 0.8,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 8.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-25',
+      endDate: '2026-10-23',
+      motors: [],
+    })
+
+    expect(serviceKw).toBeCloseTo(1330.2, 1)
+    expect(result.generatorRequiredUnits).toBe(3)
+    expect(result.generatorStandbyUnits).toBe(1)
+    expect(result.genUnits).toBe(4)
+    expect(result.generatorFirmCapacityKw).toBe(1500)
+    expect(result.bessRequiredUnits).toBe(6)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(7)
+    expect(result.bessFirmCapacityKw).toBe(1500)
+    expect(result.rechargePowerKw).toBeCloseTo(169.8, 1)
+  })
+
   it('calculates BESS + generator configuration', () => {
     const result = calculateHybridWizard({
       peakLoadKw: 800,
       baseLoadKw: 400,
       loadSource: 'measured',
-      bessUnitSize: 300,
+      bessUnitSize: 30,
       peakHoursPerDay: 8,
       projectDurationDays: 30,
       redundancy: 'n1',
@@ -274,11 +341,15 @@ describe('calculateHybridWizard', () => {
 
     expect(result.bessUnits).toBeGreaterThan(0)
     expect(result.genUnits).toBeGreaterThan(0)
-    expect(result.totalCapacityKw).toBeGreaterThanOrEqual(800)
+    expect(result.protectedPeakLoadKw).toBe(800)
     expect(result.generatorRequiredUnits).toBe(2)
     expect(result.generatorStandbyUnits).toBe(1)
     expect(result.genUnits).toBe(3)
-    expect(result.bessUnits).toBe(4)
+    expect(result.bessUnitContinuousKw).toBe(30)
+    expect(result.bessRequiredUnits).toBe(14)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(15)
+    expect(result.coverage.bessInstalledKw).toBeGreaterThanOrEqual(400)
     expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
     expect(Number.isFinite(result.dailyFuelReduction)).toBe(true)
     expect(result.dailyFuelData).toHaveLength(30)
@@ -289,7 +360,7 @@ describe('calculateHybridWizard', () => {
       peakLoadKw: 800,
       baseLoadKw: 400,
       loadSource: 'measured',
-      bessUnitSize: 300,
+      bessUnitSize: 30,
       peakHoursPerDay: 8,
       projectDurationDays: 30,
       redundancy: 'n1',
@@ -309,23 +380,25 @@ describe('calculateHybridWizard', () => {
 
     const dolMotor = result.motorAssignments.find((m) => m.id === 'm1')
     const vfdMotor = result.motorAssignments.find((m) => m.id === 'm2')
-    expect(dolMotor!.assignment).toBe('generator')
-    expect(vfdMotor!.assignment).toBe('bess')
+    expect(dolMotor!.assignment).toBe('review')
+    expect(vfdMotor!.assignment).toBe('review')
+    expect(result.bessRequiredUnits).toBe(result.bessUnitsForContinuousLoad)
+    expect(result.bessUnits).toBe(result.bessUnitsForContinuousLoad + 1)
   })
 
-  it('calculates cost savings including equipment rental', () => {
+  it('calculates fuel and project cost differences including equipment rental', () => {
     const result = calculateHybridWizard({
-      peakLoadKw: 800,
-      baseLoadKw: 400,
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
       loadSource: 'measured',
-      bessUnitSize: 300,
+      bessUnitSize: 250,
       peakHoursPerDay: 8,
-      projectDurationDays: 30,
+      projectDurationDays: 28,
       redundancy: 'n1',
       siteVoltage: 480,
       altitude: 0,
       ambientTemp: 85,
-      fuelCostPerGallon: 4.5,
+      fuelCostPerGallon: 8.5,
       bessRentalPerDay: 350,
       genRentalPerDay: 500,
       startDate: '2026-01-01',
@@ -333,10 +406,42 @@ describe('calculateHybridWizard', () => {
       motors: [],
     })
 
-    expect(result.allGenCost30Day).toBeGreaterThan(0)
-    expect(result.hybridCost30Day).toBeGreaterThan(0)
-    expect(result.totalFuelSavingsDollars).toBeCloseTo(result.totalFuelSavingsGal * 4.5, 5)
-    expect(result.costSavings30Day).toBeCloseTo(result.allGenCost30Day - result.hybridCost30Day, 5)
+    expect(result.allGenCostProject).toBeGreaterThan(0)
+    expect(result.hybridCostProject).toBeGreaterThan(0)
+    expect(result.allGenFuelProject).toBeCloseTo(result.allGenFuelPerDay * 28, 5)
+    expect(result.hybridFuelTotal).toBeCloseTo(result.hybridFuelPerDay * 28, 5)
+    expect(result.allGenCostProject).toBeCloseTo((result.allGenFuelPerDay * 8.5 + result.allGenUnits * 500) * 28, 5)
+    expect(result.totalFuelCostDifferenceDollars).toBeCloseTo(result.totalFuelReductionGal * 8.5, 5)
+    expect(result.costDifferenceProject).toBeCloseTo(result.allGenCostProject - result.hybridCostProject, 5)
+    expect(result.coverage.estimatedRechargeHours).toBeCloseTo(
+      result.coverage.bessUsableKwh / (result.rechargePowerKw * 0.9),
+      5,
+    )
+  })
+
+  it('prevents negative commercial inputs from producing negative project totals', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
+      loadSource: 'measured',
+      bessUnitSize: 250,
+      peakHoursPerDay: 8,
+      projectDurationDays: -28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: -8.5,
+      bessRentalPerDay: -350,
+      genRentalPerDay: -500,
+      startDate: '2026-01-01',
+      endDate: '',
+      motors: [],
+    })
+
+    expect(result.allGenCostProject).toBe(0)
+    expect(result.hybridCostProject).toBe(0)
+    expect(result.allGenFuelProject).toBeCloseTo(result.allGenFuelPerDay, 5)
   })
 
   it('handles commissioning-scale hybrid blocks without capping at small event loads', () => {
@@ -344,7 +449,7 @@ describe('calculateHybridWizard', () => {
       peakLoadKw: 4500,
       baseLoadKw: 50,
       loadSource: 'measured',
-      bessUnitSize: 600,
+      bessUnitSize: 250,
       peakHoursPerDay: 12,
       projectDurationDays: 5,
       redundancy: 'n1',
@@ -360,8 +465,8 @@ describe('calculateHybridWizard', () => {
     })
 
     expect(result.bessUnits).toBeGreaterThan(0)
-    expect(result.totalCapacityKw).toBeGreaterThanOrEqual(4500)
-    expect(Number.isFinite(result.totalFuelSavingsGal)).toBe(true)
+    expect(result.protectedPeakLoadKw).toBe(4500)
+    expect(Number.isFinite(result.totalFuelReductionGal)).toBe(true)
     expect(result.parallelRunsNeeded).toBe(true)
   })
 
@@ -385,11 +490,11 @@ describe('calculateHybridWizard', () => {
       motors: [],
     })
 
-    expect(result.coverage.bessInstalledKwh).toBe(6000)
-    expect(result.coverage.canCarryBaseWhileCharging).toBe(true)
-    expect(result.coverage.canCarryPeakOnGenerator).toBe(false)
+    expect(result.coverage.bessInstalledKwh).toBe(7128)
+    expect(result.coverage.canCarryBaseWhileCharging).toBe(false)
+    expect(result.coverage.canCarryPeakOnGenerator).toBe(true)
     expect(result.coverage.scenarios[0].label).toBe('Battery-first hybrid microgrid')
-    expect(result.coverage.scenarios[0].status).toBe('24_7_ready')
+    expect(result.coverage.scenarios[0].status).toBe('conditional')
     expect(result.coverage.scenarios[0].dispatch).toContain('remote-starts the generator')
   })
 
@@ -398,7 +503,7 @@ describe('calculateHybridWizard', () => {
       peakLoadKw: 800,
       baseLoadKw: 400,
       loadSource: 'measured',
-      bessUnitSize: 300,
+      bessUnitSize: 30,
       peakHoursPerDay: 8,
       projectDurationDays: 30,
       redundancy: 'n1',
@@ -442,15 +547,31 @@ describe('calculateHybridWizard', () => {
     expect(result.generatorStandbyUnits).toBe(1)
     expect(result.genUnits).toBe(4)
     expect(result.generatorFirmCapacityKw).toBe(1500)
-    expect(result.bessUnitsForPeak).toBe(2)
-    expect(result.bessUnitsForEnergy).toBe(7)
-    expect(result.bessUnits).toBe(7)
-    expect(result.coverage.bessInstalledKwh).toBe(4025)
+    expect(result.bessUnitsForContinuousLoad).toBe(4)
+    expect(result.bessUnitsForEnergy).toBe(0)
+    expect(result.bessRequiredUnits).toBe(4)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(5)
+    expect(result.coverage.bessInstalledKw).toBe(1250)
+    expect(result.coverage.bessInstalledKwh).toBe(2590)
+    expect(result.coverage.bessUsableKwh).toBe(1036)
     expect(result.allGeneratorDailyEnergyKwh).toBe(22400)
-    expect(result.hybridGeneratorDailyEnergyKwh).toBeCloseTo(22755.56, 2)
+    expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
+    const siteDerating = 1.016
+    const expectedAllGenFuel = (
+      estimateDieselFleetFuel(500, 3, 1200).gallonsPerHour * 8
+      + estimateDieselFleetFuel(500, 3, 800).gallonsPerHour * 16
+    ) * siteDerating
+    const expectedHybridFuel = estimateDieselFleetFuel(
+      500,
+      result.generatorRequiredUnits,
+      result.averageLoadKw + result.rechargePowerKw,
+    ).gallonsPerHour * result.generatorRuntimeHoursPerDay * siteDerating
+    expect(result.allGenFuelPerDay).toBeCloseTo(expectedAllGenFuel, 6)
+    expect(result.hybridFuelPerDay).toBeCloseTo(expectedHybridFuel, 6)
   })
 
-  it('does not invent a recharge window for a 24-hour peak load', () => {
+  it('models battery-first recharge cycles even when the entered load is continuously at peak', () => {
     const result = calculateHybridWizard({
       peakLoadKw: 1200,
       baseLoadKw: 800,
@@ -471,14 +592,44 @@ describe('calculateHybridWizard', () => {
     })
 
     expect(result.bessUnitsForEnergy).toBe(0)
-    expect(result.bessUnits).toBe(2)
+    expect(result.bessUnits).toBe(5)
     expect(result.generatorRequiredUnits).toBe(3)
-    expect(result.rechargeEnergyKwh).toBe(0)
+    expect(result.rechargeEnergyKwh).toBeGreaterThan(0)
     expect(result.allGeneratorDailyEnergyKwh).toBe(28800)
-    expect(result.hybridGeneratorDailyEnergyKwh).toBe(28800)
-    expect(result.coverage.estimatedRechargeHours).toBeNull()
-    expect(result.coverage.scenarios[0].status).toBe('conditional')
-    expect(result.coverage.scenarios[0].requirement).toContain('No daily recharge window')
+    expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(28800)
+    expect(result.coverage.estimatedRechargeHours).not.toBeNull()
+    expect(result.coverage.scenarios[0].status).toBe('24_7_ready')
+  })
+
+  it('uses Moxion MP75-600 continuous power and usable energy instead of its one-hour peak name', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 40,
+      baseLoadKw: 40,
+      loadSource: 'measured',
+      bessUnitSize: 75,
+      peakHoursPerDay: 24,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 8.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-01-01',
+      endDate: '',
+      motors: [],
+    })
+
+    expect(result.bessUnitContinuousKw).toBe(40)
+    expect(result.bessUnitUsableKwh).toBe(530)
+    expect(result.bessRequiredUnits).toBe(1)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(2)
+    expect(result.bessEnergyKwh).toBe(265)
+    expect(result.bessUnitChargeKw).toBe(19.2)
+    expect(result.rechargePowerKw).toBe(19.2)
+    expect(result.batteryRuntimeHoursPerCycle).toBeCloseTo(6.625, 3)
   })
 })
 
