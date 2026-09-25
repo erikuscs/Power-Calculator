@@ -1,24 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid, interpolateBSFC } from './scenario.formulas'
+import { calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid } from './scenario.formulas'
 import { calcGeneralPower } from '../power/power.formulas'
-
-describe('interpolateBSFC', () => {
-  it('returns exact values at data points', () => {
-    expect(interpolateBSFC(0.25)).toBe(0.105)
-    expect(interpolateBSFC(0.50)).toBe(0.085)
-    expect(interpolateBSFC(0.75)).toBe(0.072)
-    expect(interpolateBSFC(1.00)).toBe(0.068)
-  })
-
-  it('interpolates between data points', () => {
-    const midpoint = interpolateBSFC(0.375)
-    expect(midpoint).toBeCloseTo(0.095, 3)
-  })
-
-  it('clamps below minimum load factor', () => {
-    expect(interpolateBSFC(0.1)).toBe(0.105)
-  })
-})
+import { estimateSunbeltDieselFleetFuel } from '../../lib/dieselFuelCurve'
 
 describe('calculateTempPower', () => {
   it('derives operating hours from rental period and schedule', () => {
@@ -480,6 +463,18 @@ describe('calculateHybridWizard', () => {
     expect(result.coverage.bessInstalledKwh).toBe(4025)
     expect(result.allGeneratorDailyEnergyKwh).toBe(22400)
     expect(result.hybridGeneratorDailyEnergyKwh).toBeCloseTo(22755.56, 2)
+    const siteDerating = 1.016
+    const expectedAllGenFuel = (
+      estimateSunbeltDieselFleetFuel(500, 3, 1200).gallonsPerHour * 8
+      + estimateSunbeltDieselFleetFuel(500, 3, 800).gallonsPerHour * 16
+    ) * siteDerating
+    const rechargePowerKw = result.rechargeEnergyKwh / 16
+    const expectedHybridFuel = (
+      estimateSunbeltDieselFleetFuel(500, 3, 800).gallonsPerHour * 8
+      + estimateSunbeltDieselFleetFuel(500, 3, 800 + rechargePowerKw).gallonsPerHour * 16
+    ) * siteDerating
+    expect(result.allGenFuelPerDay).toBeCloseTo(expectedAllGenFuel, 6)
+    expect(result.hybridFuelPerDay).toBeCloseTo(expectedHybridFuel, 6)
   })
 
   it('does not invent a recharge window for a 24-hour peak load', () => {

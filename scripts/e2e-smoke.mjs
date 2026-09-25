@@ -78,6 +78,13 @@ async function run() {
   await page.getByLabel('Voltage').selectOption('208')
   await expectText(page, /Suggested Equipment Setup/i, 'generator suggested setup')
 
+  await page.goto(`${baseUrl}/power/fuel`, { waitUntil: 'networkidle' })
+  await page.getByLabel('Actual Load').fill('250')
+  await page.getByLabel('Generator Rated Capacity').fill('500')
+  await page.getByLabel('Runtime').fill('24')
+  await expectText(page, /18\.50/i, 'Sunbelt 500 kW half-load fuel rate')
+  await expectText(page, /Sunbelt Rentals reference values are approximate planning rates/i, 'Sunbelt fuel source boundary')
+
   await page.goto(`${baseUrl}/learn`, { waitUntil: 'networkidle' })
   await expectText(page, /EMaaS guided learning/i, 'guided learning page')
   await expectText(page, /Basic operating path/i, 'tutorial operating path')

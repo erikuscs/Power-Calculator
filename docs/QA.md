@@ -27,6 +27,15 @@ The final brand audit is intentionally after the Capacitor sync so a stale nativ
 - PWA manifest icons, maskable behavior, browser tab appearance, and offline update behavior.
 - iPhone and iPad icon, launch screen, safe areas, rotation, PDF share, and offline behavior.
 
+## Sunbelt diesel fuel table correction - 2026-09-24
+
+- The generic four-point diesel BSFC curve was replaced by the complete Sunbelt Rentals 20-2,250 kW gallons-per-hour table at 25%, 50%, 75%, and 100% load.
+- A data-lock regression checks all 100 published table coordinates exactly, plus generator-size interpolation, load interpolation, below-quarter-load handling, and multi-generator aggregation.
+- The standalone diesel calculator, temporary-power calculation, quick hybrid comparison, and detailed hybrid project model now consume the same source module.
+- Natural-gas planning remains a separate model and is not represented as Sunbelt diesel-table data.
+- Final gates passed: 27 test files and 169 tests, lint, controlled-brand production build and artifact audit, desktop/mobile browser smoke including the rendered 500 kW half-load value, Capacitor iOS sync, and the post-sync brand audit.
+- An independent read-only reviewer compared all 25 ratings and 100 fuel cells directly with the owner-provided PDF and found zero mismatches. Its sole P3 concern - a self-referential table-lock test - was corrected with a separate PDF-derived expected-data fixture, followed by a fresh full test and lint pass.
+
 ## Independent crew review — 2026-09-11
 
 Three independent reviews found no P0 issue and identified the following release blockers in the pre-correction tree:

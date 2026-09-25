@@ -16,6 +16,7 @@ The current candidate includes:
 - named branch power zones with 50-foot source/branch cable-piece schedules and an explicit neutral decision;
 - a dimensioned conceptual 3D equipment envelope that supplements the linked one-line without presenting itself as a construction drawing;
 - planning safeguards that withhold equipment conclusions for zero requested load.
+- one governed diesel-consumption source using the complete Sunbelt Rentals 20-2,250 kW size/load table across the fuel, temporary-power, and hybrid workflows.
 
 Independent estimator and regression reviews informed the implementation. The calculation suite, brand gate, build audit, and browser smoke suite are the repeatable local acceptance gates.
 

@@ -64,7 +64,7 @@ export default function FuelConsumptionPage() {
       <Card>
         <CardHeader
           title="Fuel Consumption Calculator"
-          subtitle="Estimate diesel or natural gas consumption with altitude and temperature derating"
+          subtitle="Estimate diesel from the Sunbelt reference size/load chart, or natural gas from a separate planning model"
         />
 
         <div className="mb-4">
@@ -143,9 +143,9 @@ export default function FuelConsumptionPage() {
                 highlight
               />
               <ResultItem
-                label="BSFC"
+                label={isDiesel ? 'Equivalent Rate' : 'Load Adjustment'}
                 value={fmt(results.bsfc, 4)}
-                unit="gal/kWh"
+                unit={isDiesel ? 'gal/kWh' : 'factor'}
               />
               <ResultItem
                 label={rateLabel}
@@ -171,6 +171,17 @@ export default function FuelConsumptionPage() {
               />
             </ResultGrid>
 
+            {isDiesel && (
+              <div className="mt-4 rounded-lg border border-sg-600 bg-sg-800 p-3 text-xs leading-relaxed text-text-dim">
+                Sunbelt Rentals reference values are approximate planning rates. Verify the selected manufacturer fuel curve before field release.
+                {results.sourceRangeLimited && (
+                  <span className="mt-1 block text-warning">
+                    The chart covers 20-2,250 kW and 25-100% load. This estimate uses the nearest published boundary: {fmt(results.sourceRatedKw ?? inputs.ratedKw, 0)} kW at {fmtPercent(results.sourceLoadFactor ?? results.loadFactor, 0)} load.
+                  </span>
+                )}
+              </div>
+            )}
+
             <FormulaBreakdown steps={steps} />
 
             <div className="mt-4 flex justify-center">
@@ -190,14 +201,18 @@ export default function FuelConsumptionPage() {
                     ]}
                     results={[
                       { label: 'Load Factor', value: fmtPercent(results.loadFactor, 1) },
-                      { label: 'BSFC', value: fmt(results.bsfc, 4), unit: 'gal/kWh' },
+                      { label: isDiesel ? 'Equivalent Rate' : 'Load Adjustment', value: fmt(results.bsfc, 4), unit: isDiesel ? 'gal/kWh' : 'factor' },
                       { label: rateLabel, value: fmt(results.gallonsPerHour, 2), unit: rateUnit },
                       { label: totalLabel, value: fmt(results.totalFuel, 1), unit: totalUnit },
                       { label: 'Altitude Derating', value: fmt(results.altitudeDerating, 4) },
                       { label: 'Temperature Derating', value: fmt(results.tempDerating, 4) },
                     ]}
                     formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
-                    warnings={!isEfficient ? ['Generator not running at optimal load factor (70-80%). Consider right-sizing.'] : undefined}
+                    warnings={[
+                      ...(isDiesel ? ['Diesel use is an approximate planning estimate from the Sunbelt Rentals size/load chart; verify the selected manufacturer data before field release.'] : []),
+                      ...(isDiesel && results.sourceRangeLimited ? [`The Sunbelt chart covers 20-2,250 kW and 25-100% load. This result uses the nearest published boundary (${fmt(results.sourceRatedKw ?? inputs.ratedKw, 0)} kW at ${fmtPercent(results.sourceLoadFactor ?? results.loadFactor, 0)} load).`] : []),
+                      ...(!isEfficient ? ['Generator not running at optimal load factor (70-80%). Consider right-sizing.'] : []),
+                    ]}
                     />
                   )
                 }}

@@ -1,4 +1,5 @@
 import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize, type RatePeriod } from '../../lib/constants'
+import { estimateSunbeltDieselFleetFuel } from '../../lib/dieselFuelCurve'
 export type { BessUnitSize }
 
 const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
@@ -9,27 +10,6 @@ const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
   250: 575,
   300: 1200,
   600: 2400,
-}
-
-export function interpolateBSFC(loadFactor: number): number {
-  const clamped = Math.max(0.1, Math.min(1, loadFactor))
-  const points = [
-    [0.25, 0.105],
-    [0.50, 0.085],
-    [0.75, 0.072],
-    [1.00, 0.068],
-  ] as const
-
-  if (clamped <= points[0][0]) return points[0][1]
-  if (clamped >= points[points.length - 1][0]) return points[points.length - 1][1]
-
-  for (let i = 0; i < points.length - 1; i++) {
-    if (clamped >= points[i][0] && clamped <= points[i + 1][0]) {
-      const t = (clamped - points[i][0]) / (points[i + 1][0] - points[i][0])
-      return points[i][1] + t * (points[i + 1][1] - points[i][1])
-    }
-  }
-  return 0.068
 }
 
 export interface FacilityEntry {
@@ -248,8 +228,11 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const altitudeDerating = 1 + Math.max(0, (inputs.altitude - 1000) / 1000) * 0.03
   const tempDerating = 1 + Math.max(0, (inputs.ambientTemp - 77) / 10) * 0.02
   const loadFactor = totalWithCoolingKw / generatorKw
-  const bsfcGalPerKwh = interpolateBSFC(loadFactor)
-  const fuelGallonsPerHour = totalWithCoolingKw * bsfcGalPerKwh * altitudeDerating * tempDerating
+  const generatorUnits = Math.max(1, Math.ceil(generatorKw / 2250))
+  const generatorUnitRatedKw = generatorKw / generatorUnits
+  const sourceFuel = estimateSunbeltDieselFleetFuel(generatorUnitRatedKw, generatorUnits, totalWithCoolingKw)
+  const bsfcGalPerKwh = sourceFuel.equivalentGalPerKwh
+  const fuelGallonsPerHour = sourceFuel.gallonsPerHour * altitudeDerating * tempDerating
   const schedule = resolveTempPowerSchedule(inputs)
   const totalFuelGallons = fuelGallonsPerHour * schedule.operatingHours * 1.1
   const operatingDays = schedule.rentalDays
@@ -321,8 +304,8 @@ export function evaluateHybrid(
 
   const genSizeAllGen = peakKw * SAFETY_MARGINS.generator
   const allGenLoadFactor = peakKw / genSizeAllGen
-  const allGenBsfc = interpolateBSFC(allGenLoadFactor)
-  const allGenFuelPerHour = peakKw * allGenBsfc * altitudeDerating * tempDerating
+  const allGenUnits = Math.max(1, Math.ceil(genSizeAllGen / 500))
+  const allGenFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenUnits, peakKw).gallonsPerHour * altitudeDerating * tempDerating
   const allGenFuelPerDay = allGenFuelPerHour * 24
   const allGenFuel30 = allGenFuelPerDay * 30
 
@@ -331,8 +314,8 @@ export function evaluateHybrid(
 
   const hybridGenSize = baseKw * SAFETY_MARGINS.generator
   const hybridLoadFactor = baseKw / hybridGenSize
-  const hybridBsfc = interpolateBSFC(hybridLoadFactor)
-  const hybridFuelPerHour = baseKw * hybridBsfc * altitudeDerating * tempDerating
+  const hybridGenUnits = Math.max(1, Math.ceil(hybridGenSize / 500))
+  const hybridFuelPerHour = estimateSunbeltDieselFleetFuel(500, hybridGenUnits, baseKw).gallonsPerHour * altitudeDerating * tempDerating
   const hybridFuelPerDay = hybridFuelPerHour * 24
   const hybridFuel30 = hybridFuelPerDay * 30
 
@@ -342,14 +325,14 @@ export function evaluateHybrid(
     recommended: shouldRecommend,
     reason,
     allGen: {
-      genUnits: Math.ceil(genSizeAllGen / 500),
+      genUnits: allGenUnits,
       genSizeKw: genSizeAllGen,
       fuelPerDay: allGenFuelPerDay,
       fuel30Day: allGenFuel30,
       loadFactor: allGenLoadFactor,
     },
     hybrid: {
-      genUnits: Math.ceil(hybridGenSize / 500),
+      genUnits: hybridGenUnits,
       genSizeKw: hybridGenSize,
       bessUnits,
       bessUnitSize: bestBessSize,
@@ -510,16 +493,24 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const hybridGeneratorDailyEnergyKwh = hasDailyRechargeWindow
     ? (baseLoadKw * 24) + rechargeEnergyKwh
     : peakLoadKw * 24
-  const allGenActiveCapacityKw = allGenRequiredUnits * genUnitSizeKw
-  const allGenAverageKw = allGeneratorDailyEnergyKwh / 24
-  const allGenLoadFactor = allGenAverageKw / allGenActiveCapacityKw
-  const allGenBsfc = interpolateBSFC(allGenLoadFactor)
-  const allGenFuelPerDay = allGeneratorDailyEnergyKwh * allGenBsfc * altDerate * tempDerate
+  const offPeakHoursPerDay = 24 - peakWindowHours
+  const allGenPeakFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenRequiredUnits, peakLoadKw).gallonsPerHour
+  const allGenBaseFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenRequiredUnits, baseLoadKw).gallonsPerHour
+  const allGenFuelPerDay = (
+    (allGenPeakFuelPerHour * peakWindowHours)
+    + (allGenBaseFuelPerHour * offPeakHoursPerDay)
+  ) * altDerate * tempDerate
 
-  const hybridAverageKw = hybridGeneratorDailyEnergyKwh / 24
-  const hybridGenLoadFactor = hybridAverageKw / generatorFirmCapacityKw
-  const hybridBsfc = interpolateBSFC(Math.min(1, hybridGenLoadFactor))
-  const hybridFuelPerDay = hybridGeneratorDailyEnergyKwh * hybridBsfc * altDerate * tempDerate
+  const hybridPeakGeneratorLoadKw = hasDailyRechargeWindow ? baseLoadKw : peakLoadKw
+  const hybridOffPeakGeneratorLoadKw = hasDailyRechargeWindow ? baseLoadKw + rechargePowerKw : 0
+  const hybridPeakFuelPerHour = estimateSunbeltDieselFleetFuel(500, generatorRequiredUnits, hybridPeakGeneratorLoadKw).gallonsPerHour
+  const hybridOffPeakFuelPerHour = offPeakHoursPerDay > 0
+    ? estimateSunbeltDieselFleetFuel(500, generatorRequiredUnits, hybridOffPeakGeneratorLoadKw).gallonsPerHour
+    : 0
+  const hybridFuelPerDay = (
+    (hybridPeakFuelPerHour * peakWindowHours)
+    + (hybridOffPeakFuelPerHour * offPeakHoursPerDay)
+  ) * altDerate * tempDerate
 
   const dailyFuelReduction = allGenFuelPerDay - hybridFuelPerDay
   const totalFuelSavingsGal = dailyFuelReduction * projectDurationDays

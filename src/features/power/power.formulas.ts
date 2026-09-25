@@ -1,4 +1,5 @@
-import { SQRT3, DIESEL_BSFC, NATURAL_GAS_CFH_PER_KW, LAMP_EFFICACY } from '../../lib/constants'
+import { SQRT3, NATURAL_GAS_CFH_PER_KW, LAMP_EFFICACY } from '../../lib/constants'
+import { estimateSunbeltDieselFuel } from '../../lib/dieselFuelCurve'
 import { fmt, fmtPercent } from '../../lib/formatters'
 
 export interface FormulaStep {
@@ -9,13 +10,14 @@ export interface FormulaStep {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: interpolate BSFC from the load-factor curve
+// Helper: retain the former load adjustment only for natural-gas planning.
+// Diesel calculations use the size-specific Sunbelt gallons-per-hour table.
 // ---------------------------------------------------------------------------
 const BSFC_POINTS = [
-  { load: 0.25, bsfc: DIESEL_BSFC[25] },
-  { load: 0.50, bsfc: DIESEL_BSFC[50] },
-  { load: 0.75, bsfc: DIESEL_BSFC[75] },
-  { load: 1.00, bsfc: DIESEL_BSFC[100] },
+  { load: 0.25, bsfc: 0.105 },
+  { load: 0.50, bsfc: 0.085 },
+  { load: 0.75, bsfc: 0.072 },
+  { load: 1.00, bsfc: 0.068 },
 ]
 
 export function interpolateBSFC(loadFactor: number): number {
@@ -368,28 +370,35 @@ export interface FuelConsumptionResults {
   totalFuel: number
   altitudeDerating: number
   tempDerating: number
+  sourceRatedKw: number | null
+  sourceLoadFactor: number | null
+  sourceRangeLimited: boolean
 }
 
 export function calcFuelConsumption(i: FuelConsumptionInputs): FuelConsumptionResults {
   const loadFactor = i.ratedKw > 0 ? i.actualKw / i.ratedKw : 0
-  const bsfc = interpolateBSFC(loadFactor)
   const altitudeDerating = 1 + Math.max(0, (i.altitude - 1000) / 1000) * 0.03
   const tempDerating = 1 + Math.max(0, (i.ambientF - 77) / 10) * 0.02
 
   if (i.fuelType === 'diesel') {
-    const gallonsPerHour = i.actualKw * bsfc * altitudeDerating * tempDerating
+    const sourceEstimate = estimateSunbeltDieselFuel(i.ratedKw, i.actualKw)
+    const gallonsPerHour = sourceEstimate.gallonsPerHour * altitudeDerating * tempDerating
     return {
       loadFactor,
-      bsfc,
+      bsfc: sourceEstimate.equivalentGalPerKwh,
       gallonsPerHour,
       totalFuel: gallonsPerHour * i.hours,
       altitudeDerating,
       tempDerating,
+      sourceRatedKw: sourceEstimate.chartRatedKw,
+      sourceLoadFactor: sourceEstimate.chartLoadFactor,
+      sourceRangeLimited: sourceEstimate.ratedKwClamped || sourceEstimate.loadFactorClamped,
     }
   }
 
   // Natural Gas: CFH adjusted for load factor
-  const bsfcAt100 = DIESEL_BSFC[100]
+  const bsfc = interpolateBSFC(loadFactor)
+  const bsfcAt100 = 0.068
   const cfh = i.actualKw * NATURAL_GAS_CFH_PER_KW * (bsfc / bsfcAt100) * altitudeDerating * tempDerating
   return {
     loadFactor,
@@ -398,6 +407,9 @@ export function calcFuelConsumption(i: FuelConsumptionInputs): FuelConsumptionRe
     totalFuel: cfh * i.hours,
     altitudeDerating,
     tempDerating,
+    sourceRatedKw: null,
+    sourceLoadFactor: null,
+    sourceRangeLimited: false,
   }
 }
 
@@ -408,12 +420,6 @@ export function describeFuelConsumption(i: FuelConsumptionInputs, r: FuelConsump
       formula: 'Load Factor = Actual kW / Rated kW',
       substituted: `${fmt(i.actualKw, 1)} / ${fmt(i.ratedKw, 1)}`,
       result: fmtPercent(r.loadFactor, 1),
-    },
-    {
-      label: 'BSFC (interpolated)',
-      formula: 'Interpolated from {25%: 0.105, 50%: 0.085, 75%: 0.072, 100%: 0.068} gal/kWh',
-      substituted: `Load factor = ${fmtPercent(r.loadFactor, 1)}`,
-      result: `${fmt(r.bsfc, 4)} gal/kWh`,
     },
     {
       label: 'Altitude Derating',
@@ -430,11 +436,17 @@ export function describeFuelConsumption(i: FuelConsumptionInputs, r: FuelConsump
   ]
 
   if (i.fuelType === 'diesel') {
+    steps.splice(1, 0, {
+      label: 'Sunbelt Diesel Table Rate',
+      formula: 'Interpolate gallons/hour by generator rated kW and 25%, 50%, 75%, or 100% load',
+      substituted: `${fmt(r.sourceRatedKw ?? i.ratedKw, 1)} kW chart basis at ${fmtPercent(r.sourceLoadFactor ?? r.loadFactor, 1)} load`,
+      result: `${fmt(r.gallonsPerHour / (r.altitudeDerating * r.tempDerating), 2)} gal/hr before site derating`,
+    })
     steps.push(
       {
         label: 'Gallons per Hour',
-        formula: 'GPH = kW x BSFC x Alt Derating x Temp Derating',
-        substituted: `${fmt(i.actualKw, 1)} x ${fmt(r.bsfc, 4)} x ${fmt(r.altitudeDerating, 4)} x ${fmt(r.tempDerating, 4)}`,
+        formula: 'GPH = Sunbelt table rate x Alt Derating x Temp Derating',
+        substituted: `${fmt(r.gallonsPerHour / (r.altitudeDerating * r.tempDerating), 2)} x ${fmt(r.altitudeDerating, 4)} x ${fmt(r.tempDerating, 4)}`,
         result: `${fmt(r.gallonsPerHour, 2)} gal/hr`,
       },
       {
@@ -445,6 +457,12 @@ export function describeFuelConsumption(i: FuelConsumptionInputs, r: FuelConsump
       },
     )
   } else {
+    steps.splice(1, 0, {
+      label: 'Natural-gas Load Adjustment',
+      formula: 'Interpolated natural-gas planning adjustment by load factor',
+      substituted: `Load factor = ${fmtPercent(r.loadFactor, 1)}`,
+      result: fmt(r.bsfc, 4),
+    })
     steps.push(
       {
         label: 'Cubic Feet per Hour',
