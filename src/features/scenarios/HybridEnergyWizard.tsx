@@ -348,6 +348,21 @@ export default function HybridEnergyWizard() {
       <Card>
         <CardHeader title="Hybrid EMaaS Strategy - BESS + Generator" subtitle="Design redundant systems for construction, commissioning, and mission-critical loads" />
 
+        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-signal-blue/35 bg-signal-blue/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-text">2,000 A / 480 V hybrid worked example</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">Four modular 500 kW generators, seven 250 kW-continuous BESS units, DEIF controls, one-line, and a scaled site layout. Historical telemetry is intentionally excluded.</p>
+          </div>
+          <a
+            href="/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-signal-blue/50 bg-sg-900 px-4 py-2 text-sm font-bold text-signal-blue transition-colors hover:bg-sg-800"
+          >
+            View PDF Example
+          </a>
+        </div>
+
         <ReportContextFields
           clientName={clientName}
           projectName={projectName}

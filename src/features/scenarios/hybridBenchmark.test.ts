@@ -3,8 +3,8 @@ import { calculateHybridWizard, type HybridWizardInputs } from './scenario.formu
 import { reviewHybridBenchmark } from './hybridBenchmark'
 
 const baseInputs: HybridWizardInputs = {
-  peakLoadKw: 176.4,
-  baseLoadKw: 176.4,
+  peakLoadKw: 600,
+  baseLoadKw: 400,
   loadSource: 'measured',
   bessUnitSize: 30,
   peakHoursPerDay: 24,

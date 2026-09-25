@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 import { chromium } from 'playwright'
 
@@ -183,6 +184,26 @@ async function run() {
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.evaluate(() => window.localStorage.removeItem('power-calc:/estimate:draft'))
+    const workedExampleLink = page.getByRole('link', { name: 'View PDF Example' })
+    if (await workedExampleLink.count() !== 1) {
+      throw new Error('2,000 A hybrid worked-example PDF link is missing')
+    }
+    const workedExampleHref = await workedExampleLink.getAttribute('href')
+    if (workedExampleHref !== '/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf') {
+      throw new Error(`Unexpected worked-example PDF path: ${workedExampleHref}`)
+    }
+    const workedExampleResponse = await page.request.get(`${baseUrl}${workedExampleHref}`)
+    if (!workedExampleResponse.ok()) {
+      throw new Error(`Worked-example PDF request failed: ${workedExampleResponse.status()}`)
+    }
+    if (workedExampleResponse.headers()['content-type'] !== 'application/pdf') {
+      throw new Error(`Unexpected worked-example content type: ${workedExampleResponse.headers()['content-type']}`)
+    }
+    const expectedWorkedExample = await readFile(new URL('../public/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf', import.meta.url))
+    const servedWorkedExample = await workedExampleResponse.body()
+    if (!servedWorkedExample.equals(expectedWorkedExample)) {
+      throw new Error('Served worked-example PDF does not match the controlled public asset')
+    }
     await page.getByLabel('Client / Account').fill('Data Center Construction')
     await page.getByLabel('Project / Phase').fill('Commissioning Block A')
     await page.getByLabel('Peak Load Demand').fill('1200')

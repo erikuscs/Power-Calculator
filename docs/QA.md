@@ -71,8 +71,9 @@ The current correction addresses these items in source.
 - Hybrid results and PDFs now state whether the load basis is measured demand or a panel/transformer nameplate.
 - Every hybrid report includes continuous BESS power and usable energy, generator duty/standby topology, firm capacity after one generator is unavailable, protected-load headroom, and controlled recharge power.
 - A one-generator recommendation is visibly red-flagged as a single-failure point. A modular plant without a standby unit is separately warned as lacking maintenance reserve.
-- The internal Northern Virginia example is documented as a 480 V, three-phase planning benchmark without rewriting the original source: 502 A remains a 208 V source observation, while 176.4 kW remains the documented generator peak. The 480 V current is an equivalent-power calculation.
-- The report graphic uses the application planning envelopes for 500 kW generator, Viridi RPS150, DEIF/EMS, switchgear, transformer, and fuel/service bodies; exact delivered dimensions and required clearances remain vendor/field verification.
+- The customer-facing worked example uses only the entered 2,000 A service basis at 480 V, three-phase, and 0.80 planning power factor. Historical customer peak and telemetry values are excluded from the PDF and Live-site example.
+- The PDF shows four 500 kW generators and seven Atlas Copco ZBC 250-575-class BESS units, with 1,500 kW firm capacity after one generator or one BESS is unavailable. DEIF recharge is explicitly limited to the 670 kW all-online or 170 kW one-generator-offline headroom.
+- The scaled site layout uses the application planning envelopes for the 500 kW generator, 250 kW BESS, DEIF/EMS, switchgear, and fuel/service bodies; exact delivered dimensions and required clearances remain vendor/field verification.
 - Focused verification passed the new architecture review and a real React PDF render. After the independent reviewer identified a P3 warning-coverage gap, direct helper, UI, and PDF tests were added for the no-maintenance-reserve condition. The final candidate passed 29 files and 176 tests, lint, the controlled-brand production build and artifact audit, desktop/mobile browser E2E, Capacitor iOS sync, post-sync brand audit, and `git diff --check`. Deployment remains a separate authorization.
 
 ### Continuous-rating correction — 2026-09-24
