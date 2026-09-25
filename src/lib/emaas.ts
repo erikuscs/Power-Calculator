@@ -46,8 +46,8 @@ export const EMAAS_OUTCOME_METRICS: EmaasOutcomeMetric[] = [
   },
   {
     label: 'Fuel Exposure',
-    value: 'gal / day',
-    context: 'load-factor BSFC, derates, duty cycle, service cadence, and hybrid cost reduction',
+    value: 'gal / cycle',
+    context: '28-day load-factor curve, entered operating profile, derates, and service cadence; no reduction claim without a supported comparison',
     icon: Fuel,
     tone: 'coral',
   },

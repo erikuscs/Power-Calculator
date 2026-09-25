@@ -274,6 +274,12 @@ describe('calculateHybridWizard', () => {
     expect(result.equipment28DayTotal).toBe(61600)
     expect(result.allGenFuelPerDay).toBe(0)
     expect(result.hybridFuelPerDay).toBe(0)
+    expect(result.coverage.bessInstalledKw).toBe(500)
+    expect(result.coverage.bessInstalledKwh).toBe(1036)
+    expect(result.coverage.bessUsableKwh).toBe(575)
+    expect(result.coverage.baseBatteryHours).toBeCloseTo(1.729, 3)
+    expect(result.coverage.generatorRechargeReserveKw).toBeCloseTo(169.78, 1)
+    expect(result.coverage.estimatedRechargeHours).toBeCloseTo(3.763, 2)
   })
 
   it('converts single- and three-phase current correctly and refuses incompatible BESS voltage', () => {
@@ -554,7 +560,7 @@ describe('calculateHybridWizard', () => {
     expect(result.bessUnits).toBe(5)
     expect(result.coverage.bessInstalledKw).toBe(1250)
     expect(result.coverage.bessInstalledKwh).toBe(2590)
-    expect(result.coverage.bessUsableKwh).toBe(1036)
+    expect(result.coverage.bessUsableKwh).toBe(1150)
     expect(result.allGeneratorDailyEnergyKwh).toBe(22400)
     expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
     const siteDerating = 1.016
@@ -626,10 +632,10 @@ describe('calculateHybridWizard', () => {
     expect(result.bessRequiredUnits).toBe(1)
     expect(result.bessStandbyUnits).toBe(1)
     expect(result.bessUnits).toBe(2)
-    expect(result.bessEnergyKwh).toBe(265)
+    expect(result.bessEnergyKwh).toBe(300)
     expect(result.bessUnitChargeKw).toBe(19.2)
     expect(result.rechargePowerKw).toBe(19.2)
-    expect(result.batteryRuntimeHoursPerCycle).toBeCloseTo(6.625, 3)
+    expect(result.batteryRuntimeHoursPerCycle).toBeCloseTo(7.5, 3)
   })
 })
 

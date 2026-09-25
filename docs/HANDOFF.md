@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
-Updated: 2026-09-24
-Status: `LIVE BASELINE VERIFIED / CURRENT CONTINUOUS-POWER CORRECTION NOT DEPLOYED`
+Updated: 2026-09-25
+Status: `CALCULATION-CORRECTION CANDIDATE VERIFIED / PRODUCTION RELEASE PENDING`
 
 ## Current product scope
 
@@ -16,7 +16,7 @@ The current candidate includes:
 - named branch power zones with 50-foot source/branch cable-piece schedules and an explicit neutral decision;
 - a dimensioned conceptual 3D equipment envelope that supplements the linked one-line without presenting itself as a construction drawing;
 - planning safeguards that withhold equipment conclusions for zero requested load.
-- one governed diesel-consumption source using the complete Sunbelt Rentals 20-2,250 kW size/load table across the fuel, temporary-power, and hybrid workflows.
+- one governed owner-provided diesel-consumption table covering 20-2,250 kW generator classes across the fuel, temporary-power, and hybrid workflows; the product UI remains supplier-neutral.
 - BESS selection based on verified continuous output and usable energy; motor-start and protection details remain later vendor/engineering verification and do not alter the early estimate.
 - a benchmark architecture review in the hybrid UI and PDF that identifies measured-versus-nameplate load basis, continuous BESS ratings, generator duty/standby counts, firm capacity after one generator is unavailable, controlled recharge, and single-source or no-maintenance-reserve red flags.
 
@@ -38,7 +38,7 @@ The 2026-09-13 independent brand review matched the current logo, all 14 V3 brow
 
 ## Release boundary
 
-The continuous-power, 30%-to-80% battery-first cycle, current-rental-fleet, fuel-reduction terminology, and separate recharge-rate corrections described above are local candidate changes. They have not been pushed or deployed as of 2026-09-24.
+The 2026-09-25 release candidate corrects BESS runtime and sizing, the 30%-to-80% coverage readout for automatically selected equipment, cooling envelope geometry, psychrometric validation, modular large-generator selection, 200 A-and-below banded cable planning, 28-day rental defaults, and removal of invented generic fuel/BESS scope. It passed 31 test files / 205 tests, TypeScript, lint, a production PWA build, and the isolated browser smoke suite before independent review. It has not yet been pushed or deployed.
 
 Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 

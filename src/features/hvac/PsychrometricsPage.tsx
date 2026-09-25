@@ -24,6 +24,13 @@ export default function PsychrometricsPage() {
 
   const calculate = useCallback((inp: AirsideTonnageInputs) => calculateAirsideTonnage(inp), [])
   const results = useCalculator(inputs, calculate)
+  const conditionError = inputs.inletWetBulb > inputs.inletDryBulb || inputs.outletWetBulb > inputs.outletDryBulb
+    ? 'Wet-bulb temperature cannot exceed dry-bulb temperature.'
+    : inputs.inletDryBulb <= inputs.outletDryBulb
+      ? 'Cooling requires inlet dry-bulb temperature above outlet dry-bulb temperature.'
+      : !results
+        ? 'These conditions do not produce a valid positive sensible and latent cooling load. Verify the entered air states.'
+        : undefined
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -44,6 +51,11 @@ export default function PsychrometricsPage() {
             </div>
           </div>
         </div>
+        {conditionError && (
+          <p role="alert" className="mt-4 rounded-lg border border-error/45 bg-error/10 px-3 py-2 text-sm text-error">
+            {conditionError}
+          </p>
+        )}
       </Card>
 
       {results && (

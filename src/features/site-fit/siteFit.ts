@@ -77,6 +77,7 @@ export interface SiteFitResult {
   planningPowerCeilingKw: number
   ampsPerPhase: number
   cableRunsPerPhase: number
+  cableMethod: 'banded-assembly' | 'parallel-4/0'
   cablePiecesPer50Ft: number | null
   cablePieceRangePer50Ft: [number, number] | null
   routeSections: number
@@ -99,7 +100,7 @@ export const DEFAULT_SITE_FIT_INPUTS: SiteFitInputs = {
   exclusionWidthFt: 20,
   accessLaneWidthFt: 12,
   longestRouteFt: 100,
-  scenario: 'power_cooling',
+  scenario: 'power',
   neutralPlan: 'required',
   continuity: 'standard',
 }
@@ -162,19 +163,6 @@ function buildEquipment(inputs: SiteFitInputs, architecture: TempPowerArchitectu
       y: 50,
       reason: 'Required to isolate, protect, meter, and divide the source into controlled feeders. Confirm whether it is integrated with the delivered generator package.',
       status: 'required',
-    },
-    {
-      id: 'FUEL-1',
-      kind: 'fuel',
-      label: 'Fuel Tank',
-      rating: 'Runtime allowance — field verify',
-      lengthFt: 40,
-      widthFt: 12,
-      clearanceFt: 5,
-      x: 18,
-      y: 73,
-      reason: 'Included to support the stated operating period; tank size, setbacks, containment, and refueling access require site confirmation.',
-      status: 'conditional',
     },
   ]
 
@@ -384,7 +372,10 @@ export function calculateSiteFit(inputs: SiteFitInputs): SiteFitResult {
   for (let units = 1; units <= Math.min(12, areaMaximumGeneratorUnits); units += 1) {
     const candidate = [
       ...fixedRectangles,
-      ...Array.from({ length: units }, () => ({ width: unitDimensions.lengthFt + 10, height: unitDimensions.widthFt + 10 })),
+      {
+        width: (unitDimensions.lengthFt * units) + 10,
+        height: unitDimensions.widthFt + 10,
+      },
     ]
     if (canPlaceRectangles(candidate, safe.siteLengthFt, safe.siteWidthFt, safe.accessLaneWidthFt, safe.exclusionLengthFt, safe.exclusionWidthFt)) {
       maximumGeneratorUnits = units
@@ -400,13 +391,20 @@ export function calculateSiteFit(inputs: SiteFitInputs): SiteFitResult {
     : 0
 
   const ampsPerPhase = (safe.requestedPowerKw * 1000) / (Math.sqrt(3) * safe.sourceVoltage * safe.powerFactor)
-  const cableRunsPerPhase = validDemand ? Math.max(1, Math.ceil(ampsPerPhase / 400)) : 0
+  const cableMethod = ampsPerPhase <= 200 ? 'banded-assembly' : 'parallel-4/0'
+  const cableRunsPerPhase = validDemand
+    ? cableMethod === 'banded-assembly' ? 1 : Math.max(1, Math.ceil(ampsPerPhase / 400))
+    : 0
   const routeSections = validDemand ? Math.max(1, Math.ceil(safe.longestRouteFt / 50)) : 0
   const neutral = neutralCounts(safe.neutralPlan, cableRunsPerPhase)
-  const calculatedCablePieces = neutral.pieces === null ? null : neutral.pieces * routeSections
-  const calculatedCablePieceRange = neutral.range
-    ? [neutral.range[0] * routeSections, neutral.range[1] * routeSections] as [number, number]
-    : null
+  const calculatedCablePieces = cableMethod === 'banded-assembly'
+    ? routeSections
+    : neutral.pieces === null ? null : neutral.pieces * routeSections
+  const calculatedCablePieceRange = cableMethod === 'banded-assembly'
+    ? null
+    : neutral.range
+      ? [neutral.range[0] * routeSections, neutral.range[1] * routeSections] as [number, number]
+      : null
   const totalCablePieces = safe.packageOverride ? safe.packageOverride.totalCablePieces : calculatedCablePieces
   const totalCablePieceRange = safe.packageOverride ? safe.packageOverride.totalCablePieceRange : calculatedCablePieceRange
 
@@ -433,8 +431,9 @@ export function calculateSiteFit(inputs: SiteFitInputs): SiteFitResult {
     planningPowerCeilingKw,
     ampsPerPhase,
     cableRunsPerPhase,
-    cablePiecesPer50Ft: neutral.pieces,
-    cablePieceRangePer50Ft: neutral.range,
+    cableMethod,
+    cablePiecesPer50Ft: cableMethod === 'banded-assembly' ? 1 : neutral.pieces,
+    cablePieceRangePer50Ft: cableMethod === 'banded-assembly' ? null : neutral.range,
     routeSections,
     totalCablePieces,
     totalCablePieceRange,

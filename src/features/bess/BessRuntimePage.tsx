@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
-import { SelectField } from '../../components/ui/SelectField'
-import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
 import { EquipmentRecommendationPanel } from '../../components/ui/EquipmentRecommendationPanel'
@@ -11,8 +9,8 @@ import { HistoryDrawer } from '../../components/ui/HistoryDrawer'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { useUrlState } from '../../hooks/useUrlState'
+import { useLocation } from 'react-router-dom'
 import { useCalculationHistory } from '../../hooks/useCalculationHistory'
-import { LOW_VOLTAGE_OPTIONS } from '../../lib/constants'
 import { fmt } from '../../lib/formatters'
 import { recommendEquipment } from '../../lib/equipmentRecommendations'
 import {
@@ -22,58 +20,62 @@ import {
   type RuntimeResults,
 } from './bess.formulas'
 
-const ROUTE_KEY = '/bess/runtime'
-
-const POWER_FACTOR_OPTIONS = [
-  { value: '0.8', label: '0.8 (Typical)' },
-  { value: '1.0', label: '1.0 (Resistive)' },
-]
+const ROUTE_KEY = '/bess/runtime-v2'
 
 export default function BessRuntimePage() {
+  const location = useLocation()
+  const legacyLinkDetected = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    return ['v', 'a', 'pf'].some((key) => params.has(key))
+  }, [location.search])
   // Persisted defaults (localStorage fallback)
   const [persistedKwh, setPersistedKwh] = usePersistedState(ROUTE_KEY, 'kwh', '60')
-  const [persistedVoltage, setPersistedVoltage] = usePersistedState(ROUTE_KEY, 'voltage', '48')
-  const [persistedAmps, setPersistedAmps] = usePersistedState(ROUTE_KEY, 'amps', '50')
-  const [persistedPf, setPersistedPf] = usePersistedState(ROUTE_KEY, 'pf', '0.8')
+  const [persistedLoadKw, setPersistedLoadKw] = usePersistedState(ROUTE_KEY, 'loadKw', '10')
+  const [persistedUsablePercent, setPersistedUsablePercent] = usePersistedState(ROUTE_KEY, 'usablePercent', '80')
+  const [persistedEfficiencyPercent, setPersistedEfficiencyPercent] = usePersistedState(ROUTE_KEY, 'efficiencyPercent', '95')
 
   // URL state takes priority over persisted defaults
   const [kWh, setKWhUrl] = useUrlState('kwh', persistedKwh)
-  const [voltage, setVoltageUrl] = useUrlState('v', persistedVoltage)
-  const [amps, setAmpsUrl] = useUrlState('a', persistedAmps)
-  const [powerFactor, setPfUrl] = useUrlState('pf', persistedPf)
-  const parsedPowerFactor = Number.parseFloat(powerFactor)
-  const powerFactorValid = Number.isFinite(parsedPowerFactor) && parsedPowerFactor > 0 && parsedPowerFactor <= 1
+  const [loadKw, setLoadKwUrl] = useUrlState('loadKw', persistedLoadKw)
+  const [usablePercent, setUsablePercentUrl] = useUrlState('usable', persistedUsablePercent)
+  const [efficiencyPercent, setEfficiencyPercentUrl] = useUrlState('efficiency', persistedEfficiencyPercent)
 
   // Sync changes to both URL and localStorage
   const setKWh = useCallback((v: string) => { setKWhUrl(v); setPersistedKwh(v) }, [setKWhUrl, setPersistedKwh])
-  const setVoltage = useCallback((v: string) => { setVoltageUrl(v); setPersistedVoltage(v) }, [setVoltageUrl, setPersistedVoltage])
-  const setAmps = useCallback((v: string) => { setAmpsUrl(v); setPersistedAmps(v) }, [setAmpsUrl, setPersistedAmps])
-  const setPowerFactor = useCallback((v: string) => { setPfUrl(v); setPersistedPf(v) }, [setPfUrl, setPersistedPf])
+  const setLoadKw = useCallback((v: string) => { setLoadKwUrl(v); setPersistedLoadKw(v) }, [setLoadKwUrl, setPersistedLoadKw])
+  const setUsablePercent = useCallback((v: string) => { setUsablePercentUrl(v); setPersistedUsablePercent(v) }, [setUsablePercentUrl, setPersistedUsablePercent])
+  const setEfficiencyPercent = useCallback((v: string) => { setEfficiencyPercentUrl(v); setPersistedEfficiencyPercent(v) }, [setEfficiencyPercentUrl, setPersistedEfficiencyPercent])
 
   // Calculation history
   const { entries, addEntry, clearHistory } = useCalculationHistory<RuntimeInputs>(ROUTE_KEY)
 
   const inputs: RuntimeInputs = useMemo(() => ({
     kWh: parseFloat(kWh) || 0,
-    voltage: parseFloat(voltage) || 0,
-    amps: parseFloat(amps) || 0,
-    powerFactor: Number.isFinite(parsedPowerFactor) ? parsedPowerFactor : 0,
-  }), [kWh, voltage, amps, parsedPowerFactor])
+    loadKw: parseFloat(loadKw) || 0,
+    usablePercent: parseFloat(usablePercent) || 0,
+    efficiencyPercent: parseFloat(efficiencyPercent) || 0,
+  }), [kWh, loadKw, usablePercent, efficiencyPercent])
 
   const calculate = useCallback(
     (i: RuntimeInputs): RuntimeResults | null => {
-      if (i.kWh <= 0 || i.voltage <= 0 || i.amps <= 0 || i.powerFactor <= 0 || i.powerFactor > 1) return null
+      if (i.kWh <= 0 || i.loadKw <= 0 || i.usablePercent <= 0 || i.usablePercent > 100 || i.efficiencyPercent <= 0 || i.efficiencyPercent > 100) return null
       return calculateRuntime(i)
     },
     [],
   )
 
   const results = useCalculator(inputs, calculate)
+  const validationMessage = inputs.kWh <= 0 || inputs.loadKw <= 0
+    ? 'Battery capacity and continuous load must both be greater than zero.'
+    : inputs.usablePercent <= 0 || inputs.usablePercent > 100
+      ? 'Usable energy window must be greater than 0% and no more than 100%.'
+      : inputs.efficiencyPercent <= 0 || inputs.efficiencyPercent > 100
+        ? 'Delivery efficiency must be greater than 0% and no more than 100%.'
+        : null
   const recommendation = results
     ? recommendEquipment({
-        peakKw: (inputs.voltage * inputs.amps * inputs.powerFactor) / 1000,
+        peakKw: inputs.loadKw,
         runtimeHours: results.runtime,
-        powerFactor: inputs.powerFactor,
       })
     : null
 
@@ -81,19 +83,19 @@ export default function BessRuntimePage() {
   const prevResultRef = useRef<string | null>(null)
   useEffect(() => {
     if (!results) return
-    const key = `${inputs.kWh}-${inputs.voltage}-${inputs.amps}-${inputs.powerFactor}`
+    const key = `${inputs.kWh}-${inputs.loadKw}-${inputs.usablePercent}-${inputs.efficiencyPercent}`
     if (key === prevResultRef.current) return
     prevResultRef.current = key
-    const label = `${inputs.kWh} kWh, ${inputs.voltage}V, ${inputs.amps}A, PF ${inputs.powerFactor} → ${fmt(results.runtime, 1)} hrs`
+    const label = `${inputs.kWh} kWh, ${inputs.loadKw} kW continuous → ${fmt(results.runtime, 1)} hrs`
     addEntry(inputs, label)
   }, [results, inputs, addEntry])
 
   const handleRestore = useCallback((restored: RuntimeInputs) => {
     setKWh(String(restored.kWh))
-    setVoltage(String(restored.voltage))
-    setAmps(String(restored.amps))
-    setPowerFactor(String(restored.powerFactor))
-  }, [setKWh, setVoltage, setAmps, setPowerFactor])
+    setLoadKw(String(restored.loadKw))
+    setUsablePercent(String(restored.usablePercent))
+    setEfficiencyPercent(String(restored.efficiencyPercent))
+  }, [setKWh, setLoadKw, setUsablePercent, setEfficiencyPercent])
 
   const steps = results ? describeRuntime(inputs, results) : []
 
@@ -102,7 +104,7 @@ export default function BessRuntimePage() {
       <Card>
         <CardHeader
           title="BESS Runtime Calculator"
-          subtitle="Estimate battery runtime based on capacity, voltage, and load"
+          subtitle="Estimate runtime from usable energy and verified continuous load"
           action={
             <HistoryDrawer
               entries={entries}
@@ -121,42 +123,52 @@ export default function BessRuntimePage() {
             min={0}
             tooltip="Total energy capacity of the BESS"
           />
-          <SelectField
-            label="System Voltage"
-            unit="V"
-            value={voltage}
-            onChange={setVoltage}
-            options={LOW_VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
-            tooltip="Nominal DC bus voltage"
+          <InputField
+            label="Continuous Load"
+            unit="kW"
+            value={loadKw}
+            onChange={setLoadKw}
+            min={0}
+            tooltip="Verified continuous real-power demand. Do not use momentary peak or inrush kW."
           />
           <InputField
-            label="Load Current"
-            unit="A"
-            value={amps}
-            onChange={setAmps}
+            label="Usable Energy Window"
+            unit="%"
+            value={usablePercent}
+            onChange={setUsablePercent}
             min={0}
-            tooltip="Average continuous load in amperes"
+            max={100}
+            tooltip="Share of nameplate energy available between the operating SOC limits"
           />
-          <RadioGroup
-            label="Power Factor"
-            value={powerFactor}
-            onChange={setPowerFactor}
-            options={POWER_FACTOR_OPTIONS}
+          <InputField
+            label="Delivery Efficiency"
+            unit="%"
+            value={efficiencyPercent}
+            onChange={setEfficiencyPercent}
+            min={0}
+            max={100}
+            tooltip="Battery-to-load conversion efficiency after parasitic and inverter losses"
           />
-          {!powerFactorValid && (
-            <p role="alert" className="rounded-lg border border-error/45 bg-error/10 px-3 py-2 text-xs leading-relaxed text-error">
-              Power factor must be greater than 0 and no more than 1. Select 0.8 or 1.0 to continue.
-            </p>
-          )}
         </div>
+
+        {validationMessage && (
+          <div role="alert" className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {validationMessage}
+          </div>
+        )}
+        {legacyLinkDetected && (
+          <div role="alert" className="mb-6 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+            This legacy runtime link used voltage, current, or power factor. Re-enter the verified continuous kW load, usable SOC window, and delivery efficiency for the corrected energy calculation.
+          </div>
+        )}
 
         {results && (
           <>
             <ResultGrid>
               <ResultItem
-                label="Amp-Hours"
-                value={fmt(results.ampHours, 1)}
-                unit="Ah"
+                label="Delivered Energy"
+                value={fmt(results.deliveredEnergyKwh, 1)}
+                unit="kWh"
               />
               <ResultItem
                 label="Estimated Runtime"

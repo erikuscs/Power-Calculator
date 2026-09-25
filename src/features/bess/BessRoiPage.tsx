@@ -18,9 +18,15 @@ import { fmt, fmtCurrency } from '../../lib/formatters'
 import {
   calculateROI,
   describeROI,
+  validateROIInputs,
   type ROIInputs,
   type ROIResults,
 } from './bess.formulas'
+
+function numeric(value: string) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : Number.NaN
+}
 
 const CHART_COLORS = {
   copper: '#C27A2C',
@@ -43,28 +49,29 @@ export default function BessRoiPage() {
   const [analysisPeriod, setAnalysisPeriod] = useState('10')
 
   const inputs: ROIInputs = {
-    systemCost: parseFloat(systemCost) || 0,
-    capacity: parseFloat(capacity) || 0,
-    peakRate: parseFloat(peakRate) || 0,
-    offPeakRate: parseFloat(offPeakRate) || 0,
-    roundTripEfficiency: parseFloat(roundTripEfficiency) || 0.85,
-    cyclesPerDay: parseFloat(cyclesPerDay) || 1,
-    monthlyPeakReduction: parseFloat(monthlyPeakReduction) || 0,
-    demandChargeRate: parseFloat(demandChargeRate) || 0,
-    degradationRate: parseFloat(degradationRate) || 0.02,
-    discountRate: parseFloat(discountRate) || 0.08,
-    analysisPeriod: parseInt(analysisPeriod, 10) || 10,
+    systemCost: numeric(systemCost),
+    capacity: numeric(capacity),
+    peakRate: numeric(peakRate),
+    offPeakRate: numeric(offPeakRate),
+    roundTripEfficiency: numeric(roundTripEfficiency),
+    cyclesPerDay: numeric(cyclesPerDay),
+    monthlyPeakReduction: numeric(monthlyPeakReduction),
+    demandChargeRate: numeric(demandChargeRate),
+    degradationRate: numeric(degradationRate),
+    discountRate: numeric(discountRate),
+    analysisPeriod: numeric(analysisPeriod),
   }
 
   const calculate = useCallback(
     (i: ROIInputs): ROIResults | null => {
-      if (i.systemCost <= 0 || i.capacity <= 0) return null
+      if (validateROIInputs(i)) return null
       return calculateROI(i)
     },
     [],
   )
 
   const results = useCalculator(inputs, calculate)
+  const validationMessage = validateROIInputs(inputs)
 
   const steps = results ? describeROI(inputs, results) : []
 
@@ -185,6 +192,12 @@ export default function BessRoiPage() {
           />
         </div>
 
+        {validationMessage && (
+          <div role="alert" className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {validationMessage}
+          </div>
+        )}
+
         {results && (
           <>
             <ResultGrid>
@@ -195,7 +208,7 @@ export default function BessRoiPage() {
               />
               <ResultItem
                 label="Annual Revenue (Year 1)"
-                value={fmtCurrency(results.annualRevenue * (1 - inputs.degradationRate))}
+                value={fmtCurrency(results.annualRevenue)}
                 unit="/yr"
               />
               <ResultItem

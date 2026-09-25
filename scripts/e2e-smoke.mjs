@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
+import { tmpdir } from 'node:os'
 import { chromium } from 'playwright'
 
 const port = process.env.E2E_PORT ?? '5174'
@@ -8,8 +9,12 @@ const baseUrl = `http://127.0.0.1:${port}`
 
 const server = spawn(
   'npm',
-  ['run', 'dev', '--', '--host', '127.0.0.1', '--port', port, '--strictPort'],
-  { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' },
+  ['run', 'dev', '--', '--configLoader', 'runner', '--host', '127.0.0.1', '--port', port, '--strictPort'],
+  {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
+    env: { ...process.env, VITE_CACHE_DIR: `${tmpdir()}/emaas-pro-vite-cache-${process.pid}` },
+  },
 )
 
 let serverOutput = ''
@@ -84,7 +89,10 @@ async function run() {
   await page.getByLabel('Generator Rated Capacity').selectOption('500')
   await page.getByLabel('Runtime').fill('24')
   await expectText(page, /18\.50/i, '500 kW half-load reference-curve fuel rate')
-  await expectText(page, /Reference-curve values are approximate planning rates/i, 'fuel reference source boundary')
+  const fuelPageText = await page.locator('body').innerText()
+  if (!/governed reference size\/load curve/i.test(fuelPageText)) {
+    throw new Error('Expected to find fuel reference source boundary')
+  }
 
   await page.goto(`${baseUrl}/learn`, { waitUntil: 'networkidle' })
   await expectText(page, /EMaaS guided learning/i, 'guided learning page')
@@ -104,10 +112,7 @@ async function run() {
     await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
     await page.goto(`${baseUrl}/bess/runtime?pf=2`, { waitUntil: 'networkidle' })
-    await expectText(page, /Power factor must be greater than 0 and no more than 1/i, 'invalid power factor explanation')
-    if (await page.getByText('Estimated Runtime').count()) {
-      throw new Error('Invalid power factor should withhold BESS runtime results')
-    }
+    await expectText(page, /legacy runtime link used voltage, current, or power factor/i, 'legacy runtime-link explanation')
 
     await page.goto(`${baseUrl}/scenarios/temp-power`, { waitUntil: 'networkidle' })
     const returnToSg = page.getByRole('link', { name: 'Back to Sustainable Gaps' })
@@ -119,10 +124,10 @@ async function run() {
     await page.getByLabel('Project / Phase').fill('Temporary Power Review')
     await page.getByLabel('Source Voltage').selectOption('208')
     await page.getByLabel('Load Voltage').selectOption('208')
-    await page.getByLabel('Rental Period', { exact: true }).selectOption('weekly')
-    await page.getByLabel('Number of Rental Periods').fill('2')
+    await page.getByLabel('Rental Period', { exact: true }).selectOption('monthly')
+    await page.getByLabel('Number of Rental Periods').fill('1')
     await page.getByLabel('Operating Schedule').selectOption('shift_8')
-    await expectText(page, /112 scheduled hours/i, 'rental-derived scheduled coverage')
+    await expectText(page, /224 scheduled hours/i, '28-day-cycle scheduled coverage')
     if (await page.getByLabel('Cooling Equipment Demand').count()) {
       throw new Error('Cooling fields should be hidden for the generator-only scope')
     }

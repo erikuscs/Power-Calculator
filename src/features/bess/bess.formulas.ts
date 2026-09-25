@@ -2,13 +2,14 @@
 
 export interface RuntimeInputs {
   kWh: number
-  voltage: number
-  amps: number
-  powerFactor: number
+  loadKw: number
+  usablePercent: number
+  efficiencyPercent: number
 }
 
 export interface RuntimeResults {
-  ampHours: number
+  usableEnergyKwh: number
+  deliveredEnergyKwh: number
   runtime: number
 }
 
@@ -55,6 +56,19 @@ export interface ROIResults {
   yearlyData: YearlyData[]
 }
 
+export function validateROIInputs(inputs: ROIInputs): string | null {
+  if (!Number.isFinite(inputs.systemCost) || inputs.systemCost <= 0) return 'System cost must be greater than zero.'
+  if (!Number.isFinite(inputs.capacity) || inputs.capacity <= 0) return 'Capacity must be greater than zero.'
+  if (!Number.isFinite(inputs.peakRate) || inputs.peakRate < 0 || !Number.isFinite(inputs.offPeakRate) || inputs.offPeakRate < 0) return 'Energy rates cannot be negative.'
+  if (!Number.isFinite(inputs.roundTripEfficiency) || inputs.roundTripEfficiency <= 0 || inputs.roundTripEfficiency > 1) return 'Round-trip efficiency must be greater than 0 and no more than 1.'
+  if (!Number.isFinite(inputs.cyclesPerDay) || inputs.cyclesPerDay <= 0) return 'Cycles per day must be greater than zero.'
+  if (!Number.isFinite(inputs.monthlyPeakReduction) || inputs.monthlyPeakReduction < 0 || !Number.isFinite(inputs.demandChargeRate) || inputs.demandChargeRate < 0) return 'Demand-reduction inputs cannot be negative.'
+  if (!Number.isFinite(inputs.degradationRate) || inputs.degradationRate < 0 || inputs.degradationRate >= 1) return 'Degradation rate must be at least 0 and less than 1.'
+  if (!Number.isFinite(inputs.discountRate) || inputs.discountRate < 0) return 'Discount rate cannot be negative.'
+  if (!Number.isInteger(inputs.analysisPeriod) || inputs.analysisPeriod < 1 || inputs.analysisPeriod > 30) return 'Analysis period must be a whole number from 1 to 30 years.'
+  return null
+}
+
 export interface FormulaStep {
   label: string
   formula: string
@@ -65,26 +79,33 @@ export interface FormulaStep {
 // ── A1. Runtime Calculator ──────────────────────────────────────────
 
 export function calculateRuntime(inputs: RuntimeInputs): RuntimeResults {
-  const { kWh, voltage, amps, powerFactor } = inputs
-  const ampHours = (kWh * 1000) / voltage
-  const runtime = (ampHours / amps) * powerFactor
-  return { ampHours, runtime }
+  const { kWh, loadKw, usablePercent, efficiencyPercent } = inputs
+  const usableEnergyKwh = kWh * (usablePercent / 100)
+  const deliveredEnergyKwh = usableEnergyKwh * (efficiencyPercent / 100)
+  const runtime = deliveredEnergyKwh / loadKw
+  return { usableEnergyKwh, deliveredEnergyKwh, runtime }
 }
 
 export function describeRuntime(inputs: RuntimeInputs, results: RuntimeResults): FormulaStep[] {
-  const { kWh, voltage, amps, powerFactor } = inputs
-  const { ampHours, runtime } = results
+  const { kWh, loadKw, usablePercent, efficiencyPercent } = inputs
+  const { usableEnergyKwh, deliveredEnergyKwh, runtime } = results
   return [
     {
-      label: 'Amp-Hours',
-      formula: 'AmpHours = (kWh x 1000) / Voltage',
-      substituted: `(${kWh} x 1000) / ${voltage}`,
-      result: `${ampHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} Ah`,
+      label: 'Usable Energy Window',
+      formula: 'UsableEnergy = NameplateEnergy x UsablePercent',
+      substituted: `${kWh} x (${usablePercent} / 100)`,
+      result: `${usableEnergyKwh.toLocaleString('en-US', { maximumFractionDigits: 1 })} kWh`,
     },
     {
-      label: 'Runtime',
-      formula: 'Runtime = (AmpHours / Amps) x PowerFactor',
-      substituted: `(${ampHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} / ${amps}) x ${powerFactor}`,
+      label: 'Delivered Energy',
+      formula: 'DeliveredEnergy = UsableEnergy x DeliveryEfficiency',
+      substituted: `${usableEnergyKwh.toLocaleString('en-US', { maximumFractionDigits: 1 })} x (${efficiencyPercent} / 100)`,
+      result: `${deliveredEnergyKwh.toLocaleString('en-US', { maximumFractionDigits: 1 })} kWh`,
+    },
+    {
+      label: 'Estimated Runtime',
+      formula: 'Runtime = DeliveredEnergy / ContinuousLoad',
+      substituted: `${deliveredEnergyKwh.toLocaleString('en-US', { maximumFractionDigits: 1 })} / ${loadKw}`,
       result: `${runtime.toLocaleString('en-US', { maximumFractionDigits: 1 })} hrs`,
     },
   ]
@@ -94,7 +115,7 @@ export function describeRuntime(inputs: RuntimeInputs, results: RuntimeResults):
 
 export function calculateSizing(inputs: SizingInputs): SizingResults {
   const { loadKW, hours, dodPercent, unitCapacity, lossesPercent } = inputs
-  const totalEnergy = (loadKW * hours) / (dodPercent / 100)
+  const totalEnergy = loadKW * hours
   const usablePerUnit = unitCapacity * (dodPercent / 100) * (1 - lossesPercent / 100)
   const unitsRequired = Math.ceil(totalEnergy / usablePerUnit)
   return { totalEnergy, usablePerUnit, unitsRequired }
@@ -106,8 +127,8 @@ export function describeSizing(inputs: SizingInputs, results: SizingResults): Fo
   return [
     {
       label: 'Total Energy Required',
-      formula: 'TotalEnergy = (LoadKW x Hours) / (DoD / 100)',
-      substituted: `(${loadKW} x ${hours}) / (${dodPercent} / 100)`,
+      formula: 'TotalEnergy = LoadKW x Hours',
+      substituted: `${loadKW} x ${hours}`,
       result: `${totalEnergy.toLocaleString('en-US', { maximumFractionDigits: 1 })} kWh`,
     },
     {
@@ -128,6 +149,8 @@ export function describeSizing(inputs: SizingInputs, results: SizingResults): Fo
 // ── A3. Revenue / ROI Analysis ──────────────────────────────────────
 
 export function calculateROI(inputs: ROIInputs): ROIResults {
+  const validationError = validateROIInputs(inputs)
+  if (validationError) throw new Error(validationError)
   const {
     systemCost, capacity, peakRate, offPeakRate,
     roundTripEfficiency, cyclesPerDay,
@@ -135,7 +158,10 @@ export function calculateROI(inputs: ROIInputs): ROIResults {
     degradationRate, discountRate, analysisPeriod,
   } = inputs
 
-  const dailyArbitrage = capacity * (peakRate - offPeakRate) * roundTripEfficiency * cyclesPerDay
+  // Capacity is the usable energy delivered to the load. Recharge energy is
+  // therefore capacity / round-trip efficiency; applying efficiency to the
+  // entire rate spread understates discharge revenue and misstates charge cost.
+  const dailyArbitrage = (capacity * peakRate - (capacity / roundTripEfficiency) * offPeakRate) * cyclesPerDay
   const annualArbitrage = dailyArbitrage * 365
   const annualDemandReduction = monthlyPeakReduction * demandChargeRate * 12
 
@@ -146,7 +172,10 @@ export function calculateROI(inputs: ROIInputs): ROIResults {
   let npvSum = -systemCost
 
   for (let y = 1; y <= analysisPeriod; y++) {
-    const revenue = (annualArbitrage + annualDemandReduction) * (1 - degradationRate * y)
+    // Year 1 begins at the entered usable capacity. Degradation compounds from
+    // Year 2 onward rather than being charged before the first operating year.
+    const degradationFactor = Math.pow(1 - degradationRate, y - 1)
+    const revenue = annualArbitrage * degradationFactor + annualDemandReduction
     cumulativeCashFlow += revenue
     npvSum += revenue / Math.pow(1 + discountRate, y)
 
@@ -182,8 +211,8 @@ export function describeROI(inputs: ROIInputs, results: ROIResults): FormulaStep
   return [
     {
       label: 'Daily Arbitrage Revenue',
-      formula: 'DailyArbitrage = Capacity x (PeakRate - OffPeakRate) x RTE x CyclesPerDay',
-      substituted: `${capacity} x (${peakRate} - ${offPeakRate}) x ${roundTripEfficiency} x ${cyclesPerDay}`,
+      formula: 'DailyArbitrage = (DeliveredEnergy x PeakRate - RechargeEnergy x OffPeakRate) x Cycles',
+      substituted: `(${capacity} x ${peakRate} - (${capacity} / ${roundTripEfficiency}) x ${offPeakRate}) x ${cyclesPerDay}`,
       result: `${fmtUsd(dailyArbitrage)} / day`,
     },
     {
@@ -193,10 +222,10 @@ export function describeROI(inputs: ROIInputs, results: ROIResults): FormulaStep
       result: `${fmtUsd(monthlyPeakReduction * demandChargeRate * 12)} / year`,
     },
     {
-      label: 'Year 1 Revenue (with degradation)',
-      formula: 'Revenue[y] = (AnnualArbitrage + AnnualDemandReduction) x (1 - DegradationRate x y)',
-      substituted: `${fmtUsd(annualRevenue)} x (1 - ${degradationRate} x 1)`,
-      result: `${fmtUsd(annualRevenue * (1 - degradationRate))} / year`,
+      label: 'Year 1 Revenue',
+      formula: 'Revenue[y] = AnnualArbitrage x (1 - DegradationRate)^(y - 1) + AnnualDemandReduction',
+      substituted: `Year 1 = ${fmtUsd(annualRevenue)}; degradation begins in Year 2 at ${(degradationRate * 100).toFixed(1)}%/yr`,
+      result: `${fmtUsd(annualRevenue)} / year`,
     },
     {
       label: 'NPV',

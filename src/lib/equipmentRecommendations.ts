@@ -105,8 +105,12 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
   const projectDurationHours = Math.max(bessAutonomyHours, inputs.projectDurationHours ?? bessAutonomyHours)
   const peakHoursPerDay = Math.max(1, inputs.peakHoursPerDay ?? Math.min(bessAutonomyHours, 8))
   const capacityFactor = Math.max(SAFETY_MARGINS.generator, inputs.redundancyFactor ?? SAFETY_MARGINS.generator)
-  const baseKw = Math.max(0, Math.min(inputs.baseKw ?? peakKw * 0.6, peakKw))
+  const hasEnteredBaseLoad = inputs.baseKw !== undefined && Number.isFinite(inputs.baseKw)
+  const baseKw = hasEnteredBaseLoad
+    ? Math.max(0, Math.min(inputs.baseKw ?? 0, peakKw))
+    : peakKw
   const peakDeltaKw = Math.max(0, peakKw - baseKw)
+  const hasHybridDelta = hasEnteredBaseLoad && peakDeltaKw > 0
   const lowVoltageDistributionNotes = inputs.siteVoltage && inputs.siteVoltage <= 240 && peakKw >= 500
     ? [
         `${inputs.siteVoltage} V at this load creates very high current; plan around 480 V or medium-voltage distribution with step-down transformers where practical.`,
@@ -116,13 +120,21 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
   const generatorRequiredKw = peakKw * capacityFactor
   const generatorPick = pickGenerator(generatorRequiredKw)
   const fullBessPick = pickBess(peakKw, peakKw * bessAutonomyHours, inputs.preferredBessKw)
-  const hybridGenPick = pickGenerator(Math.max(baseKw * capacityFactor, peakKw * 0.35 * SAFETY_MARGINS.generator))
-  const hybridBessPick = pickBess(Math.max(peakDeltaKw, peakKw * 0.15), Math.max(peakDeltaKw, peakKw * 0.15) * peakHoursPerDay, inputs.preferredBessKw)
+  const hybridGenPick = hasEnteredBaseLoad
+    ? pickGenerator(Math.max(baseKw * capacityFactor, peakKw * 0.35 * SAFETY_MARGINS.generator))
+    : null
+  const hybridBessPick = hasHybridDelta
+    ? pickBess(peakDeltaKw, peakDeltaKw * peakHoursPerDay, inputs.preferredBessKw)
+    : null
   const bessOnlyImpractical = fullBessPick.count > 12 || fullBessPick.footprintSqFt > 2500
 
   const hasMeaningfulPeakSwing = peakDeltaKw / peakKw >= 0.25
   const longRuntime = bessAutonomyHours >= 8 || projectDurationHours >= 24 * 7
-  const preferred = hasMeaningfulPeakSwing || longRuntime ? 'hybrid' : peakKw <= 24 && bessAutonomyHours <= 4 ? 'bess' : 'generator'
+  const preferred = hasEnteredBaseLoad && (hasMeaningfulPeakSwing || longRuntime)
+    ? 'hybrid'
+    : peakKw <= 24 && bessAutonomyHours <= 4
+      ? 'bess'
+      : 'generator'
 
   return {
     sourceNote: 'Generator classes use the governed diesel reference sizes. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; rental availability, footprints, and dimensions require site and provider verification.',
@@ -153,19 +165,35 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
       ],
     },
     hybrid: {
-      label: 'Hybrid generator + BESS',
-      units: `${formatUnitCount(hybridGenPick.unit.label, hybridGenPick.count)} + ${formatUnitCount(hybridBessPick.unit.label, hybridBessPick.count)}`,
-      capacityKw: hybridGenPick.capacityKw + hybridBessPick.capacityKw,
-      energyKwh: hybridBessPick.energyKwh,
-      footprintSqFt: hybridGenPick.footprintSqFt + hybridBessPick.footprintSqFt,
+      label: hasHybridDelta ? 'Hybrid generator + BESS' : 'Hybrid evaluation withheld',
+      units: hasHybridDelta && hybridGenPick && hybridBessPick
+        ? `${formatUnitCount(hybridGenPick.unit.label, hybridGenPick.count)} + ${formatUnitCount(hybridBessPick.unit.label, hybridBessPick.count)}`
+        : hasEnteredBaseLoad
+          ? 'Peak demand must exceed continuous/base load'
+          : 'Enter measured continuous/base load and peak duration',
+      capacityKw: hybridGenPick && hybridBessPick ? hybridGenPick.capacityKw + hybridBessPick.capacityKw : 0,
+      energyKwh: hybridBessPick?.energyKwh,
+      footprintSqFt: hybridGenPick && hybridBessPick ? hybridGenPick.footprintSqFt + hybridBessPick.footprintSqFt : 0,
       practicality: 'normal',
-      notes: [
-        `Generator carries about ${Math.round(baseKw)} kW base load; BESS covers about ${Math.round(Math.max(peakDeltaKw, peakKw * 0.15))} kW of peaks.`,
-        ...lowVoltageDistributionNotes,
-        'Best default when peak load swings, noise windows, fuel logistics, or emissions targets matter.',
-      ],
+      notes: hasHybridDelta
+        ? [
+            `Generator carries the entered ${Math.round(baseKw)} kW continuous/base load; BESS covers the entered ${Math.round(peakDeltaKw)} kW peak difference.`,
+            ...lowVoltageDistributionNotes,
+            'Hybrid suitability depends on the measured load profile, recharge window, controls, and rental availability.',
+          ]
+        : hasEnteredBaseLoad
+          ? [
+              'The entered peak and continuous loads are equal, so there is no peak difference for a BESS to cover.',
+              'EMaaS Pro will not add a battery unit when the entered load profile does not create a hybrid duty.',
+            ]
+          : [
+              'No continuous/base load was entered, so EMaaS Pro will not invent a load split or recommend hybrid equipment from peak demand alone.',
+              'Enter measured continuous load and peak duration in Hybrid EMaaS Strategy to compare the governed rental fleet.',
+            ],
     },
-    fuelCell: assessFuelCellFit(peakKw, baseKw, projectDurationHours),
+    fuelCell: hasEnteredBaseLoad
+      ? assessFuelCellFit(peakKw, baseKw, projectDurationHours)
+      : { fit: 'not_ideal', label: 'Fuel-cell evaluation withheld', reason: 'A measured continuous/base load is required before evaluating a steady-load fuel-cell application.' },
   }
 }
 

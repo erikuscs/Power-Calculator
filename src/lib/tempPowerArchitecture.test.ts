@@ -48,4 +48,19 @@ describe('buildTempPowerArchitecture', () => {
     expect(plan.selected.unitCount).toBeGreaterThan(1)
     expect(plan.selected.firmCapacityKw).toBeGreaterThanOrEqual(3250)
   })
+
+  it('uses a modular 4 x 500 kW plant for a 1,663 kW rental requirement', () => {
+    const plan = buildTempPowerArchitecture({
+      planningLoadKw: 1500,
+      requiredCapacityKw: 1663,
+      powerFactor: 0.8,
+      sourceVoltage: 480,
+      loadVoltage: 480,
+      continuityTarget: 'standard',
+    })
+
+    expect(plan.selected.label).toBe('4 x 500 kW generators')
+    expect(plan.selected.totalCapacityKw).toBe(2000)
+    expect(plan.selected.firmCapacityKw).toBe(2000)
+  })
 })

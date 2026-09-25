@@ -77,6 +77,30 @@ describe('calculateCooling', () => {
     expect(canvas!.envelopeBtu).toBeCloseTo(container!.envelopeBtu * 1.8, 0)
   })
 
+  it('uses enclosure surface area so height changes a dimension-based result', () => {
+    const low = calculateCooling({
+      loadKw: 0, sqFt: 2000, envelopeAreaSqFt: 5800, ambientTemp: 95, targetTemp: 72,
+      occupants: 0, structureType: 'container', structureMultiplier: 1,
+    })
+    const tall = calculateCooling({
+      loadKw: 0, sqFt: 2000, envelopeAreaSqFt: 9400, ambientTemp: 95, targetTemp: 72,
+      occupants: 0, structureType: 'container', structureMultiplier: 1,
+    })
+    expect(low).not.toBeNull()
+    expect(tall!.envelopeBtu).toBeGreaterThan(low!.envelopeBtu)
+    expect(tall!.tonsWithMargin).toBeGreaterThan(low!.tonsWithMargin)
+  })
+
+  it('allows envelope and occupant cooling when equipment load is zero', () => {
+    const result = calculateCooling({
+      loadKw: 0, sqFt: 1000, ambientTemp: 95, targetTemp: 72,
+      occupants: 20, structureType: 'canvas', structureMultiplier: 1.8,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.equipmentBtu).toBe(0)
+    expect(result!.totalBtu).toBeGreaterThan(0)
+  })
+
   it('adds latent load when RH > 60%', () => {
     const dry = calculateCooling({
       loadKw: 100, sqFt: 1000, ambientTemp: 95, targetTemp: 72,
@@ -187,6 +211,15 @@ describe('calculateAirsideTonnage', () => {
   it('returns null for zero CFM', () => {
     expect(calculateAirsideTonnage({
       cfm: 0, inletDryBulb: 95, inletWetBulb: 78, outletDryBulb: 55, outletWetBulb: 54,
+    })).toBeNull()
+  })
+
+  it('rejects wet-bulb above dry-bulb and reversed cooling states', () => {
+    expect(calculateAirsideTonnage({
+      cfm: 10000, inletDryBulb: 75, inletWetBulb: 80, outletDryBulb: 55, outletWetBulb: 54,
+    })).toBeNull()
+    expect(calculateAirsideTonnage({
+      cfm: 10000, inletDryBulb: 55, inletWetBulb: 54, outletDryBulb: 75, outletWetBulb: 60,
     })).toBeNull()
   })
 })

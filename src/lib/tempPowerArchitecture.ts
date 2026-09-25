@@ -93,13 +93,21 @@ function selectArchitecture(
   requiredCapacityKw: number,
   continuityTarget: TempPowerContinuityTarget,
 ): TempPowerSourceArchitecture {
-  const candidates = GENERATOR_FLEET
+  // Above 1 MW, favor the rental-market 500 kW modular plant instead of a
+  // single hard-to-source, single-failure large generator. Very large plants
+  // may step to 1 MW modules to keep the practical unit count bounded.
+  const eligibleFleet = requiredCapacityKw > 6000
+    ? GENERATOR_FLEET.filter((unit) => unit.kw === 1000)
+    : requiredCapacityKw > 1000
+      ? GENERATOR_FLEET.filter((unit) => unit.kw === 500)
+      : GENERATOR_FLEET
+  const candidates = eligibleFleet
     .map((unit) => buildCandidate(unit, requiredCapacityKw, continuityTarget))
     .filter((candidate) => candidate.unitCount <= 12)
     .sort((a, b) => a.score - b.score)
 
   const candidate = candidates[0] ?? buildCandidate(
-    GENERATOR_FLEET[GENERATOR_FLEET.length - 1],
+    eligibleFleet[eligibleFleet.length - 1] ?? GENERATOR_FLEET[GENERATOR_FLEET.length - 1],
     requiredCapacityKw,
     continuityTarget,
   )

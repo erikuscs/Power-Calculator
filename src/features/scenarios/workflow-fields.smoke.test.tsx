@@ -76,24 +76,35 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.queryByLabelText('Mermaid one-line diagram source')).not.toBeInTheDocument()
   })
 
-  it('maps rental duration to runtime and reveals cooling only when selected', () => {
+  it('maps the 28-day rental cycle to runtime and reveals cooling only when selected', () => {
     renderTempPower()
 
     fireEvent.click(screen.getByRole('button', { name: 'Use as My Starting Point' }))
     fireEvent.click(screen.getByRole('button', { name: 'Single Load' }))
     expect(screen.queryByLabelText('Cooling Equipment Demand')).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('Rental Period'), { target: { value: 'weekly' } })
-    fireEvent.change(screen.getByLabelText('Number of Rental Periods'), { target: { value: '2' } })
+    expect(screen.getByLabelText('Rental Period')).toHaveValue('monthly')
+    fireEvent.change(screen.getByLabelText('Number of Rental Periods'), { target: { value: '1' } })
     fireEvent.change(screen.getByLabelText('Operating Schedule'), { target: { value: 'shift_8' } })
-    expect(screen.getAllByText('112 scheduled hours').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('14 rental days × 8 hours/day')).toBeInTheDocument()
+    expect(screen.getAllByText('224 scheduled hours').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('28 rental days × 8 hours/day')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Power + Cooling' }))
     expect(screen.getByLabelText('Cooling Equipment Demand')).toBeInTheDocument()
     expect(screen.getByLabelText('Cooling Capacity')).toBeInTheDocument()
     expect(screen.queryByLabelText('Target Temperature')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Conditioned Area')).not.toBeInTheDocument()
+  })
+
+  it('does not reinterpret legacy weekly rental counts as 28-day cycles', () => {
+    window.localStorage.setItem('power-calc:/scenarios/temp-power:rentalPeriod', JSON.stringify('weekly'))
+    window.localStorage.setItem('power-calc:/scenarios/temp-power:rentalPeriodCount', JSON.stringify('2'))
+    renderTempPower()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use as My Starting Point' }))
+    expect(screen.getByLabelText('Rental Period')).toHaveValue('monthly')
+    expect(screen.getByLabelText('Number of Rental Periods')).toHaveValue(1)
+    expect(screen.getAllByText('672 scheduled hours').length).toBeGreaterThanOrEqual(1)
   })
 
   it('loads the 24/7 data-center example with a 28-day rental cycle', () => {

@@ -1,4 +1,4 @@
-import { mkdir, copyFile, readFile } from 'node:fs/promises'
+import { mkdir, copyFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,19 +25,34 @@ if (await disclaimerButton.isVisible().catch(() => false)) {
 }
 await page.waitForTimeout(250)
 await page.screenshot({ path: outputPng, fullPage: true })
-const screenshotData = await readFile(outputPng)
-const pdfPage = await browser.newPage({ viewport: { width: 1488, height: 1060 } })
+await page.locator('[data-artifact-actions]').evaluate((element) => {
+  element.style.display = 'none'
+})
+await page.locator('[data-artifact-section="site-layout"]').evaluate((element) => {
+  element.style.display = 'none'
+})
+const oneLineImage = await page.locator('.hybrid-example-report').screenshot()
+await page.locator('[data-artifact-section="site-layout"]').evaluate((element) => {
+  element.style.display = ''
+})
+const siteLayoutImage = await page.locator('[data-artifact-section="site-layout"]').screenshot()
+
+const pdfPage = await browser.newPage({ viewport: { width: 1123, height: 1588 } })
 await pdfPage.setContent(`<!doctype html><html><head><style>
-  @page { size: 16in 10in; margin: 0; }
-  html, body { margin: 0; width: 100%; height: 100%; background: #0e151c; overflow: hidden; }
-  body { display: flex; align-items: center; justify-content: center; }
-  img { display: block; width: 100%; height: 100%; object-fit: contain; }
-</style></head><body><img alt="EMaaS Pro 2,000 A hybrid linked plan and one-line" src="data:image/png;base64,${screenshotData.toString('base64')}"></body></html>`, { waitUntil: 'load' })
+  @page { size: A3 portrait; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0e151c; }
+  .page { width: 297mm; height: 420mm; padding: 8mm; display: flex; align-items: center; justify-content: center; page-break-after: always; background: #0e151c; }
+  .page:last-child { page-break-after: auto; }
+  img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+</style></head><body>
+  <section class="page"><img alt="EMaaS Pro 2,000 A hybrid one-line and sizing summary" src="data:image/png;base64,${oneLineImage.toString('base64')}"></section>
+  <section class="page"><img alt="EMaaS Pro 2,000 A hybrid conceptual equipment envelope" src="data:image/png;base64,${siteLayoutImage.toString('base64')}"></section>
+</body></html>`, { waitUntil: 'load' })
 await pdfPage.pdf({
   path: outputPdf,
-  width: '16in',
-  height: '10in',
-  landscape: true,
+  format: 'A3',
+  landscape: false,
   printBackground: true,
   margin: { top: '0', right: '0', bottom: '0', left: '0' },
 })

@@ -35,7 +35,7 @@ export function HybridSiteLayout3D({ plan, compact = false }: { plan: HybridProj
       <div className={`overflow-hidden rounded-lg border border-sg-600/45 bg-sg-900/70 ${compact ? 'h-full min-h-72' : ''}`}>
         <svg viewBox="0 0 900 520" role="img" aria-labelledby="hybrid-layout-title hybrid-layout-desc" className={`${compact ? 'h-full min-h-72' : 'min-h-[360px]'} w-full`}>
           <title id="hybrid-layout-title">Three-dimensional hybrid equipment planning layout</title>
-          <desc id="hybrid-layout-desc">An isometric equipment envelope showing each generator, battery unit, controls, switchgear, transformer when required, and the fuel service zone inside the entered site dimensions.</desc>
+          <desc id="hybrid-layout-desc">An isometric equipment envelope showing the equipment included by the current plan inside the entered site dimensions.</desc>
           <polygon points={points(...site)} fill="#141D26" stroke="#5B6673" strokeWidth="2" />
           {sorted.map((item) => {
             const p100 = project(item.xFt + item.lengthFt, item.yFt, 0)

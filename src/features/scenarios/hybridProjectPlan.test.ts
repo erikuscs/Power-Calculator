@@ -51,6 +51,7 @@ describe('buildHybridProjectPlan', () => {
     expect(plan.quoteItems.find((item) => item.id === 'bess-rental')?.total).toBe(19600)
     expect(plan.quoteItems.find((item) => item.id === 'generator-rental')?.total).toBe(42000)
     expect(plan.budgetaryTotal).toBe(61600)
+    expect(plan.equipment.some((item) => item.kind === 'fuel')).toBe(false)
   })
 
   it('keeps equipment, branch cable, site envelope, and quote quantities on one result', () => {
@@ -106,6 +107,16 @@ describe('buildHybridProjectPlan', () => {
     const plan = buildHybridProjectPlan(unresolved, calculateHybridWizard(unresolved), [])
     expect(plan.totalCablePieces).toBeNull()
     expect(plan.totalCablePieceRange?.[1]).toBeGreaterThan(plan.totalCablePieceRange?.[0] ?? 0)
+  })
+
+  it('uses one banded assembly per 50-foot section for hybrid circuits at 200 A or below', () => {
+    const small = { ...inputs, peakLoadKw: 50, baseLoadKw: 30, longestCableRouteFt: 101 }
+    const plan = buildHybridProjectPlan(small, calculateHybridWizard(small), [])
+    const main = plan.cableSchedule.find((row) => row.id === 'MAIN')
+
+    expect(main?.ampsPerPhase).toBeLessThanOrEqual(200)
+    expect(main).toMatchObject({ cableMethod: 'banded-assembly', routeSections: 3, pieces: 3 })
+    expect(plan.quoteItems.find((item) => item.id === 'cable')?.description).toContain('Banded-assembly')
   })
 
   it('keeps an unassigned branch in the cable schedule until zones balance', () => {

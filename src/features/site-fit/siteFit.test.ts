@@ -32,6 +32,27 @@ describe('site fit planning', () => {
     expect(withoutNeutral.totalCablePieces).toBe(withoutNeutral.cableRunsPerPhase * 4 * 2)
   })
 
+  it('uses one banded assembly per 50-foot section at 200 A or below', () => {
+    const result = calculateSiteFit({
+      ...DEFAULT_SITE_FIT_INPUTS,
+      requestedPowerKw: 100,
+      sourceVoltage: 480,
+      loadVoltage: 480,
+      powerFactor: 0.8,
+      longestRouteFt: 101,
+    })
+
+    expect(result.ampsPerPhase).toBeLessThanOrEqual(200)
+    expect(result.cableMethod).toBe('banded-assembly')
+    expect(result.routeSections).toBe(3)
+    expect(result.totalCablePieces).toBe(3)
+  })
+
+  it('does not add an unsized fuel tank to the generic site-fit package', () => {
+    const result = calculateSiteFit(DEFAULT_SITE_FIT_INPUTS)
+    expect(result.equipment.some((item) => item.kind === 'fuel')).toBe(false)
+  })
+
   it('flags large low-voltage high-current plans', () => {
     const result = calculateSiteFit({ ...DEFAULT_SITE_FIT_INPUTS, requestedPowerKw: 1500, sourceVoltage: 480 })
     expect(result.ampsPerPhase).toBeGreaterThan(2200)

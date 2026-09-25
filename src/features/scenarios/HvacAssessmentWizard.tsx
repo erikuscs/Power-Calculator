@@ -480,7 +480,7 @@ export default function HvacAssessmentWizard() {
                         {fmt(coolingResults.tonsWithMargin)} tons
                       </td>
                       <td className="text-right">
-                        {fmtInt(coolingResults.totalBtu)}
+                        {fmtInt(coolingResults.totalBtu * 1.15)}
                       </td>
                     </tr>
                     {chillerResults && (

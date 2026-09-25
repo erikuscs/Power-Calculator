@@ -47,6 +47,8 @@ export function describeChiller(inputs: ChillerInputs, results: ChillerResults) 
 export interface CoolingInputs {
   loadKw: number
   sqFt: number
+  /** Optional total enclosure surface area from width, height, and depth. */
+  envelopeAreaSqFt?: number
   ambientTemp: number
   targetTemp: number
   occupants: number
@@ -68,12 +70,13 @@ export interface CoolingResults {
 }
 
 export function calculateCooling(inputs: CoolingInputs): CoolingResults | null {
-  const { loadKw, sqFt, ambientTemp, targetTemp, occupants, structureMultiplier, relativeHumidity } = inputs
-  if (loadKw <= 0) return null
+  const { loadKw, sqFt, envelopeAreaSqFt, ambientTemp, targetTemp, occupants, structureMultiplier, relativeHumidity } = inputs
+  if (loadKw < 0 || sqFt < 0 || (envelopeAreaSqFt ?? 0) < 0 || occupants < 0) return null
 
   const equipmentBtu = loadKw * 3412.14
   const deltaT = Math.max(0, ambientTemp - targetTemp)
-  const envelopeBtu = sqFt > 0 ? sqFt * deltaT * 0.5 * structureMultiplier : 0
+  const envelopeBasisSqFt = envelopeAreaSqFt ?? sqFt
+  const envelopeBtu = envelopeBasisSqFt > 0 ? envelopeBasisSqFt * deltaT * 0.5 * structureMultiplier : 0
   const btuPerPerson = inputs.occupantBtuPerPerson ?? 450
   const occupantBtu = occupants * btuPerPerson
   const sensibleBtu = equipmentBtu + envelopeBtu + occupantBtu
@@ -89,6 +92,7 @@ export function calculateCooling(inputs: CoolingInputs): CoolingResults | null {
   }
 
   const totalBtu = sensibleBtu + latentBtu
+  if (totalBtu <= 0) return null
   const tons = totalBtu / 12000
   const tonsWithMargin = tons * 1.15
 
@@ -116,12 +120,13 @@ export function describeCooling(inputs: CoolingInputs, results: CoolingResults) 
       result: `${results.equipmentBtu.toLocaleString()} BTU/hr`,
     },
   ]
-  if (inputs.sqFt > 0) {
+  const envelopeBasisSqFt = inputs.envelopeAreaSqFt ?? inputs.sqFt
+  if (envelopeBasisSqFt > 0) {
     const deltaT = Math.max(0, inputs.ambientTemp - inputs.targetTemp)
     steps.push({
       label: 'Envelope Heat Gain (BTU/hr)',
-      formula: 'Envelope BTU = Sq Ft × ΔT × 0.5 × Structure Multiplier',
-      substituted: `${inputs.sqFt} × ${deltaT} × 0.5 × ${inputs.structureMultiplier}`,
+      formula: `Envelope BTU = ${inputs.envelopeAreaSqFt !== undefined ? 'Roof + Exterior Wall Area' : 'Floor Area'} × ΔT × 0.5 × Structure Multiplier`,
+      substituted: `${envelopeBasisSqFt} × ${deltaT} × 0.5 × ${inputs.structureMultiplier}`,
       result: `${results.envelopeBtu.toLocaleString()} BTU/hr`,
     })
   }
@@ -189,14 +194,21 @@ export interface AirsideTonnageResults {
 
 export function calculateAirsideTonnage(inputs: AirsideTonnageInputs): AirsideTonnageResults | null {
   const { cfm, inletDryBulb, inletWetBulb, outletDryBulb, outletWetBulb } = inputs
-  if (cfm <= 0) return null
+  if (
+    cfm <= 0
+    || inletWetBulb > inletDryBulb
+    || outletWetBulb > outletDryBulb
+    || inletDryBulb <= outletDryBulb
+  ) return null
 
   const inletEnthalpy = estimateEnthalpy(inletDryBulb, inletWetBulb)
   const outletEnthalpy = estimateEnthalpy(outletDryBulb, outletWetBulb)
   const totalCoolingBtu = 4.5 * cfm * (inletEnthalpy - outletEnthalpy)
+  if (inletEnthalpy <= outletEnthalpy || totalCoolingBtu <= 0) return null
   const tonnage = totalCoolingBtu / 12000
   const sensibleCoolingBtu = 1.08 * cfm * (inletDryBulb - outletDryBulb)
   const latentCoolingBtu = totalCoolingBtu - sensibleCoolingBtu
+  if (sensibleCoolingBtu < 0 || latentCoolingBtu < 0) return null
 
   return { inletEnthalpy, outletEnthalpy, totalCoolingBtu, tonnage, sensibleCoolingBtu, latentCoolingBtu }
 }

@@ -51,7 +51,7 @@ export default function EstimatePage() {
       quantity: 1,
       rate: 0,
       periods: 1,
-      rateUnit: 'day',
+      rateUnit: '28-day cycle',
     }],
   }))
 
@@ -152,7 +152,7 @@ export default function EstimatePage() {
                 <InputField label="Quantity" value={line.quantity} onChange={(value) => updateLine(line.id, 'quantity', numeric(value))} min={0} required />
                 <InputField label="Rate" unit="$" value={line.rate} onChange={(value) => updateLine(line.id, 'rate', numeric(value))} min={0} />
                 <InputField label="Periods" value={line.periods} onChange={(value) => updateLine(line.id, 'periods', numeric(value))} min={0} required />
-                <SelectField label="Rate Unit" value={line.rateUnit} onChange={(value) => updateLine(line.id, 'rateUnit', value)} options={['each', 'day', 'week', '28-day cycle', 'hour', 'gallon'].map((value) => ({ value, label: value }))} />
+                <SelectField label="Rate Unit" value={line.rateUnit} onChange={(value) => updateLine(line.id, 'rateUnit', value)} options={['28-day cycle', 'each', 'hour', 'gallon'].map((value) => ({ value, label: value }))} />
                 <div className="rounded-lg border border-sg-600/40 p-3"><div className="text-xs uppercase tracking-wider text-text-dim">Extended</div><div className="mt-2 text-lg font-bold text-text">{money(line.quantity * line.periods * line.rate)}</div></div>
               </div>
             </div>

@@ -48,6 +48,7 @@ export default function CoolingPage() {
   const depthFt = Math.max(0, parseFloat(facilityDepth) || 0)
   const facilityVolumeCuFt = widthFt * heightFt * depthFt
   const facilityFootprintSqFt = widthFt * depthFt
+  const facilityEnvelopeSqFt = (widthFt * depthFt) + (2 * widthFt * heightFt) + (2 * depthFt * heightFt)
   const calculatedSqFt = facilitySizeMode === 'dimensions'
     ? facilityFootprintSqFt
     : Math.max(0, parseFloat(sqFt) || 0)
@@ -55,6 +56,7 @@ export default function CoolingPage() {
   const inputs: CoolingInputs = {
     loadKw: parseFloat(loadKw) || 0,
     sqFt: calculatedSqFt,
+    envelopeAreaSqFt: facilitySizeMode === 'dimensions' ? facilityEnvelopeSqFt : undefined,
     ambientTemp: parseFloat(ambientTemp) || 95,
     targetTemp: parseFloat(targetTemp) || 72,
     occupants: parseInt(occupants) || 0,
@@ -85,7 +87,7 @@ export default function CoolingPage() {
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField label="Equipment Load" unit="kW" value={loadKw} onChange={setLoadKw} required tooltip="Total electrical load generating heat" />
+          <InputField label="Equipment Load" unit="kW" value={loadKw} onChange={setLoadKw} min={0} tooltip="Total electrical load generating heat. Enter 0 when sizing an unpowered enclosure from envelope, occupants, and humidity." />
           <div className="sm:col-span-2">
             <RadioGroup
               label="Facility Size Input"
@@ -110,7 +112,7 @@ export default function CoolingPage() {
                 <span className="font-semibold text-text">{fmt(facilityVolumeCuFt, 0)} cu ft</span>
                 {' '}facility volume ({fmt(widthFt, 1)} × {fmt(heightFt, 1)} × {fmt(depthFt, 1)} ft)
                 <span className="mt-1 block text-xs text-text-dim">
-                  {fmt(facilityFootprintSqFt, 0)} sq ft footprint is used for the envelope heat-gain estimate.
+                  {fmt(facilityEnvelopeSqFt, 0)} sq ft roof + exterior wall area is used for the envelope heat-gain estimate; floor/ground heat transfer is not included.
                 </span>
               </div>
             </div>
@@ -212,6 +214,7 @@ export default function CoolingPage() {
                           { label: 'Facility Dimensions', value: `${facilityWidth} × ${facilityHeight} × ${facilityDepth} ft (W × H × D)` },
                           { label: 'Facility Volume', value: `${fmt(facilityVolumeCuFt, 0)} cu ft` },
                           { label: 'Facility Footprint', value: `${fmt(facilityFootprintSqFt, 0)} sq ft` },
+                          { label: 'Roof + Exterior Wall Area', value: `${fmt(facilityEnvelopeSqFt, 0)} sq ft (floor excluded)` },
                         ]
                       : [{ label: 'Facility Size', value: `${sqFt} sq ft` }]),
                     { label: 'Ambient Temperature', value: `${ambientTemp} °F` },

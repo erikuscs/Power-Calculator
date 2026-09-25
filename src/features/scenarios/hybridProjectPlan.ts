@@ -18,6 +18,7 @@ export interface HybridCableRow {
   pieces: number | null
   pieceRange: [number, number] | null
   neutral: 'carried' | 'not_carried' | 'review'
+  cableMethod: 'banded-assembly' | 'parallel-4/0'
 }
 
 export interface HybridLayoutItem {
@@ -70,13 +71,18 @@ function cableRow(
   phase: 'single' | 'three' = 'three',
 ): HybridCableRow {
   const ampsPerPhase = loadKw > 0 ? (loadKw * 1000) / ((phase === 'single' ? 1 : Math.sqrt(3)) * voltage * powerFactor) : 0
-  const runsPerPhase = loadKw > 0 ? Math.max(1, Math.ceil(Math.round(ampsPerPhase) / 400)) : 0
+  const cableMethod = ampsPerPhase > 0 && ampsPerPhase <= 200 ? 'banded-assembly' : 'parallel-4/0'
+  const runsPerPhase = loadKw > 0 ? (cableMethod === 'banded-assembly' ? 1 : Math.max(1, Math.ceil(Math.round(ampsPerPhase) / 400))) : 0
   const basePieces = runsPerPhase * routeSections
   const conductorCount = phase === 'single'
     ? (neutral === 'not_carried' ? 3 : 4)
     : (neutral === 'not_carried' ? 4 : 5)
-  const pieces = neutral === 'review' ? null : basePieces * conductorCount
-  const pieceRange = neutral === 'review'
+  const pieces = cableMethod === 'banded-assembly'
+    ? routeSections
+    : neutral === 'review' ? null : basePieces * conductorCount
+  const pieceRange = cableMethod === 'banded-assembly'
+    ? null
+    : neutral === 'review'
     ? phase === 'single'
       ? [basePieces * 3, basePieces * 4] as [number, number]
       : [basePieces * 4, basePieces * 5] as [number, number]
@@ -92,6 +98,7 @@ function cableRow(
     pieces,
     pieceRange,
     neutral: neutral === 'not_carried' ? 'not_carried' : neutral === 'review' ? 'review' : 'carried',
+    cableMethod,
   }
 }
 
@@ -150,6 +157,7 @@ export function buildHybridProjectPlan(
   const bessFleet = BESS_FLEET.find((unit) => unit.kw === results.selectedBessUnitSize) ?? BESS_FLEET[BESS_FLEET.length - 1]
   const genSize = dimensions(generatorFleet.footprintSqFt, 18, 8)
   const bessSize = dimensions(bessFleet.footprintSqFt, 12, 7)
+  const ampFirst = inputs.peakAmps !== undefined || inputs.continuousAmps !== undefined
   const rawEquipment: Omit<HybridLayoutItem, 'xFt' | 'yFt'>[] = [
     ...Array.from({ length: results.genUnits }, (_, index) => ({
       id: `GEN-${index + 1}`,
@@ -170,7 +178,9 @@ export function buildHybridProjectPlan(
     { id: 'EMS-1', label: 'EMS / paralleling controls', detail: 'Dispatch and source control', kind: 'control' as const, lengthFt: 12, widthFt: 8, heightFt: 8 },
     { id: 'SWGR-1', label: 'Main switchgear / bus', detail: `${inputs.siteVoltage} V protected bus`, kind: 'switchgear' as const, lengthFt: 24, widthFt: 8, heightFt: 9 },
     ...(inputs.siteVoltage !== loadVoltage ? [{ id: 'XFMR-1', label: 'Transformer bank', detail: `${inputs.siteVoltage} V to ${loadVoltage} V`, kind: 'transformer' as const, lengthFt: 16, widthFt: 10, heightFt: 11 }] : []),
-    { id: 'FUEL-1', label: 'Fuel and service zone', detail: 'Tank size and setbacks field verify', kind: 'fuel' as const, lengthFt: 30, widthFt: 12, heightFt: 8 },
+    ...(!ampFirst && results.hybridFuelTotal > 0
+      ? [{ id: 'FUEL-1', label: 'Fuel and service zone', detail: 'Tank size and setbacks field verify', kind: 'fuel' as const, lengthFt: 30, widthFt: 12, heightFt: 8 }]
+      : []),
   ]
 
   const siteLengthFt = Math.max(40, inputs.siteLengthFt ?? 160)
@@ -195,9 +205,14 @@ export function buildHybridProjectPlan(
   })
   const equipmentEnvelopeSqFt = rawEquipment.reduce((sum, item) => sum + (item.lengthFt + 10) * (item.widthFt + 10), 0)
 
-  const ampFirst = inputs.peakAmps !== undefined || inputs.continuousAmps !== undefined
   const projectDays = ampFirst ? 28 : Math.max(1, inputs.projectDurationDays)
   const fuelGallons = results.hybridFuelPerDay * projectDays
+  const cableMethods = new Set(cableSchedule.map((row) => row.cableMethod))
+  const cableDescription = cableMethods.size > 1
+    ? 'Mixed banded-assembly and parallel 4/0 planning cable schedule'
+    : cableMethods.has('banded-assembly')
+      ? 'Banded-assembly planning cable schedule'
+      : 'Parallel 4/0 planning cable schedule'
   const generatorRental = rentalDisplay(projectDays, inputs.genRentalPerDay, inputs.genRentalRate, inputs.genRentalRatePeriod)
   const bessRental = rentalDisplay(projectDays, inputs.bessRentalPerDay, inputs.bessRentalRate, inputs.bessRentalRatePeriod)
   const quoteItems: HybridQuoteItem[] = ampFirst
@@ -210,7 +225,7 @@ export function buildHybridProjectPlan(
         { id: 'bess-rental', category: 'equipment', description: `${bessFleet.label} rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.bessUnits, ...bessRental, total: results.bessUnits * inputs.bessRentalPerDay * projectDays, confirmation: inputs.bessRentalPerDay > 0 ? 'entered_rate' : 'vendor_required' },
         { id: 'diesel-fuel', category: 'fuel', description: 'Estimated diesel consumption', modelSku: 'FUEL-ALLOWANCE', quantity: fuelGallons, rate: inputs.fuelCostPerGallon, periods: 1, rateUnit: 'gallon', total: fuelGallons * inputs.fuelCostPerGallon, confirmation: 'entered_rate' },
         { id: 'distribution', category: 'accessory', description: 'ATS/paralleling controls, switchgear, transformer and protection package', modelSku: 'VENDOR-SELECTION-REQUIRED', quantity: 1, rate: 0, periods: 1, rateUnit: 'lot', total: 0, confirmation: 'vendor_required' },
-        { id: 'cable', category: 'accessory', description: `4/0 planning cable schedule — ${totalCablePieces ?? `${totalCablePieceRange?.[0]}-${totalCablePieceRange?.[1]}`} pieces`, modelSku: 'CABLE-GAUGE-VENDOR-VERIFY', quantity: totalCablePieces ?? totalCablePieceRange?.[1] ?? 0, rate: 0, periods: 1, rateUnit: '50-ft piece', total: 0, confirmation: 'vendor_required' },
+        { id: 'cable', category: 'accessory', description: `${cableDescription} — ${totalCablePieces ?? `${totalCablePieceRange?.[0]}-${totalCablePieceRange?.[1]}`} pieces`, modelSku: 'CABLE-GAUGE-VENDOR-VERIFY', quantity: totalCablePieces ?? totalCablePieceRange?.[1] ?? 0, rate: 0, periods: 1, rateUnit: '50-ft piece', total: 0, confirmation: 'vendor_required' },
       ]
 
   return {

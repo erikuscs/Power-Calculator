@@ -19,9 +19,9 @@ export function BessRuntimePdfDoc({ inputs, results, clientName, projectName }: 
           headers={['Parameter', 'Value']}
           rows={[
             ['Battery Capacity', `${fv(inputs.kWh)} kWh`],
-            ['System Voltage', `${fv(inputs.voltage, 0)} V`],
-            ['Load Current', `${fv(inputs.amps, 0)} A`],
-            ['Power Factor', `${inputs.powerFactor}`],
+            ['Continuous Load', `${fv(inputs.loadKw)} kW`],
+            ['Usable Energy Window', `${fv(inputs.usablePercent)}%`],
+            ['Delivery Efficiency', `${fv(inputs.efficiencyPercent)}%`],
           ]}
         />
       </PdfSection>
@@ -30,7 +30,8 @@ export function BessRuntimePdfDoc({ inputs, results, clientName, projectName }: 
         <PdfTable
           headers={['Metric', 'Value']}
           rows={[
-            ['Amp-Hours', `${fv(results.ampHours)} Ah`],
+            ['Usable Energy', `${fv(results.usableEnergyKwh)} kWh`],
+            ['Delivered Energy', `${fv(results.deliveredEnergyKwh)} kWh`],
             ['Estimated Runtime', `${fv(results.runtime)} hrs`],
           ]}
         />
@@ -38,16 +39,16 @@ export function BessRuntimePdfDoc({ inputs, results, clientName, projectName }: 
 
       <PdfSection title="Formula">
         <Text style={{ fontSize: 9, color: '#C5C6C7', marginBottom: 4 }}>
-          AmpHours = (kWh x 1000) / Voltage
+          UsableEnergy = NameplateEnergy x UsablePercent
         </Text>
         <Text style={{ fontSize: 9, color: '#F9FAFB', marginBottom: 8 }}>
-          = ({inputs.kWh} x 1000) / {inputs.voltage} = {fv(results.ampHours)} Ah
+          = {inputs.kWh} x ({inputs.usablePercent} / 100) = {fv(results.usableEnergyKwh)} kWh
         </Text>
         <Text style={{ fontSize: 9, color: '#C5C6C7', marginBottom: 4 }}>
-          Runtime = (AmpHours / Amps) x PowerFactor
+          Runtime = (UsableEnergy x DeliveryEfficiency) / ContinuousLoad
         </Text>
         <Text style={{ fontSize: 9, color: '#F9FAFB' }}>
-          = ({fv(results.ampHours)} / {inputs.amps}) x {inputs.powerFactor} = {fv(results.runtime)} hrs
+          = ({fv(results.usableEnergyKwh)} x {inputs.efficiencyPercent / 100}) / {inputs.loadKw} = {fv(results.runtime)} hrs
         </Text>
       </PdfSection>
     </PdfDocument>

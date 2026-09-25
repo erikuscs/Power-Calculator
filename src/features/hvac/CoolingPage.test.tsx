@@ -31,7 +31,7 @@ describe('CoolingPage facility dimensions', () => {
     expect(screen.queryByLabelText('Width')).not.toBeInTheDocument()
   })
 
-  it('derives cubic feet and the calculation footprint from width, height, and depth', () => {
+  it('derives cubic feet and enclosure surface area from width, height, and depth', () => {
     render(
       <MemoryRouter>
         <CoolingPage />
@@ -44,8 +44,16 @@ describe('CoolingPage facility dimensions', () => {
     fireEvent.change(screen.getByLabelText('Depth'), { target: { value: '40' } })
 
     expect(screen.getByText('14,400 cu ft')).toBeInTheDocument()
-    expect(screen.getByText(/1,200 sq ft footprint is used/i)).toBeInTheDocument()
-    expect(screen.getByText(/1200 × 23 × 0.5 × 1/)).toBeInTheDocument()
+    expect(screen.getByText(/2,880 sq ft roof \+ exterior wall area is used/i)).toBeInTheDocument()
+    expect(screen.getByText(/2880 × 23 × 0.5 × 1/)).toBeInTheDocument()
+  })
+
+  it('changes the result when only height changes', () => {
+    render(<MemoryRouter><CoolingPage /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Dimensions (cu ft)' }))
+    const result = screen.getByText('Envelope Heat Gain').parentElement?.textContent
+    fireEvent.change(screen.getByLabelText('Height'), { target: { value: '30' } })
+    expect(screen.getByText('Envelope Heat Gain').parentElement?.textContent).not.toBe(result)
   })
 
   it('blocks results and export when relative humidity is outside the physical range', () => {
