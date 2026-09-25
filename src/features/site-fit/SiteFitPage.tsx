@@ -380,7 +380,9 @@ export default function SiteFitPage() {
                 </div>
                 <div>
                   <div className="font-bold text-text">Cable schedule</div>
-                  <p className="mt-1">{inputs.packageOverride ? `The synced source + branch schedule requires ${cableTotal}. The ${Math.round(result.ampsPerPhase).toLocaleString()} A/phase main source circuit uses ${result.cableRunsPerPhase} run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase across ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}.` : `${Math.round(result.ampsPerPhase).toLocaleString()} A/phase requires ${result.cableRunsPerPhase} planning run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase. For ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}, plan ${cableTotal}.`}</p>
+                  <p className="mt-1">{result.cableMethod === 'banded-assembly' && !inputs.packageOverride
+                    ? `${Math.round(result.ampsPerPhase).toLocaleString()} A/phase is at or below the 200 A planning threshold. Use ${result.routeSections} banded 50 ft cable assembl${result.routeSections === 1 ? 'y' : 'ies'} (${cableTotal}), with the neutral and grounding configuration confirmed before release.`
+                    : inputs.packageOverride ? `The synced source + branch schedule requires ${cableTotal}. The ${Math.round(result.ampsPerPhase).toLocaleString()} A/phase main source circuit uses ${result.cableRunsPerPhase} run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase across ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}.` : `${Math.round(result.ampsPerPhase).toLocaleString()} A/phase requires ${result.cableRunsPerPhase} planning 4/0 run${result.cableRunsPerPhase === 1 ? '' : 's'}/phase. For ${result.routeSections} × 50 ft route section${result.routeSections === 1 ? '' : 's'}, plan ${cableTotal}.`}</p>
                 </div>
               </div>
             </Card>

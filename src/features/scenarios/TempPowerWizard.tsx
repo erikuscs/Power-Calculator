@@ -65,8 +65,8 @@ export default function TempPowerWizard() {
   const routeKey = '/scenarios/temp-power'
   const [mode, setMode] = usePersistedState<'single' | 'basecamp'>(routeKey, 'mode', 'basecamp')
   const [loadKw, setLoadKw] = usePersistedState(routeKey, 'loadKw', '0')
-  const [rentalPeriod, setRentalPeriod] = usePersistedState<RentalPeriod>(routeKey, 'rentalPeriod', 'monthly')
-  const [rentalPeriodCount, setRentalPeriodCount] = usePersistedState(routeKey, 'rentalPeriodCount', '1')
+  const [rentalPeriod, setRentalPeriod] = usePersistedState<RentalPeriod>(routeKey, 'rentalPeriodV2', 'monthly')
+  const [rentalPeriodCount, setRentalPeriodCount] = usePersistedState(routeKey, 'rentalPeriodCountV2', '1')
   const [runtimeSchedule, setRuntimeSchedule] = usePersistedState<RuntimeSchedule>(routeKey, 'runtimeSchedule', 'continuous_24_7')
   const [includeCooling, setIncludeCooling] = usePersistedState(routeKey, 'includeCooling', false)
   const [coolingDetailsOpen, setCoolingDetailsOpen] = useState(false)
@@ -485,15 +485,13 @@ export default function TempPowerWizard() {
             value={rentalPeriod}
             onChange={(value) => { markAsCustomPlan(); setRentalPeriod(value as RentalPeriod) }}
             options={[
-              { value: 'daily', label: 'Daily' },
-              { value: 'weekly', label: 'Weekly' },
               { value: 'monthly', label: 'Monthly (28-day cycle)' },
             ]}
             required
           />
           <InputField
             label="Number of Rental Periods"
-            unit={rentalPeriod === 'daily' ? 'days' : rentalPeriod === 'weekly' ? 'weeks' : '28-day cycles'}
+            unit="28-day cycles"
             value={rentalPeriodCount}
             onChange={(value) => { markAsCustomPlan(); setRentalPeriodCount(value) }}
             min={1}
@@ -550,7 +548,7 @@ export default function TempPowerWizard() {
         <Card>
           <CardHeader
             title="Facility List"
-            subtitle="Start with a common trailer model or add another facility. Every auto-filled load remains editable."
+            subtitle="Start with a common trailer model or add another facility. Every selected trailer starts at 0 kW until you enter a verified planned load."
           />
 
           <div className="mb-5 grid grid-cols-1 gap-4 border-y border-sg-600/40 py-5 lg:grid-cols-2">

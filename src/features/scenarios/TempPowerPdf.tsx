@@ -86,7 +86,7 @@ export function TempPowerPdfDoc({
   const openChecks = riskReview?.rfis.length ?? 0
   const scheduleLabel = runtimeScheduleLabel(inputs.runtimeSchedule)
   const rentalTerm = rentalPeriodLabel(
-    inputs.rentalPeriod ?? 'daily',
+    inputs.rentalPeriod ?? 'monthly',
     inputs.rentalPeriodCount ?? Math.max(1, results.rentalDays),
   )
   const continuityIntent = inputs.continuityTarget === 'n_plus_1'

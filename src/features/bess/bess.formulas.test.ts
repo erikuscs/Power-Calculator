@@ -2,24 +2,23 @@ import { describe, it, expect } from 'vitest'
 import { calculateRuntime, calculateSizing, calculateROI } from './bess.formulas'
 
 describe('calculateRuntime', () => {
-  it('computes amp-hours and runtime with PF 0.8', () => {
-    const result = calculateRuntime({ kWh: 60, voltage: 48, amps: 50, powerFactor: 0.8 })
-    expect(result.ampHours).toBe(1250)
-    expect(result.runtime).toBeCloseTo(20.0, 1)
+  it('computes runtime from the usable window and delivery efficiency', () => {
+    const result = calculateRuntime({ kWh: 60, loadKw: 10, usablePercent: 80, efficiencyPercent: 95 })
+    expect(result.usableEnergyKwh).toBe(48)
+    expect(result.deliveredEnergyKwh).toBeCloseTo(45.6, 2)
+    expect(result.runtime).toBeCloseTo(4.56, 2)
   })
 
-  it('computes runtime with PF 1.0', () => {
-    const result = calculateRuntime({ kWh: 60, voltage: 48, amps: 50, powerFactor: 1.0 })
-    expect(result.ampHours).toBe(1250)
+  it('uses the full nameplate energy only when both factors are 100%', () => {
+    const result = calculateRuntime({ kWh: 60, loadKw: 2.4, usablePercent: 100, efficiencyPercent: 100 })
+    expect(result.deliveredEnergyKwh).toBe(60)
     expect(result.runtime).toBeCloseTo(25.0, 1)
   })
 
-  it('handles high voltage system', () => {
-    const result = calculateRuntime({ kWh: 100, voltage: 480, amps: 20, powerFactor: 0.8 })
-    // AmpHours = (100 * 1000) / 480 = 208.333...
-    expect(result.ampHours).toBeCloseTo(208.333, 2)
-    // Runtime = (208.333 / 20) * 0.8 = 8.333...
-    expect(result.runtime).toBeCloseTo(8.333, 2)
+  it('does not mix DC bus voltage or AC power factor into an energy/runtime calculation', () => {
+    const result = calculateRuntime({ kWh: 100, loadKw: 20, usablePercent: 80, efficiencyPercent: 90 })
+    expect(result.deliveredEnergyKwh).toBe(72)
+    expect(result.runtime).toBeCloseTo(3.6, 2)
   })
 })
 
@@ -32,7 +31,7 @@ describe('calculateSizing', () => {
       unitCapacity: 500,
       lossesPercent: 5,
     })
-    expect(result.totalEnergy).toBe(1000)
+    expect(result.totalEnergy).toBe(800)
     expect(result.usablePerUnit).toBe(380)
     expect(result.unitsRequired).toBe(3)
   })
@@ -45,12 +44,12 @@ describe('calculateSizing', () => {
       unitCapacity: 150,
       lossesPercent: 5,
     })
-    // TotalEnergy = (50 * 4) / 0.8 = 250
-    expect(result.totalEnergy).toBe(250)
+    // TotalEnergy = 50 * 4 = 200. DoD belongs only in usable unit energy.
+    expect(result.totalEnergy).toBe(200)
     // UsablePerUnit = 150 * 0.8 * 0.95 = 114
     expect(result.usablePerUnit).toBe(114)
-    // Units = ceil(250 / 114) = ceil(2.193...) = 3
-    expect(result.unitsRequired).toBe(3)
+    // Units = ceil(200 / 114) = ceil(1.754...) = 2
+    expect(result.unitsRequired).toBe(2)
   })
 
   it('handles 100% DoD and 0% losses', () => {
@@ -84,16 +83,15 @@ describe('calculateROI', () => {
 
   it('computes daily arbitrage correctly', () => {
     const result = calculateROI(baseInputs)
-    // DailyArbitrage = 1000 * (0.25 - 0.08) * 0.85 * 1 = 144.5
-    expect(result.dailyArbitrage).toBeCloseTo(144.5, 2)
+    // 1,000 kWh is delivered; charging requires 1,000 / 0.85 kWh.
+    expect(result.dailyArbitrage).toBeCloseTo(155.882, 2)
   })
 
   it('computes annual revenue including demand reduction', () => {
     const result = calculateROI(baseInputs)
-    // Annual arbitrage = 144.5 * 365 = 52,742.5
+    // Annual arbitrage = 155.882... * 365 = 56,897.06
     // Annual demand reduction = 200 * 15 * 12 = 36,000
-    // Total = 88,742.5
-    expect(result.annualRevenue).toBeCloseTo(88742.5, 1)
+    expect(result.annualRevenue).toBeCloseTo(92897.06, 1)
   })
 
   it('returns correct number of yearly data entries', () => {
@@ -105,16 +103,15 @@ describe('calculateROI', () => {
 
   it('applies degradation to yearly revenue', () => {
     const result = calculateROI(baseInputs)
-    // Year 1: annualRevenue * (1 - 0.02 * 1) = 88742.5 * 0.98 = 86967.65
-    expect(result.yearlyData[0].revenue).toBeCloseTo(86967.65, 0)
-    // Year 5: annualRevenue * (1 - 0.02 * 5) = 88742.5 * 0.90 = 79868.25
-    expect(result.yearlyData[4].revenue).toBeCloseTo(79868.25, 0)
+    expect(result.yearlyData[0].revenue).toBeCloseTo(result.annualRevenue, 2)
+    const annualArbitrage = result.dailyArbitrage * 365
+    const annualDemandReduction = 200 * 15 * 12
+    expect(result.yearlyData[4].revenue).toBeCloseTo(annualArbitrage * Math.pow(0.98, 4) + annualDemandReduction, 2)
   })
 
   it('computes simple payback', () => {
     const result = calculateROI(baseInputs)
-    // SimplePayback = 500000 / 88742.5 = 5.635...
-    expect(result.simplePayback).toBeCloseTo(5.635, 1)
+    expect(result.simplePayback).toBeCloseTo(500000 / result.annualRevenue, 2)
   })
 
   it('cumulative starts negative and grows', () => {
@@ -123,5 +120,13 @@ describe('calculateROI', () => {
     expect(result.yearlyData[0].cumulative).toBeLessThan(0)
     // Later years should be positive (payback ~ 5.6 years)
     expect(result.yearlyData[9].cumulative).toBeGreaterThan(0)
+  })
+
+  it('rejects invalid efficiency and financial bounds before calculating', () => {
+    expect(() => calculateROI({ ...baseInputs, roundTripEfficiency: 0 })).toThrow(/efficiency/i)
+    expect(() => calculateROI({ ...baseInputs, roundTripEfficiency: 1.2 })).toThrow(/efficiency/i)
+    expect(() => calculateROI({ ...baseInputs, cyclesPerDay: 0 })).toThrow(/cycles/i)
+    expect(() => calculateROI({ ...baseInputs, degradationRate: 1 })).toThrow(/degradation/i)
+    expect(() => calculateROI({ ...baseInputs, analysisPeriod: 0 })).toThrow(/analysis period/i)
   })
 })

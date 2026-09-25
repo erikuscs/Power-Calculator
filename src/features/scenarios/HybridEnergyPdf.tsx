@@ -135,7 +135,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
             ['Generator Units', `${results.genUnits} x ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`],
             ['Protected Customer Peak', `${fi(results.protectedPeakLoadKw)} kW`],
             ['Firm Generator Capacity', `${fi(results.generatorFirmCapacityKw)} kW`],
-            ['Energy in 80%-to-30% Dispatch Band', `${fi(results.bessEnergyKwh)} kWh`],
+            ['Energy in 80%-to-30% Dispatch Band', `${fi(results.bessEnergyKwh)} kWh (50% of selected nameplate energy)`],
             ['Generator Capacity', `${fi(results.genCapacityKw)} kW`],
             [`Peak Amps/Phase (3Φ ${inputs.siteVoltage}V)`, `${fi(results.peakAmpsPerPhase)} A${results.parallelRunsNeeded ? ' — PARALLEL RUNS NEEDED' : ''}`],
             [`Base Amps/Phase (3Φ ${inputs.siteVoltage}V)`, `${fi(results.baseAmpsPerPhase)} A`],
@@ -230,12 +230,12 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
 
       <PdfSection title="Source and Branch Cable Schedule">
         <PdfTable
-          headers={['Circuit', 'Load', 'A/Phase', 'Runs/Phase', '50-ft Pieces']}
+          headers={['Circuit', 'Load', 'A/Phase', 'Cable Method', '50-ft Pieces']}
           rows={projectPlan.cableSchedule.map((row) => [
             `${row.id} - ${row.circuit}`,
             `${fi(row.loadKw)} kW at ${row.voltage} V`,
             fi(row.ampsPerPhase),
-            `${row.runsPerPhase}`,
+            row.cableMethod === 'banded-assembly' ? 'Banded assembly' : `${row.runsPerPhase} parallel 4/0 run(s)/phase`,
             row.pieces === null ? `${row.pieceRange?.[0]}-${row.pieceRange?.[1]}` : `${row.pieces}`,
           ])}
         />

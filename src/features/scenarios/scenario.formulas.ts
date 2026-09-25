@@ -68,6 +68,14 @@ const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
   250: 518,
 }
 
+const BESS_UNIT_NAMEPLATE_KWH: Record<BessUnitSize, number> = {
+  5: 7,
+  24: 90,
+  30: 146.7,
+  75: 600,
+  250: 575,
+}
+
 const BESS_UNIT_CONTINUOUS_KW: Record<BessUnitSize, number> = {
   5: 4.8,
   24: 24,
@@ -609,7 +617,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const bessFirmCapacityKw = bessRequiredUnits * bessUnitContinuousKw
   // The operating SOC band is 80% down to the 30% generator-start threshold.
   // That 50% nameplate swing is the energy delivered during each BESS-only leg.
-  const bessEnergyKwh = bessRequiredUnits * bessUnitUsableKwh * 0.5
+  const bessEnergyKwh = bessRequiredUnits * BESS_UNIT_NAMEPLATE_KWH[bessUnitSize] * 0.5
 
   const genUnitSizeKw = selectedGenerator.kw
   const rechargeEfficiency = 0.9
@@ -696,7 +704,13 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 
   const co2AvoidedLbs = totalFuelReductionGal * CO2_LBS_PER_GALLON_DIESEL
   const co2AvoidedTons = co2AvoidedLbs / 2000
-  const coverage = buildHybridCoverage(inputs, {
+  const coverage = buildHybridCoverage({
+    baseLoadKw,
+    peakLoadKw,
+    bessUnitSize,
+    redundancy,
+    projectDurationDays,
+  }, {
     bessUnits,
     bessRequiredUnits,
     genUnits,
@@ -733,13 +747,19 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 }
 
 function buildHybridCoverage(
-  inputs: HybridWizardInputs,
+  inputs: {
+    baseLoadKw: number
+    peakLoadKw: number
+    bessUnitSize: BessUnitSize
+    redundancy: HybridWizardInputs['redundancy']
+    projectDurationDays: number
+  },
   sizing: { bessUnits: number; bessRequiredUnits: number; genUnits: number; genUnitSizeKw: number },
 ): HybridCoverageResults {
   const unitKwh = BESS_UNIT_ENERGY_KWH[inputs.bessUnitSize]
   const bessInstalledKw = sizing.bessUnits * BESS_UNIT_CONTINUOUS_KW[inputs.bessUnitSize]
   const bessInstalledKwh = sizing.bessUnits * unitKwh
-  const bessUsableKwh = sizing.bessRequiredUnits * unitKwh * 0.5
+  const bessUsableKwh = sizing.bessRequiredUnits * BESS_UNIT_NAMEPLATE_KWH[inputs.bessUnitSize] * 0.5
   const unavailableUnits = inputs.redundancy === '2n'
     ? sizing.genUnits / 2
     : inputs.redundancy === 'n1' || inputs.redundancy === 'field_verify' ? 1 : 0

@@ -2,6 +2,19 @@
 
 Status: `WEB/PWA RELEASE LIVE VERIFIED 2026-09-13`
 
+## Calculation and estimator correction candidate — 2026-09-25
+
+- BESS runtime now uses `delivered kWh / continuous kW`; DC bus current and AC power factor are no longer mixed into the energy calculation.
+- Multi-unit sizing applies depth of discharge and losses once, in usable energy per unit. ROI charging cost includes round-trip losses and degradation begins after Year 1.
+- The exact 2,000 A peak / 500 A continuous / 480 V three-phase worked case automatically selects 3 × 500 kW generators and 2 × 250 kW continuous BESS units. Its coverage calculation now follows the automatically selected BESS rather than the placeholder dropdown value.
+- The worked case exposes 575 kWh in the 80%-to-30% dispatch band (50% of two 575 kWh nameplates), about 1.73 hours at 332.6 kW continuous load, and about 3.76 hours of controlled recharge at 169.8 kW. It withholds fuel results because no operating duty cycle was entered.
+- Cooling dimensions use roof plus wall surface area, so width, height, and depth all affect envelope load. Equipment heat may be zero when envelope or occupant heat remains, and invalid psychrometric states are rejected.
+- Generic recommendations no longer invent a base-load split, a zero-delta BESS, or an unsized fuel tank. Large temporary-power plans use modular 500 kW generator plants; 200 A-and-below paths use banded assemblies, while higher-current paths retain parallel 4/0 planning.
+- Estimate and temporary-power inputs default to one 28-day rental cycle. The automatic amp-first hybrid PDF reports only that cycle, not daily usage.
+- Verification before independent review: 31 test files / 205 tests, TypeScript, lint, production PWA build, and the isolated browser smoke suite passed.
+- Three independent read-only rechecks found no remaining release blocker in the corrected calculations, persistence boundaries, cable logic, or public artifacts. The controlled two-page A3 example passed visual review with a legible one-line, explicit one-28-day-cycle basis, no invented trailer loads, and no generic fuel tank.
+- Approved example hashes: PDF `dda9c7ca2d49355b3e32f8fd4ae04a9dd1ea75db729e1c6843a2a2b93cd75e35`; PNG `55a3ad2622a59d3171b822b79bb010c5f44454ab8f8e2e6506bcd52dcf1babeb`.
+
 ## Required automated gates
 
 Run under Node 22:

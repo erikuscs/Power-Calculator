@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  cacheDir: process.env.VITE_CACHE_DIR,
   build: {
     sourcemap: false,
     minify: 'oxc',

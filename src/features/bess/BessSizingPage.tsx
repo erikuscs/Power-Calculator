@@ -137,7 +137,7 @@ export default function BessSizingPage() {
 
             <div className="mt-4 px-4 py-3 bg-sg-800 border border-sg-600 rounded-lg text-sm text-text-muted">
               <span className="text-accent-400 font-medium">Safety note:</span>{' '}
-              BESS sized at 120% with DoD &le; 80% to ensure adequate reserve capacity and battery longevity.
+              Depth of discharge and system losses are applied once to the selected unit capacity. Add project-specific reserve by increasing the required runtime; do not hide reserve inside the formula.
             </div>
           </>
         )}

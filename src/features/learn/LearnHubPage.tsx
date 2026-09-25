@@ -82,9 +82,9 @@ const workflowTutorials: WorkflowTutorial[] = [
   {
     title: 'Hybrid BESS + Generator Strategy',
     objective: 'Compare all-generator power with a battery-first hybrid sized from verified continuous BESS output.',
-    useWhen: 'Reducing generator oversizing, fuel use, emissions, noise, or low-load operation on variable-demand sites.',
-    example: 'Try an 800 kW peak, 400 kW base load, Atlas Copco ZBC 250-575 units rated at 250 kW continuous, and N+1 redundancy.',
-    outcome: 'BESS and generator quantities, capacity margin, fuel reduction, rental comparison, and system one-line.',
+    useWhen: 'Selecting a generator-plus-BESS package from a known peak, continuous load, voltage, and phase.',
+    example: 'Try the verified 2,000 A peak, 500 A continuous, 480 V three-phase worked example.',
+    outcome: 'Compatible BESS and generator quantities, continuous ratings, one 28-day equipment estimate, and system one-line.',
     to: '/scenarios/hybrid-energy',
     icon: Workflow,
     steps: [
@@ -93,7 +93,7 @@ const workflowTutorials: WorkflowTutorial[] = [
       'Think of peak kW like a speaker peak rating: it may absorb a short event, while continuous kW is the rating that can carry the job.',
       'A diesel engine may tolerate a brief red-zone overload. A BESS has no operator-usable red zone, so this estimate is governed by verified continuous kW.',
       'Leave motor-start, transformer, load-bank, and protection details for vendor/engineering verification rather than adding early-stage what-if equipment.',
-      'Review battery runtime, 30%-to-80% recharge operation, and fuel reduction or increase before exporting the report.',
+      'Enter one 28-day rate for each selected BESS and generator, then review the package and one-line before exporting the report.',
     ],
   },
   {

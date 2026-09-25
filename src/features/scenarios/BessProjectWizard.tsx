@@ -15,6 +15,7 @@ import {
   describeSizing,
   calculateROI,
   describeROI,
+  validateROIInputs,
   type SizingInputs,
   type ROIInputs,
 } from '../bess/bess.formulas'
@@ -70,22 +71,26 @@ export default function BessProjectWizard() {
 
   const sizingResults = useCalculator(sizingInputs, sizingCalc)
 
+  const parseNumeric = (value: string) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : Number.NaN
+  }
   const roiInputs: ROIInputs = {
     systemCost: parseFloat(systemCost) || 0,
     capacity: sizingResults ? sizingResults.totalEnergy : 0,
-    peakRate: parseFloat(peakRate) || 0,
-    offPeakRate: parseFloat(offPeakRate) || 0,
-    roundTripEfficiency: parseFloat(roundTripEfficiency) || 0.85,
-    cyclesPerDay: parseFloat(cyclesPerDay) || 1,
-    monthlyPeakReduction: parseFloat(monthlyPeakReduction) || 0,
-    demandChargeRate: parseFloat(demandChargeRate) || 0,
-    degradationRate: parseFloat(degradationRate) || 0.02,
-    discountRate: parseFloat(discountRate) || 0.08,
-    analysisPeriod: parseFloat(analysisPeriod) || 10,
+    peakRate: parseNumeric(peakRate),
+    offPeakRate: parseNumeric(offPeakRate),
+    roundTripEfficiency: parseNumeric(roundTripEfficiency),
+    cyclesPerDay: parseNumeric(cyclesPerDay),
+    monthlyPeakReduction: parseNumeric(monthlyPeakReduction),
+    demandChargeRate: parseNumeric(demandChargeRate),
+    degradationRate: parseNumeric(degradationRate),
+    discountRate: parseNumeric(discountRate),
+    analysisPeriod: parseNumeric(analysisPeriod),
   }
 
   const roiCalc = useCallback((inp: ROIInputs) => {
-    if (inp.systemCost <= 0 || inp.capacity <= 0) return null
+    if (validateROIInputs(inp)) return null
     return calculateROI(inp)
   }, [])
 

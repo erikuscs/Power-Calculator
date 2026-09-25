@@ -30,7 +30,7 @@ export default function Hybrid2000AmpExamplePage() {
             Construction base-camp hybrid sized from a 2,000 A peak and 500 A continuous request at 480 V, three-phase. Ten 240 V single-phase trailer connection points are shown without inventing unprovided trailer loads.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 print:hidden">
+        <div className="flex flex-wrap gap-2 print:hidden" data-artifact-actions>
           <a href="/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf" className="inline-flex items-center gap-2 rounded-lg border border-signal-blue/40 bg-signal-blue/10 px-4 py-2.5 text-sm font-bold text-signal-blue no-underline hover:bg-signal-blue/15">
             <Download size={16} /> Download Controlled PDF
           </a>
@@ -45,6 +45,7 @@ export default function Hybrid2000AmpExamplePage() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section className="min-w-0 space-y-4">
+          <div data-artifact-section="one-line">
           <Card className="overflow-hidden p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
               <div>
@@ -55,23 +56,27 @@ export default function Hybrid2000AmpExamplePage() {
             </div>
             <PrintableOneLine diagram={diagram} compact showNotes={false} />
           </Card>
+          </div>
 
+          <div data-artifact-section="site-layout">
           <Card className="overflow-hidden p-3">
             <HybridSiteLayout3D plan={plan} compact />
           </Card>
+          </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4" data-artifact-section="summary">
           <Card>
             <div className="mb-1 flex items-center gap-2">
               <Zap size={17} className="text-accent-400" />
               <h2 className="text-base font-bold text-text">Sizing Summary</h2>
             </div>
             <Metric label="Service basis" value="2,000 A" detail={`${HYBRID_2000A_SERVICE_KVA.toFixed(1)} kVA at 480 V, 3-phase`} />
-            <Metric label="Continuous basis" value={`${HYBRID_2000A_CONTINUOUS_AMPS} A / ${HYBRID_2000A_CONTINUOUS_KW.toFixed(1)} kW`} detail="0.80 generator rating basis" />
+            <Metric label="Continuous basis" value={`${HYBRID_2000A_CONTINUOUS_AMPS} A / ${HYBRID_2000A_CONTINUOUS_KW.toFixed(1)} kW`} detail="Derived using the entered 0.80 power factor" />
             <Metric label="Protected peak basis" value={`${HYBRID_2000A_PROTECTED_KW.toFixed(1)} kW`} detail="Generator and BESS ratings are not added as customer demand" />
             <Metric label="Generation" value={`${results.genUnits} × ${results.genUnitSizeKw} kW`} detail={`${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby · ${results.generatorFirmCapacityKw.toLocaleString()} kW firm`} />
             <Metric label="BESS" value={`${results.bessUnits} × ${results.bessUnitContinuousKw} kW`} detail={`${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby · ${results.bessFirmCapacityKw.toLocaleString()} kW firm continuous`} />
+            <Metric label="Rental estimate basis" value="One 28-day cycle" detail="Enter one 28-day rate for each selected BESS and generator in the Hybrid Selector; no daily rental rate is inferred" />
             <Metric label="Source conductors" value="5 × 400 A runs/phase" detail="Main source schedule only; branch conductors remain withheld until trailer nameplates and locations are provided" />
             <Metric label="DEIF recharge ceiling" value={`${rechargeHeadroom.toFixed(1)} kW`} detail="Available while the generator plant carries the full requested peak; staged charging only" />
           </Card>

@@ -107,7 +107,7 @@ export function TempPowerReviewPlan({
   const filename = reportFilename(projectName)
   const siteVoltage = inputs.siteVoltage ?? 480
   const loadVoltage = inputs.loadVoltage ?? siteVoltage
-  const rentalTerm = rentalPeriodLabel(inputs.rentalPeriod ?? 'daily', inputs.rentalPeriodCount ?? Math.max(1, results.rentalDays))
+  const rentalTerm = rentalPeriodLabel(inputs.rentalPeriod ?? 'monthly', inputs.rentalPeriodCount ?? Math.max(1, Math.ceil(results.rentalDays / 28)))
   const scheduleLabel = runtimeScheduleLabel(inputs.runtimeSchedule)
   const includesRv = inputs.facilities.some((facility) => facility.type === 'rv')
   const continuityIntent = inputs.continuityTarget === 'n_plus_1'

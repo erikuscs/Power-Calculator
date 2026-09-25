@@ -29,6 +29,24 @@ describe('normalizeRateToDaily', () => {
 })
 
 describe('recommendEquipment', () => {
+  it('withholds a hybrid package when continuous load was not entered', () => {
+    const recommendation = recommendEquipment({ peakKw: 500, runtimeHours: 8 })
+
+    expect(recommendation).not.toBeNull()
+    expect(recommendation!.hybrid.label).toBe('Hybrid evaluation withheld')
+    expect(recommendation!.hybrid.units).toContain('Enter measured continuous/base load')
+    expect(recommendation!.preferred).not.toBe('hybrid')
+  })
+
+  it('does not add a BESS when peak and continuous load are equal', () => {
+    const recommendation = recommendEquipment({ peakKw: 500, baseKw: 500, runtimeHours: 8 })
+
+    expect(recommendation).not.toBeNull()
+    expect(recommendation!.hybrid.label).toBe('Hybrid evaluation withheld')
+    expect(recommendation!.hybrid.units).toBe('Peak demand must exceed continuous/base load')
+    expect(recommendation!.hybrid.energyKwh).toBeUndefined()
+  })
+
   it('sizes BESS alternatives to the autonomy window instead of the full project duration', () => {
     const recommendation = recommendEquipment({
       peakKw: 2000,
