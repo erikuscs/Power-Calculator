@@ -68,7 +68,7 @@ describe('EMaaS report generation smoke tests', () => {
       peakLoadKw: 4500,
       baseLoadKw: 50,
       loadSource: 'measured',
-      bessUnitSize: 600,
+      bessUnitSize: 250,
       peakHoursPerDay: 12,
       projectDurationDays: 5,
       redundancy: 'n1',

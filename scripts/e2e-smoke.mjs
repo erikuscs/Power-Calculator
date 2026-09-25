@@ -99,7 +99,7 @@ async function run() {
     await expectText(page, /Generator Planning Rating/i, 'electric heater generator sizing')
 
     await page.goto(`${baseUrl}/bess/sizing`, { waitUntil: 'networkidle' })
-  await expectText(page, /250 kW \/ 575 kWh BESS/i, 'Sunbelt-style BESS unit option')
+  await expectText(page, /Atlas Copco ZBC 250-575.*250 kW continuous.*518 kWh net/i, 'verified current BESS option')
     await expectText(page, /Suggested Equipment Setup/i, 'BESS suggested setup')
 
     await page.goto(`${baseUrl}/bess/runtime?pf=2`, { waitUntil: 'networkidle' })
@@ -206,9 +206,9 @@ async function run() {
     await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
     await expectText(page, /Printable Electrical One-Line/i, 'printable electrical one-line diagram')
     await expectText(page, /Print One-Line/i, 'one-line print action')
-    await expectText(page, /4 × 500 kW gen \+ 7 × 250 kW BESS/i, 'reconciled hybrid package')
-    await expectText(page, /3 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
-    await expectText(page, /2,000 kW installed \/ 1,500 kW firm generator/i, 'installed and firm generator distinction')
+    await expectText(page, /6 × 500 kW gen \+ 5 × 250 kW-continuous BESS/i, 'continuous-power hybrid package')
+    await expectText(page, /5 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
+    await expectText(page, /3,000 kW installed \/ 2,500 kW firm generator/i, 'installed and firm generator distinction')
     await expectText(page, /Source \+ Branch Cable Schedule/i, 'source and branch cable schedule')
     await expectText(page, /170 pieces/i, 'default named-zone cable count')
     await expectText(page, /Conceptual 3D Equipment Envelope/i, 'dimensioned 3D equipment envelope')
@@ -255,7 +255,7 @@ async function run() {
     await page.getByRole('button', { name: 'Add Package to Estimate' }).click()
     await page.getByRole('button', { name: 'Open Synced Site Fit' }).click()
     await page.getByRole('heading', { name: /Site Fit/i }).waitFor()
-    await expectText(page, /Synced hybrid package: 4 × 500 kW generators and 7 × 250 kW \/ 575 kWh BESS units/i, 'hybrid package handoff to site fit')
+    await expectText(page, /Synced hybrid package: 6 × 500 kW generators and 5 × 250 kW \/ 518 kWh BESS units/i, 'hybrid package handoff to site fit')
     await expectText(page, /Planning ceiling/i, 'synced site-fit planning ceiling')
     await expectText(page, /Package fits the entered planning area/i, 'reconciled hybrid site-fit status')
     await expectText(page, /synced source \+ branch schedule requires 170 pieces/i, 'reconciled site-fit cable total')
@@ -269,7 +269,7 @@ async function run() {
     const hybridEstimateDescriptions = await page.getByLabel('Description').evaluateAll((inputs) => inputs.map((input) => input.value))
     for (const [pattern, label] of [
       [/500 kW generator rental/i, 'generator quote line'],
-      [/250 kW \/ 575 kWh BESS rental/i, 'BESS quote line'],
+      [/Atlas Copco ZBC 250-575.*250 kW continuous.*518 kWh net.*rental/i, 'BESS quote line'],
       [/4\/0 planning cable schedule/i, 'cable quote line'],
     ]) {
       if (!hybridEstimateDescriptions.some((description) => pattern.test(description))) {

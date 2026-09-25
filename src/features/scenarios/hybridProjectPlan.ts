@@ -153,7 +153,7 @@ export function buildHybridProjectPlan(
     ...Array.from({ length: results.bessUnits }, (_, index) => ({
       id: `BESS-${index + 1}`,
       label: 'BESS unit',
-      detail: `${inputs.bessUnitSize} kW / ${bessFleet.kwh} kWh`,
+      detail: `${results.bessUnitContinuousKw} kW continuous / ${results.bessUnitUsableKwh} kWh usable`,
       kind: 'bess' as const,
       ...bessSize,
       heightFt: 10,
@@ -192,7 +192,7 @@ export function buildHybridProjectPlan(
   const bessRental = rentalDisplay(projectDays, inputs.bessRentalPerDay, inputs.bessRentalRate, inputs.bessRentalRatePeriod)
   const quoteItems: HybridQuoteItem[] = [
     { id: 'generator-rental', category: 'equipment', description: `${results.genUnitSizeKw} kW generator rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.genUnits, ...generatorRental, total: results.genUnits * inputs.genRentalPerDay * projectDays, confirmation: 'entered_rate' },
-    { id: 'bess-rental', category: 'equipment', description: `${inputs.bessUnitSize} kW / ${bessFleet.kwh} kWh BESS rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.bessUnits, ...bessRental, total: results.bessUnits * inputs.bessRentalPerDay * projectDays, confirmation: 'entered_rate' },
+    { id: 'bess-rental', category: 'equipment', description: `${bessFleet.label} rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.bessUnits, ...bessRental, total: results.bessUnits * inputs.bessRentalPerDay * projectDays, confirmation: 'entered_rate' },
     { id: 'diesel-fuel', category: 'fuel', description: 'Estimated diesel consumption', modelSku: 'FUEL-ALLOWANCE', quantity: fuelGallons, rate: inputs.fuelCostPerGallon, periods: 1, rateUnit: 'gallon', total: fuelGallons * inputs.fuelCostPerGallon, confirmation: 'entered_rate' },
     { id: 'distribution', category: 'accessory', description: 'ATS/paralleling controls, switchgear, transformer and protection package', modelSku: 'VENDOR-SELECTION-REQUIRED', quantity: 1, rate: 0, periods: 1, rateUnit: 'lot', total: 0, confirmation: 'vendor_required' },
     { id: 'cable', category: 'accessory', description: `4/0 planning cable schedule — ${totalCablePieces ?? `${totalCablePieceRange?.[0]}-${totalCablePieceRange?.[1]}`} pieces`, modelSku: 'CABLE-GAUGE-VENDOR-VERIFY', quantity: totalCablePieces ?? totalCablePieceRange?.[1] ?? 0, rate: 0, periods: 1, rateUnit: '50-ft piece', total: 0, confirmation: 'vendor_required' },

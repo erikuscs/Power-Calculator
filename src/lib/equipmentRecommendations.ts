@@ -11,10 +11,18 @@ export interface GeneratorFleetUnit {
 export interface BessFleetUnit {
   kw: number
   kwh: number
+  continuousKw?: number
+  chargeKw?: number
+  chargeBasis?: 'published' | 'planning_assumption'
+  usableKwh?: number
+  peakKw?: number
+  peakDurationHours?: number
+  fieldNote?: string
   label: string
   voltage: string
   footprintSqFt: number
   source: string
+  sourceUrl?: string
 }
 
 export interface EquipmentRecommendationInputs {
@@ -68,13 +76,11 @@ export const GENERATOR_FLEET: GeneratorFleetUnit[] = [
 ]
 
 export const BESS_FLEET: BessFleetUnit[] = [
-  { kw: 5, kwh: 7, label: '5 kW / 7 kWh portable BESS', voltage: '120/240 V', footprintSqFt: 12, source: 'Sunbelt 5 kW / 7 kWh BESS' },
-  { kw: 24, kwh: 90, label: '24 kW / 90 kWh BESS', voltage: '208/120 V', footprintSqFt: 80, source: 'Sunbelt 24 kW / 90 kWh BESS' },
-  { kw: 30, kwh: 150, label: '30 kW / 150 kWh BESS', voltage: '208 V typical', footprintSqFt: 100, source: 'Sunbelt 30 kW / 150 kWh BESS' },
-  { kw: 75, kwh: 600, label: '75 kW / 600 kWh BESS', voltage: '480/208 V typical', footprintSqFt: 180, source: 'Sunbelt 75 kW / 600 kWh BESS' },
-  { kw: 250, kwh: 575, label: '250 kW / 575 kWh BESS', voltage: '480 V typical', footprintSqFt: 220, source: 'Sunbelt 250 kW / 575 kWh BESS' },
-  { kw: 300, kwh: 1200, label: '300 kW legacy / large-system BESS', voltage: '480 V typical', footprintSqFt: 300, source: 'Legacy planning option' },
-  { kw: 600, kwh: 2400, label: '600 kW legacy / large-system BESS', voltage: '480 V typical', footprintSqFt: 480, source: 'Legacy planning option' },
+  { kw: 5, kwh: 7, continuousKw: 4.8, chargeKw: 2.6, chargeBasis: 'planning_assumption', peakKw: 5.8, peakDurationHours: 3 / 3600, label: 'Portable 5/7 — 4.8 kW continuous / 7 kWh nominal', voltage: '120 V', footprintSqFt: 12, source: 'Sunbelt Cat 1131000 and published equipment sheet', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/5-kilowatt-7-kilowatt-hour-portable-battery-energy-storage-system/1131000/' },
+  { kw: 24, kwh: 90, continuousKw: 24, chargeKw: 24, chargeBasis: 'planning_assumption', usableKwh: 72, label: 'Generac MBE30 — 24 kW continuous / 72 kWh usable', voltage: '208/120 V', footprintSqFt: 80, source: 'Sunbelt Cat 1131100 and Generac MBE30 manufacturer data', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/24-kilowatt-90-kilowatt-hour-battery-energy-storage-system/1131100/' },
+  { kw: 30, kwh: 146.7, continuousKw: 30, chargeKw: 30, chargeBasis: 'published', usableKwh: 132, label: 'Viridi RPS150 — 30 kW continuous / 132 kWh usable', voltage: '480/208 V', footprintSqFt: 100, source: 'Sunbelt Cat 1131123 and Viridi RPS150 manufacturer data', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/30-kilowatt-150-kilowatt-hour-parallelable-battery-energy-storage-system/1131123/' },
+  { kw: 75, kwh: 600, continuousKw: 40, chargeKw: 19.2, chargeBasis: 'published', usableKwh: 530, peakKw: 75, peakDurationHours: 1, fieldNote: 'Owner field experience reports protective shutdown near 42 kW. Use 40 kW as the planning ceiling; AC charging is 19.2 kW and is modeled after transfer of the customer load to the generator.', label: 'Moxion MP75-600 — 40 kW continuous / 530 kWh usable (75 kW for 1 hr)', voltage: '480 V 3-phase continuous rating', footprintSqFt: 180, source: 'Sunbelt Cat 1131175, Moxion MP75-600 Rev E manufacturer manual, and owner field note', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/75-kilowatt-600-kilowatt-hour-battery-energy-storage-system/1131175/' },
+  { kw: 250, kwh: 575, continuousKw: 250, chargeKw: 250, chargeBasis: 'planning_assumption', usableKwh: 518, peakKw: 275, peakDurationHours: 10 / 60, label: 'Atlas Copco ZBC 250-575 — 250 kW continuous / 518 kWh net', voltage: '480 V 3-phase', footprintSqFt: 220, source: 'Sunbelt Cat 1131190 and Atlas Copco ZBC 250-575 manufacturer sheet', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/250-kilowatt-575-kilowatt-hour-battery-energy-storage-system/1131190/' },
 ]
 
 export function normalizeRateToDaily(value: number, period: 'daily' | 'weekly' | 'monthly'): number {
@@ -179,12 +185,14 @@ function pickGenerator(requiredKw: number) {
 function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: number) {
   const preferred = BESS_FLEET.find((unit) => unit.kw === preferredBessKw)
   if (preferred) {
-    const count = Math.max(Math.ceil(requiredKw / preferred.kw), Math.ceil(requiredKwh / preferred.kwh), 1)
+    const continuousKw = preferred.continuousKw ?? preferred.kw
+    const usableKwh = preferred.usableKwh ?? preferred.kwh
+    const count = Math.max(Math.ceil(requiredKw / continuousKw), Math.ceil(requiredKwh / usableKwh), 1)
     return {
       unit: preferred,
       count,
-      capacityKw: preferred.kw * count,
-      energyKwh: preferred.kwh * count,
+      capacityKw: continuousKw * count,
+      energyKwh: usableKwh * count,
       footprintSqFt: preferred.footprintSqFt * count,
     }
   }
@@ -194,8 +202,10 @@ function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: num
   let bestExcess = Infinity
 
   for (const unit of BESS_FLEET) {
-    const count = Math.max(Math.ceil(requiredKw / unit.kw), Math.ceil(requiredKwh / unit.kwh), 1)
-    const excess = (unit.kw * count - requiredKw) + (unit.kwh * count - requiredKwh) / 4
+    const continuousKw = unit.continuousKw ?? unit.kw
+    const usableKwh = unit.usableKwh ?? unit.kwh
+    const count = Math.max(Math.ceil(requiredKw / continuousKw), Math.ceil(requiredKwh / usableKwh), 1)
+    const excess = (continuousKw * count - requiredKw) + (usableKwh * count - requiredKwh) / 4
     if (count < bestCount || (count === bestCount && excess < bestExcess)) {
       best = unit
       bestCount = count
@@ -206,8 +216,8 @@ function pickBess(requiredKw: number, requiredKwh: number, preferredBessKw?: num
   return {
     unit: best,
     count: bestCount,
-    capacityKw: best.kw * bestCount,
-    energyKwh: best.kwh * bestCount,
+    capacityKw: (best.continuousKw ?? best.kw) * bestCount,
+    energyKwh: (best.usableKwh ?? best.kwh) * bestCount,
     footprintSqFt: best.footprintSqFt * bestCount,
   }
 }

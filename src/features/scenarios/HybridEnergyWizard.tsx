@@ -13,6 +13,7 @@ import { HybridSiteLayout3D } from '../../components/ui/HybridSiteLayout3D'
 import { SpecSummaryPanel, type SpecSummaryTone } from '../../components/ui/SpecSummaryPanel'
 import { useCalculator } from '../../hooks/useCalculator'
 import { calculateHybridWizard, type HybridWizardInputs, type MotorEntry, type BessUnitSize } from './scenario.formulas'
+import { reviewHybridBenchmark } from './hybridBenchmark'
 import { buildHybridProjectPlan } from './hybridProjectPlan'
 import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { BESS_UNIT_SIZES, RATE_PERIOD_OPTIONS, VOLTAGE_OPTIONS, type RatePeriod, SQRT3 } from '../../lib/constants'
@@ -27,6 +28,14 @@ import {
 import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Fuel, DollarSign, Leaf, ChevronDown, ChevronRight } from 'lucide-react'
 
 let nextMotorId = 1
+
+function formatPeakDuration(hours?: number): string {
+  if (!hours) return ''
+  if (hours >= 1) return `${hours} hour${hours === 1 ? '' : 's'}`
+  const minutes = hours * 60
+  if (minutes >= 1) return `${Math.round(minutes)} minutes`
+  return `${Math.round(hours * 3600)} seconds`
+}
 
 const coverageStatusLabel = {
   '24_7_ready': 'Modeled 24/7 capacity',
@@ -67,7 +76,7 @@ export default function HybridEnergyWizard() {
   const [clientName, setClientName] = useState('Synthetic example')
   const [projectName, setProjectName] = useState('Data Center Commissioning - 28-day rental cycle')
   const [powerFactor, setPowerFactor] = useState('0.8')
-  const [loadVoltage, setLoadVoltage] = useState('208')
+  const [loadVoltage, setLoadVoltage] = useState('480')
   const [longestCableRouteFt, setLongestCableRouteFt] = useState('100')
   const [neutralPlan, setNeutralPlan] = useState<'required' | 'not_carried' | 'review'>('required')
   const [siteLengthFt, setSiteLengthFt] = useState('200')
@@ -126,20 +135,22 @@ export default function HybridEnergyWizard() {
     endDate,
     motors,
     powerFactor: parseFloat(powerFactor) || 0.8,
-    loadVoltage: parseInt(loadVoltage) || 208,
+    loadVoltage: parseInt(loadVoltage) || 480,
     longestCableRouteFt: parseFloat(longestCableRouteFt) || 100,
     neutralPlan,
     siteLengthFt: parseFloat(siteLengthFt) || 200,
     siteWidthFt: parseFloat(siteWidthFt) || 120,
   }
+  const selectedBessFleet = BESS_FLEET.find((unit) => unit.kw === inputs.bessUnitSize)
 
   const calculate = useCallback((inp: HybridWizardInputs) => {
-    // Inverted or negative loads produce nonsense (negative "savings", BESS sized beyond peak)
+    // Inverted or negative loads produce nonsense (invalid fuel differences, BESS sized beyond peak)
     if (inp.baseLoadKw < 0 || inp.baseLoadKw > inp.peakLoadKw) return null
     if (inp.projectDurationDays < 1 || inp.fuelCostPerGallon < 0 || inp.bessRentalPerDay < 0 || inp.genRentalPerDay < 0) return null
     return calculateHybridWizard(inp)
   }, [])
   const results = useCalculator(inputs, calculate)
+  const benchmarkReview = results ? reviewHybridBenchmark(inputs, results) : null
   const oneLineDiagram = results ? buildHybridOneLineDiagram(inputs, results, zones) : null
   const projectPlan = results ? buildHybridProjectPlan(inputs, results, zones) : null
   const zonesTotalKw = zones.reduce((sum, zone) => sum + zone.kw, 0)
@@ -156,7 +167,7 @@ export default function HybridEnergyWizard() {
     ]
   }, [results, inputs.projectDurationDays])
 
-  const cumulativeSavingsData = useMemo(() => {
+  const cumulativeReductionData = useMemo(() => {
     if (!results) return []
     return results.dailyFuelData.filter((_, i) => i % Math.max(1, Math.floor(results.dailyFuelData.length / 60)) === 0 || i === results.dailyFuelData.length - 1)
   }, [results])
@@ -164,9 +175,9 @@ export default function HybridEnergyWizard() {
   const capacityBarData = useMemo(() => {
     if (!results) return []
     return [
-      { name: 'System', base: results.genCapacityKw, peak: results.bessUnits * inputs.bessUnitSize, reserve: Math.max(0, results.totalCapacityKw - results.genCapacityKw - results.bessUnits * inputs.bessUnitSize) },
+      { name: 'System', base: results.genCapacityKw, peak: results.bessUnits * results.bessUnitContinuousKw, reserve: Math.max(0, results.totalCapacityKw - results.genCapacityKw - results.bessUnits * results.bessUnitContinuousKw) },
     ]
-  }, [results, inputs.bessUnitSize])
+  }, [results])
 
   const hybridSpecSummary = results && projectPlan
     ? (() => {
@@ -189,8 +200,8 @@ export default function HybridEnergyWizard() {
           metrics: [
             {
               label: 'Recommended Package',
-              value: `${results.genUnits} × ${results.genUnitSizeKw} kW gen + ${results.bessUnits} × ${inputs.bessUnitSize} kW BESS`,
-              detail: `${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby generator unit(s); BESS uses the selected fleet unit's actual kWh rating`,
+              value: `${results.genUnits} × ${results.genUnitSizeKw} kW gen + ${results.bessUnits} × ${results.bessUnitContinuousKw} kW-continuous BESS`,
+              detail: `${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby generator unit(s); BESS quantity is governed by continuous output`,
             },
             {
               label: 'Load Profile',
@@ -215,23 +226,23 @@ export default function HybridEnergyWizard() {
             {
               label: 'Recharge Reserve',
               value: `${fmtInt(results.coverage.generatorRechargeReserveKw)} kW`,
-              detail: `Estimated recharge window: ${rechargeWindow}`,
+              detail: `${fmtInt(results.rechargePowerKw)} kW modeled charge power; 30% to 80% SOC in ${rechargeWindow}`,
             },
             {
-              label: 'Quiet Runtime',
-              value: `${fmt(results.coverage.baseBatteryHours, 1)} hrs`,
-              detail: 'Usable BESS at base load before recharge',
+              label: 'Battery Runtime',
+              value: `${fmt(results.batteryRuntimeHoursPerCycle, 1)} hrs`,
+              detail: 'At the entered average load, from 80% down to the 30% generator-start threshold',
             },
             {
               label: 'Fuel Signal',
               value: `${fmtInt(Math.abs(results.dailyFuelReduction))} gal/day ${results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}`,
-              detail: `${fmtCurrency(Math.abs(results.totalFuelSavingsDollars))} estimated project fuel cost ${results.totalFuelSavingsDollars >= 0 ? 'reduction' : 'increase'} after recharge losses`,
+              detail: `${fmtCurrency(Math.abs(results.totalFuelCostDifferenceDollars))} estimated project fuel cost ${results.totalFuelCostDifferenceDollars >= 0 ? 'reduction' : 'increase'} after recharge losses`,
             },
           ],
           steps: [
             {
               label: 'BESS serves load',
-              detail: 'Battery/PCS carries quiet runtime and absorbs peak swings while SOC stays above threshold.',
+              detail: 'Battery/PCS carries the full protected load from 80% down to the 30% SOC start threshold. Generator fuel burn is zero during this interval.',
             },
             {
               label: 'EMS starts gen',
@@ -239,7 +250,7 @@ export default function HybridEnergyWizard() {
             },
             {
               label: 'Generator carries load',
-              detail: 'Generator supports the customer load and leaves reserve for BESS recharge where capacity allows.',
+              detail: 'Generator supports the customer load and uses reserved capacity to fast-charge the BESS from 30% toward 80%.',
             },
             {
               label: 'ATS / gear transfers',
@@ -251,6 +262,7 @@ export default function HybridEnergyWizard() {
             },
           ],
           notes: [
+            `Generator basis: ${fmtInt(inputs.peakLoadKw)} kW protected load + ${fmtInt(results.rechargePowerKw)} kW aggregate continuous BESS charging.`,
             primaryScenario.requirement,
             fallbackScenario?.requirement ?? 'Define load-shed rules if generator fallback cannot carry the full protected peak.',
             inputs.siteVoltage <= 240 && inputs.peakLoadKw >= 500
@@ -271,7 +283,6 @@ export default function HybridEnergyWizard() {
     } catch {
       current = DEFAULT_SITE_FIT_INPUTS
     }
-    const bessFleet = BESS_FLEET.find((unit) => unit.kw === inputs.bessUnitSize)
     window.localStorage.setItem('power-calc:site-fit:inputs', JSON.stringify({
       ...current,
       requestedPowerKw: inputs.peakLoadKw,
@@ -291,8 +302,8 @@ export default function HybridEnergyWizard() {
         generatorUnitKw: results.genUnitSizeKw,
         generatorFirmCapacityKw: results.generatorFirmCapacityKw,
         bessCount: results.bessUnits,
-        bessUnitKw: inputs.bessUnitSize,
-        bessUnitKwh: bessFleet?.kwh ?? 0,
+        bessUnitKw: results.bessUnitContinuousKw,
+        bessUnitKwh: results.bessUnitUsableKwh,
         layoutFits: projectPlan.layoutFits,
         equipmentEnvelopeSqFt: projectPlan.equipmentEnvelopeSqFt,
         totalCablePieces: projectPlan.totalCablePieces,
@@ -310,7 +321,7 @@ export default function HybridEnergyWizard() {
     const added = addPlanningRequirement({
       source: 'hybrid',
       title: 'Reconciled hybrid generator + BESS package',
-      summary: `${results.genUnits} × ${results.genUnitSizeKw} kW generators and ${results.bessUnits} × ${inputs.bessUnitSize} kW BESS units for ${inputs.peakLoadKw.toLocaleString()} kW peak / ${inputs.baseLoadKw.toLocaleString()} kW base.`,
+      summary: `${results.genUnits} × ${results.genUnitSizeKw} kW generators and ${results.bessUnits} × ${results.bessUnitContinuousKw} kW-continuous BESS units for ${inputs.peakLoadKw.toLocaleString()} kW peak / ${inputs.baseLoadKw.toLocaleString()} kW base.`,
       details: [
         { label: 'Generator topology', value: `${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby; ${results.generatorFirmCapacityKw.toLocaleString()} kW firm` },
         { label: 'BESS installed', value: `${results.coverage.bessInstalledKw.toLocaleString()} kW / ${results.coverage.bessInstalledKwh.toLocaleString()} kWh` },
@@ -403,6 +414,21 @@ export default function HybridEnergyWizard() {
               options={VOLTAGE_OPTIONS.map((option) => ({ ...option }))}
             />
           </div>
+          {selectedBessFleet && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <div>
+                <p><strong>Continuous power controls BESS quantity:</strong> {selectedBessFleet.label}.</p>
+                <p className="mt-1">{fmtInt(inputs.peakLoadKw)} kW protected load ÷ {fmt(selectedBessFleet.continuousKw ?? selectedBessFleet.kw, 1)} kW continuous per unit = <strong>{Math.ceil(inputs.peakLoadKw / (selectedBessFleet.continuousKw ?? selectedBessFleet.kw))} unit(s) minimum</strong>.</p>
+                {selectedBessFleet.peakKw && selectedBessFleet.peakKw > (selectedBessFleet.continuousKw ?? selectedBessFleet.kw) && (
+                  <p className="mt-1">The {selectedBessFleet.peakKw} kW figure is time-limited{selectedBessFleet.peakDurationHours ? ` to ${formatPeakDuration(selectedBessFleet.peakDurationHours)}` : ''}; it may absorb a surge or inrush but cannot carry that load continuously.</p>
+                )}
+                <p className="mt-1"><strong>A BESS has no operator-usable red zone.</strong> Continuous kW governs this estimate. Motor starting, protection, transformers, and load-bank methods remain later vendor/engineering verification and do not change the planning quantity here.</p>
+                {selectedBessFleet.fieldNote && <p className="mt-1">Field note: {selectedBessFleet.fieldNote}</p>}
+                <p className="mt-1 text-xs">Public engineering basis: <a className="underline" href="https://www.generac.com/industrial/tools-resources/white-papers/battery-energy-storage-for-emergency-power-systems/" target="_blank" rel="noreferrer">Generac motor-start guidance</a> states that inverter capacity may need to be significantly larger than steady load to prevent overload shutdown. Customer-specific incidents remain field evidence unless independently documented.</p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Power Factor" value={powerFactor} onChange={setPowerFactor} min={0.1} max={1} step="0.01" />
@@ -432,13 +458,7 @@ export default function HybridEnergyWizard() {
             <InputField label="Start Date" type="date" value={startDate} onChange={setStartDate} />
             <InputField label="End Date" type="date" value={endDate} onChange={setEndDate} tooltip="Or use duration" />
           </div>
-          <p className="text-xs leading-relaxed text-text-dim">The worked case is a 24/7 jobsite over one 28-day rental cycle (672 operating hours). The 8 peak hours occur within each 24-hour day. Generator fuel includes the energy used to serve the base load and recharge the BESS, including modeled recharge losses. The $8.50/gal fuel price is an editable example assumption, not a supplier quote.</p>
-          {inputs.peakHoursPerDay >= 24 && inputs.peakLoadKw > inputs.baseLoadKw && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              A 24-hour peak leaves no daily BESS recharge window. The calculator treats the generator plant as the continuous peak source; revise the load profile before relying on battery-first dispatch.
-            </div>
-          )}
+          <p className="text-xs leading-relaxed text-text-dim">The worked case is a 24/7 jobsite over one 28-day rental cycle (672 operating hours). The BESS carries the protected load with no fuel burn from 80% down to 30% SOC. At 30%, the generator starts, carries the live load, and fast-charges the BESS toward 80%; it then shuts down and returns the load to BESS. Fuel includes only generator-on time and modeled charging losses. The $8.50/gal fuel price is an editable example assumption, not a supplier quote.</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} />
@@ -492,7 +512,7 @@ export default function HybridEnergyWizard() {
       <Card>
         <CardHeader
           title="Motor / Compressor Loads"
-          subtitle="Add motors to check inrush compatibility with BESS"
+          subtitle="Optional handoff notes only; these entries do not change the continuous-power estimate"
           action={<Button size="sm" variant="secondary" onClick={addMotor}><Plus size={14} /> Add Motor</Button>}
         />
         {motors.length === 0 && (
@@ -576,8 +596,10 @@ export default function HybridEnergyWizard() {
           <Card>
             <CardHeader title="System Configuration" subtitle="Optimal BESS + Generator mix" />
             <ResultGrid>
-              <ResultItem label="BESS Units" value={`${results.bessUnits} × ${inputs.bessUnitSize} kW`} highlight />
-              <ResultItem label="BESS Energy Needed" value={fmtInt(results.bessEnergyKwh)} unit="kWh" />
+              <ResultItem label="BESS Units (Continuous)" value={`${results.bessUnits} × ${results.bessUnitContinuousKw} kW`} highlight />
+              <ResultItem label="Continuous-Power Minimum" value={`${results.bessUnitsForPeak} unit(s)`} />
+              <ResultItem label="Recharge Input per BESS" value={`${fmt(results.bessUnitChargeKw, 1)} kW (${results.bessChargeBasis === 'published' ? 'published' : 'planning assumption — verify'})`} highlight={results.bessChargeBasis !== 'published'} />
+              <ResultItem label="Usable Energy per 80%→30% Cycle" value={fmtInt(results.bessEnergyKwh)} unit="kWh" />
               <ResultItem label="Installed Generator Capacity" value={fmtInt(results.genCapacityKw)} unit="kW" />
               <ResultItem label="Generator Units" value={`${results.genUnits} × ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`} />
               <ResultItem label="Total System Capacity" value={fmtInt(results.totalCapacityKw)} unit="kW" highlight />
@@ -585,6 +607,27 @@ export default function HybridEnergyWizard() {
               <ResultItem label={`Peak Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.peakAmpsPerPhase, 0)} unit="A" highlight={results.parallelRunsNeeded} />
               <ResultItem label={`Base Amps/Phase (3Φ ${siteVoltage}V)`} value={fmt(results.baseAmpsPerPhase, 0)} unit="A" />
             </ResultGrid>
+
+            {benchmarkReview && (
+              <div className={`mt-4 rounded-lg border p-4 ${benchmarkReview.architectureStatus === 'resilient' ? 'border-signal-blue/35 bg-signal-blue/10' : 'border-warning/35 bg-warning/10'}`}>
+                <div className="flex items-start gap-2">
+                  {benchmarkReview.architectureStatus === 'resilient'
+                    ? <Info size={16} className="mt-0.5 shrink-0 text-signal-blue" />
+                    : <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warning" />}
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-text">Benchmark architecture check</h3>
+                    <p className="mt-1 text-sm text-text">{benchmarkReview.architectureLabel}</p>
+                    <p className="mt-1 text-xs text-text-muted">{benchmarkReview.loadBasisLabel}</p>
+                    <ul className="mt-3 space-y-1 text-xs leading-relaxed text-text-muted">
+                      {benchmarkReview.checks.map((check) => <li key={check}>• {check}</li>)}
+                    </ul>
+                    {benchmarkReview.warnings.map((warning) => (
+                      <p key={warning} className="mt-2 text-xs font-semibold leading-relaxed text-warning">RED FLAG: {warning}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {results.parallelRunsNeeded && (
               <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
@@ -618,11 +661,13 @@ export default function HybridEnergyWizard() {
               <ResultItem label="Generator Online" value={fmtInt(results.coverage.generatorOnlineKw)} unit="kW" highlight={results.coverage.canCarryPeakOnGenerator} />
               <ResultItem label="Recharge Reserve" value={fmtInt(results.coverage.generatorRechargeReserveKw)} unit="kW" highlight={results.coverage.canCarryBaseWhileCharging} />
               <ResultItem
-                label="Base Battery Runtime"
-                value={fmt(results.coverage.baseBatteryHours, 1)}
+                label="Modeled Battery Runtime"
+                value={fmt(results.batteryRuntimeHoursPerCycle, 1)}
                 unit="hrs"
-                highlight={results.coverage.baseBatteryHours >= 8}
+                highlight={results.batteryRuntimeHoursPerCycle >= 1}
               />
+              <ResultItem label="Generator Recharge Window" value={fmt(results.generatorRuntimeHoursPerCycle, 1)} unit="hrs" />
+              <ResultItem label="Estimated Generator Runtime" value={fmt(results.generatorRuntimeHoursPerDay, 1)} unit="hrs/day" highlight />
             </ResultGrid>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -645,7 +690,7 @@ export default function HybridEnergyWizard() {
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-sm text-info">
                 <Info size={14} className="mt-0.5 shrink-0" />
                 <span>
-                  Estimated full recharge window is {fmt(results.coverage.estimatedRechargeHours, 1)} hours using available generator reserve. Final dispatch needs field verification of SOC thresholds, charge limits, cable size, and controls.
+                  Estimated 30%-to-80% fast-charge window is {fmt(results.coverage.estimatedRechargeHours, 1)} hours at {fmtInt(results.rechargePowerKw)} kW while the generator carries the load. Final dispatch needs field verification of charge limits, cable size, ATS/paralleling controls, and the equipment manufacturer's SOC settings.
                 </span>
               </div>
             )}
@@ -688,7 +733,7 @@ export default function HybridEnergyWizard() {
           {/* Motor Assignments */}
           {results.motorAssignments.length > 0 && (
             <Card>
-              <CardHeader title="Motor Starting Review" subtitle="Estimated start current only; source assignment requires manufacturer and engineering checks" />
+              <CardHeader title="Motor / Compressor Notes" subtitle="Informational handoff only; continuous power governs this estimate" />
               <div className="space-y-2">
                 {results.motorAssignments.map((ma) => (
                   <div
@@ -697,7 +742,7 @@ export default function HybridEnergyWizard() {
                   >
                     <div>
                       <span className="font-medium text-text">{ma.hp} HP — {ma.method.toUpperCase()}</span>
-                      <span className="text-text-muted ml-2">LRA: {fmt(ma.lra, 0)}A</span>
+                      <span className="text-text-muted ml-2">Estimated LRA: {fmt(ma.lra, 0)}A</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <AlertCircle size={14} className="text-warning" /><span className="font-medium text-warning">Source review required</span>
@@ -733,7 +778,7 @@ export default function HybridEnergyWizard() {
                     <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />{inputs.projectDurationDays}-Day Fuel</td>
                     <td className="text-right text-text">{fmtInt(results.allGenFuelProject)} gal</td>
                     <td className="text-right text-accent-300">{fmtInt(results.hybridFuelTotal)} gal</td>
-                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.totalFuelSavingsGal))} gal {results.totalFuelSavingsGal >= 0 ? 'lower' : 'higher'}</td>
+                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.totalFuelReductionGal))} gal {results.totalFuelReductionGal >= 0 ? 'reduction' : 'increase'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><DollarSign size={14} className="inline mr-1" />{inputs.projectDurationDays}-Day Total Cost</td>
@@ -744,8 +789,8 @@ export default function HybridEnergyWizard() {
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text font-semibold">Project Fuel Difference</td>
                     <td className="text-right">—</td>
-                    <td className="text-right text-accent-300">{fmtInt(Math.abs(results.totalFuelSavingsGal))} gal {results.totalFuelSavingsGal >= 0 ? 'lower' : 'higher'}</td>
-                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.totalFuelSavingsDollars))} {results.totalFuelSavingsDollars >= 0 ? 'lower' : 'higher'}</td>
+                    <td className="text-right text-accent-300">{fmtInt(Math.abs(results.totalFuelReductionGal))} gal {results.totalFuelReductionGal >= 0 ? 'reduction' : 'increase'}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.totalFuelCostDifferenceDollars))} fuel cost {results.totalFuelCostDifferenceDollars >= 0 ? 'reduction' : 'increase'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text"><Leaf size={14} className="inline mr-1 text-signal-blue" />CO2 Difference</td>
@@ -782,12 +827,12 @@ export default function HybridEnergyWizard() {
               <div>
                 <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">Cumulative Fuel Difference</h4>
                 <ChartFrame height={250}>
-                  <AreaChart data={cumulativeSavingsData}>
+                  <AreaChart data={cumulativeReductionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#34495E" />
                     <XAxis dataKey="date" tick={{ fill: '#C5C6C7', fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: '#C5C6C7', fontSize: 11 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#1C2732', border: '1px solid #34495E', borderRadius: 8, color: '#F9FAFB' }} />
-                    <Area type="monotone" dataKey="cumulativeSavingsGal" name="All-gen minus hybrid (gal)" stroke="#C27A2C" fill="#C27A2C" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="cumulativeReductionGal" name="Cumulative fuel reduction (gal)" stroke="#C27A2C" fill="#C27A2C" fillOpacity={0.2} />
                   </AreaChart>
                 </ChartFrame>
               </div>

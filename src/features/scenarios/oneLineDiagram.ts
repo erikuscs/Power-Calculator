@@ -303,8 +303,8 @@ export function buildHybridOneLineDiagram(
         {
           id: 'BESS',
           label: 'BESS Plant',
-          detail: `${results.bessUnits} x ${inputs.bessUnitSize} kW`,
-          meta: `${fi(results.coverage.bessInstalledKwh)} kWh installed / ${fi(results.coverage.bessUsableKwh)} kWh usable`,
+          detail: `${results.bessUnits} x ${results.bessUnitContinuousKw} kW continuous`,
+          meta: `${fi(results.coverage.bessInstalledKwh)} kWh usable capacity / ${fi(results.coverage.bessUsableKwh)} kWh in 80%-to-30% dispatch band`,
           tone: 'storage',
         },
       ],
@@ -368,11 +368,11 @@ export function buildHybridOneLineDiagram(
     stages[3].nodes.push({
       id: 'MOTORS',
       label: 'Motor / Compressor Loads',
-      detail: `${results.motorAssignments.length} inrush checks`,
-      meta: `${results.motorAssignments.length} source assignments pending vendor review`,
+      detail: `${results.motorAssignments.length} motor note(s)`,
+      meta: 'Starting and protection remain vendor/engineering verification',
       tone: 'load',
     })
-    edges.push({ from: 'XFMR', to: 'MOTORS', label: 'inrush-managed feeder' })
+    edges.push({ from: 'XFMR', to: 'MOTORS', label: 'motor feeder - verify' })
   }
 
   return finishDiagram({

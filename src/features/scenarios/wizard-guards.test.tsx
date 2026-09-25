@@ -19,6 +19,9 @@ describe('HybridEnergyWizard input guards', () => {
     render(<HybridEnergyWizard />)
     expect(screen.getByText('Financial Comparison')).toBeInTheDocument()
     expect(screen.queryByText('Base load cannot exceed peak load')).toBeNull()
+    expect(screen.getByLabelText('Site Voltage')).toHaveValue('480')
+    expect(screen.getByLabelText('Load Voltage')).toHaveValue('480')
+    expect(screen.getByText('Benchmark architecture check')).toBeInTheDocument()
   })
 
   it('hides results and flags the field when base load exceeds peak load', () => {
@@ -27,7 +30,7 @@ describe('HybridEnergyWizard input guards', () => {
     fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '1300' } })
 
     expect(screen.getByText('Base load cannot exceed peak load')).toBeInTheDocument()
-    // No negative "savings" / "CO2 Avoided" tables should be rendered
+    // No invalid fuel-difference or "CO2 Avoided" tables should be rendered
     expect(screen.queryByText('Financial Comparison')).toBeNull()
     expect(screen.queryByText('System Configuration')).toBeNull()
   })
@@ -36,6 +39,14 @@ describe('HybridEnergyWizard input guards', () => {
     render(<HybridEnergyWizard />)
     fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '-100' } })
     expect(screen.queryByText('Financial Comparison')).toBeNull()
+  })
+
+  it('shows the maintenance-reserve warning when redundancy is disabled', () => {
+    render(<HybridEnergyWizard />)
+    fireEvent.change(screen.getByLabelText('Redundancy Level'), { target: { value: 'n' } })
+
+    expect(screen.getByText('WARNING — modular plant has no standby unit')).toBeInTheDocument()
+    expect(screen.getByText(/no unit can be removed for maintenance/i)).toBeInTheDocument()
   })
 })
 

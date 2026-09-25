@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
-Updated: 2026-09-13
-Status: `WEB/PWA RELEASED / LIVE VERIFIED`
+Updated: 2026-09-24
+Status: `LIVE BASELINE VERIFIED / CURRENT CONTINUOUS-POWER CORRECTION NOT DEPLOYED`
 
 ## Current product scope
 
@@ -17,10 +17,14 @@ The current candidate includes:
 - a dimensioned conceptual 3D equipment envelope that supplements the linked one-line without presenting itself as a construction drawing;
 - planning safeguards that withhold equipment conclusions for zero requested load.
 - one governed diesel-consumption source using the complete Sunbelt Rentals 20-2,250 kW size/load table across the fuel, temporary-power, and hybrid workflows.
+- BESS selection based on verified continuous output and usable energy; motor-start and protection details remain later vendor/engineering verification and do not alter the early estimate.
+- a benchmark architecture review in the hybrid UI and PDF that identifies measured-versus-nameplate load basis, continuous BESS ratings, generator duty/standby counts, firm capacity after one generator is unavailable, controlled recharge, and single-source or no-maintenance-reserve red flags.
 
 Independent estimator and regression reviews informed the implementation. The calculation suite, brand gate, build audit, and browser smoke suite are the repeatable local acceptance gates.
 
-The representative acceptance case is 1,200 kW peak / 800 kW base, 250 kW / 575 kWh BESS fleet units, 480 V source, 208 V load, 0.8 power factor, 100 ft route, carried neutral, 200 × 120 ft site, eight peak hours within continuous 24/7 operation, one 28-day billing cycle (672 hours), $8.50 per gallon diesel, and N+1 continuity. It must reconcile to four 500 kW generators (three duty plus one standby), seven BESS units, 1,500 kW firm generator capacity, voltage-specific transformer guidance, balanced 700 kW and 500 kW branch circuits, 170 total 50-foot cable pieces, recharge energy and losses in the generator fuel basis, and the same package and fit verdict in Site Fit, the PDF, and Build Estimate.
+The current representative acceptance case is 1,200 kW peak / 800 kW base, Atlas Copco ZBC 250-575 units at 250 kW continuous / 518 kWh net, 480 V source, 208 V load, 0.8 power factor, 100 ft route, carried neutral, 200 × 120 ft site, eight peak hours within continuous 24/7 operation, one 28-day billing cycle (672 hours), $8.50 per gallon diesel, and N+1 continuity. Continuous power controls at five BESS units. The separate recharge planning basis produces five duty plus one standby 500 kW generators and 2,500 kW firm generator capacity. The package must retain voltage-specific transformer guidance, balanced 700 kW and 500 kW branch circuits, 170 total 50-foot cable pieces, recharge energy and losses in the generator fuel basis, and the same package and fit verdict in Site Fit, the PDF, and Build Estimate. Motor-start and protection details remain a later vendor/engineering verification boundary and do not change this early estimate.
+
+The Northern Virginia report benchmark is separately documented in `docs/VA-MICROGRID-HYBRID-BENCHMARK.md`. It preserves the internal source facts (502 A at 208 V and 176.4 kW documented generator peak), converts the requested 2,000 A contingency to a 480 V three-phase planning example, uses four modular 500 kW generators for 1,500 kW firm capacity after one unit is unavailable, and shows seven Viridi RPS150 units as 210 kW installed / 180 kW firm continuous capacity. The rendered SVG/PNG is conceptual and explicitly separates known values, calculations, planning choices, and field-verification items.
 
 ## Brand state
 
@@ -34,9 +38,11 @@ The 2026-09-13 independent brand review matched the current logo, all 14 V3 brow
 
 ## Release boundary
 
+The continuous-power, 30%-to-80% battery-first cycle, current-rental-fleet, fuel-reduction terminology, and separate recharge-rate corrections described above are local candidate changes. They have not been pushed or deployed as of 2026-09-24.
+
 Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 
-## Live release evidence
+## Historical live release evidence (2026-09-13 baseline)
 
 - Release commit `bb1b77010e365cf8b20dc08e0956050a2fed0052` was pushed to the protected GitHub `main` branch and independently read back before publication.
 - GitHub Actions run `34803577367` completed successfully and published to the existing Azure Static Web App `emaas-power-calculator` in `rg-sg-bess-platform`.
