@@ -1,6 +1,64 @@
 import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize, type RatePeriod } from '../../lib/constants'
-import { estimateSunbeltDieselFleetFuel } from '../../lib/dieselFuelCurve'
+import { estimateDieselFleetFuel } from '../../lib/dieselFuelCurve'
+import { BESS_FLEET, GENERATOR_FLEET, type BessFleetUnit, type GeneratorFleetUnit } from '../../lib/equipmentRecommendations'
 export type { BessUnitSize }
+
+export type ElectricalPhase = 'single' | 'three'
+
+export interface HybridEquipmentSelection<TUnit> {
+  unit: TUnit
+  units: number
+  installedKw: number
+}
+
+export function ampsToRealKw(amps: number, voltage: number, phase: ElectricalPhase, powerFactor: number) {
+  if (amps <= 0 || voltage <= 0 || powerFactor <= 0 || powerFactor > 1) return 0
+  return ((phase === 'three' ? SQRT3 : 1) * voltage * amps * powerFactor) / 1000
+}
+
+const BESS_ELECTRICAL_COMPATIBILITY: Record<BessUnitSize, { phases: ElectricalPhase[]; voltages: number[] }> = {
+  5: { phases: ['single'], voltages: [120] },
+  24: { phases: ['single', 'three'], voltages: [120, 208] },
+  30: { phases: ['three'], voltages: [208, 480] },
+  75: { phases: ['three'], voltages: [480] },
+  250: { phases: ['three'], voltages: [480] },
+}
+
+export function selectCompatibleBessPackage(
+  continuousKw: number,
+  voltage: number,
+  phase: ElectricalPhase,
+): HybridEquipmentSelection<BessFleetUnit> | null {
+  if (continuousKw <= 0) return null
+  const candidates = BESS_FLEET.flatMap((unit) => {
+    const compatibility = BESS_ELECTRICAL_COMPATIBILITY[unit.kw as BessUnitSize]
+    if (!compatibility?.phases.includes(phase) || !compatibility.voltages.includes(voltage)) return []
+    const unitContinuousKw = unit.continuousKw ?? unit.kw
+    const units = Math.ceil(continuousKw / unitContinuousKw)
+    return [{ unit, units, installedKw: units * unitContinuousKw }]
+  })
+  return candidates.sort((a, b) =>
+    a.units - b.units
+    || a.installedKw - b.installedKw
+    || a.unit.footprintSqFt * a.units - b.unit.footprintSqFt * b.units
+  )[0] ?? null
+}
+
+export function selectGeneratorPackage(peakKw: number): HybridEquipmentSelection<GeneratorFleetUnit> | null {
+  if (peakKw <= 0 || GENERATOR_FLEET.length === 0) return null
+  const modular500 = GENERATOR_FLEET.find((unit) => unit.kw === 500)
+  const eligible = peakKw > 1000 && modular500
+    ? [modular500]
+    : GENERATOR_FLEET
+  return eligible.map((unit) => {
+    const units = Math.ceil(peakKw / unit.kw)
+    return { unit, units, installedKw: units * unit.kw }
+  }).sort((a, b) =>
+    a.units - b.units
+    || a.installedKw - b.installedKw
+    || a.unit.footprintSqFt * a.units - b.unit.footprintSqFt * b.units
+  )[0] ?? null
+}
 
 const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
   5: 7,
@@ -247,7 +305,7 @@ export function calculateTempPower(inputs: TempPowerInputs): TempPowerResults {
   const loadFactor = totalWithCoolingKw / generatorKw
   const generatorUnits = Math.max(1, Math.ceil(generatorKw / 2250))
   const generatorUnitRatedKw = generatorKw / generatorUnits
-  const sourceFuel = estimateSunbeltDieselFleetFuel(generatorUnitRatedKw, generatorUnits, totalWithCoolingKw)
+  const sourceFuel = estimateDieselFleetFuel(generatorUnitRatedKw, generatorUnits, totalWithCoolingKw)
   const bsfcGalPerKwh = sourceFuel.equivalentGalPerKwh
   const fuelGallonsPerHour = sourceFuel.gallonsPerHour * altitudeDerating * tempDerating
   const schedule = resolveTempPowerSchedule(inputs)
@@ -322,7 +380,7 @@ export function evaluateHybrid(
   const genSizeAllGen = peakKw * SAFETY_MARGINS.generator
   const allGenLoadFactor = peakKw / genSizeAllGen
   const allGenUnits = Math.max(1, Math.ceil(genSizeAllGen / 500))
-  const allGenFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenUnits, peakKw).gallonsPerHour * altitudeDerating * tempDerating
+  const allGenFuelPerHour = estimateDieselFleetFuel(500, allGenUnits, peakKw).gallonsPerHour * altitudeDerating * tempDerating
   const allGenFuelPerDay = allGenFuelPerHour * 24
   const allGenFuel30 = allGenFuelPerDay * 30
 
@@ -332,7 +390,7 @@ export function evaluateHybrid(
   const hybridGenSize = baseKw * SAFETY_MARGINS.generator
   const hybridLoadFactor = baseKw / hybridGenSize
   const hybridGenUnits = Math.max(1, Math.ceil(hybridGenSize / 500))
-  const hybridFuelPerHour = estimateSunbeltDieselFleetFuel(500, hybridGenUnits, baseKw).gallonsPerHour * altitudeDerating * tempDerating
+  const hybridFuelPerHour = estimateDieselFleetFuel(500, hybridGenUnits, baseKw).gallonsPerHour * altitudeDerating * tempDerating
   const hybridFuelPerDay = hybridFuelPerHour * 24
   const hybridFuel30 = hybridFuelPerDay * 30
 
@@ -369,6 +427,11 @@ function pickBessSize(peakDelta: number): BessUnitSize {
 }
 
 export interface HybridWizardInputs {
+  peakAmps?: number
+  continuousAmps?: number
+  phase?: ElectricalPhase
+  bess28DayRate?: number
+  generator28DayRate?: number
   peakLoadKw: number
   baseLoadKw: number
   loadSource: 'panel' | 'measured'
@@ -406,6 +469,14 @@ export interface MotorEntry {
 }
 
 export interface HybridWizardResults {
+  selectedBessUnitSize: BessUnitSize
+  selectedBessLabel: string
+  selectedBessSource: string
+  selectedGeneratorLabel: string
+  selectedGeneratorSource: string
+  bess28DayRate: number
+  generator28DayRate: number
+  equipment28DayTotal: number
   bessUnitsForContinuousLoad: number
   bessUnitsForEnergy: number
   bessRequiredUnits: number
@@ -481,9 +552,26 @@ export interface HybridCoverageScenario {
 }
 
 export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardResults {
-  const { peakLoadKw, baseLoadKw, bessUnitSize, peakHoursPerDay, redundancy, altitude, ambientTemp } = inputs
-  const projectDurationDays = Math.max(1, inputs.projectDurationDays)
-  const fuelCostPerGallon = Math.max(0, inputs.fuelCostPerGallon)
+  const ampFirst = inputs.peakAmps !== undefined || inputs.continuousAmps !== undefined
+  const phase = inputs.phase ?? inputs.loadPhase ?? 'three'
+  const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
+  const peakLoadKw = ampFirst
+    ? ampsToRealKw(inputs.peakAmps ?? 0, inputs.siteVoltage, phase, powerFactor)
+    : inputs.peakLoadKw
+  const baseLoadKw = ampFirst
+    ? ampsToRealKw(inputs.continuousAmps ?? 0, inputs.siteVoltage, phase, powerFactor)
+    : inputs.baseLoadKw
+  const automaticBess = ampFirst ? selectCompatibleBessPackage(baseLoadKw, inputs.siteVoltage, phase) : null
+  const automaticGenerator = ampFirst ? selectGeneratorPackage(peakLoadKw) : null
+  if (ampFirst && (!automaticBess || !automaticGenerator)) throw new Error('No electrically compatible rental package is available.')
+  const bessUnitSize = (automaticBess?.unit.kw ?? inputs.bessUnitSize) as BessUnitSize
+  const selectedGenerator = automaticGenerator?.unit ?? GENERATOR_FLEET.find((unit) => unit.kw === 500) ?? GENERATOR_FLEET[0]
+  const peakHoursPerDay = ampFirst ? 0 : inputs.peakHoursPerDay
+  const redundancy = ampFirst ? 'n' : inputs.redundancy
+  const altitude = ampFirst ? 0 : inputs.altitude
+  const ambientTemp = ampFirst ? 77 : inputs.ambientTemp
+  const projectDurationDays = ampFirst ? 28 : Math.max(1, inputs.projectDurationDays)
+  const fuelCostPerGallon = ampFirst ? 0 : Math.max(0, inputs.fuelCostPerGallon)
   const bessRentalPerDay = Math.max(0, inputs.bessRentalPerDay)
   const genRentalPerDay = Math.max(0, inputs.genRentalPerDay)
 
@@ -523,7 +611,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   // That 50% nameplate swing is the energy delivered during each BESS-only leg.
   const bessEnergyKwh = bessRequiredUnits * bessUnitUsableKwh * 0.5
 
-  const genUnitSizeKw = 500
+  const genUnitSizeKw = selectedGenerator.kw
   const rechargeEfficiency = 0.9
   // Size generator duty capacity to carry the protected customer load. BESS
   // recharge is staged by the controller inside actual generator headroom;
@@ -533,7 +621,7 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const bessUnitChargeKw = chargeRating.kw
   const bessChargeBasis = chargeRating.basis
   const targetRechargePowerKw = bessRequiredUnits * bessUnitChargeKw
-  const generatorRequiredUnits = Math.max(1, Math.ceil(peakLoadKw / genUnitSizeKw))
+  const generatorRequiredUnits = automaticGenerator?.units ?? Math.max(1, Math.ceil(peakLoadKw / genUnitSizeKw))
   const generatorStandbyUnits = redundancy === '2n'
     ? generatorRequiredUnits
     : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0
@@ -562,15 +650,15 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const batteryDailyEnergyKwh = averageLoadKw * Math.max(0, 24 - generatorRuntimeHoursPerDay)
   const rechargeEnergyKwh = cyclesPerDay * rechargeEnergyPerCycleKwh
   const hybridGeneratorDailyEnergyKwh = (averageLoadKw * generatorRuntimeHoursPerDay) + rechargeEnergyKwh
-  const allGenPeakFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenRequiredUnits, peakLoadKw).gallonsPerHour
-  const allGenBaseFuelPerHour = estimateSunbeltDieselFleetFuel(500, allGenRequiredUnits, baseLoadKw).gallonsPerHour
+  const allGenPeakFuelPerHour = ampFirst ? 0 : estimateDieselFleetFuel(genUnitSizeKw, allGenRequiredUnits, peakLoadKw).gallonsPerHour
+  const allGenBaseFuelPerHour = ampFirst ? 0 : estimateDieselFleetFuel(genUnitSizeKw, allGenRequiredUnits, baseLoadKw).gallonsPerHour
   const allGenFuelPerDay = (
     (allGenPeakFuelPerHour * peakWindowHours)
     + (allGenBaseFuelPerHour * offPeakHoursPerDay)
   ) * altDerate * tempDerate
 
   const generatorOnLoadKw = Math.min(generatorFirmCapacityKw, averageLoadKw + rechargePowerKw)
-  const hybridGeneratorFuelPerHour = estimateSunbeltDieselFleetFuel(500, generatorRequiredUnits, generatorOnLoadKw).gallonsPerHour
+  const hybridGeneratorFuelPerHour = ampFirst ? 0 : estimateDieselFleetFuel(genUnitSizeKw, generatorRequiredUnits, generatorOnLoadKw).gallonsPerHour
   // BESS-only intervals burn no fuel. Fuel is counted only while the generator
   // carries customer load and supplies the modeled recharge block.
   const hybridFuelPerDay = hybridGeneratorFuelPerHour * generatorRuntimeHoursPerDay * altDerate * tempDerate
@@ -598,9 +686,12 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   })
 
   const siteVoltage3ph = inputs.siteVoltage
-  const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
-  const peakAmpsPerPhase = (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
-  const baseAmpsPerPhase = (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
+  const peakAmpsPerPhase = ampFirst
+    ? inputs.peakAmps ?? 0
+    : (peakLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
+  const baseAmpsPerPhase = ampFirst
+    ? inputs.continuousAmps ?? 0
+    : (baseLoadKw * 1000) / (SQRT3 * siteVoltage3ph * powerFactor)
   const parallelRunsNeeded = peakAmpsPerPhase > 400
 
   const co2AvoidedLbs = totalFuelReductionGal * CO2_LBS_PER_GALLON_DIESEL
@@ -613,6 +704,15 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   })
 
   return {
+    selectedBessUnitSize: bessUnitSize,
+    selectedBessLabel: (automaticBess?.unit ?? BESS_FLEET.find((unit) => unit.kw === bessUnitSize))?.label ?? `${bessUnitSize} kW BESS`,
+    selectedBessSource: (automaticBess?.unit ?? BESS_FLEET.find((unit) => unit.kw === bessUnitSize))?.source ?? 'Vendor verification required',
+    selectedGeneratorLabel: selectedGenerator.label,
+    selectedGeneratorSource: selectedGenerator.source,
+    bess28DayRate: Math.max(0, inputs.bess28DayRate ?? inputs.bessRentalRate ?? 0),
+    generator28DayRate: Math.max(0, inputs.generator28DayRate ?? inputs.genRentalRate ?? 0),
+    equipment28DayTotal: (bessUnits * Math.max(0, inputs.bess28DayRate ?? inputs.bessRentalRate ?? 0))
+      + (genUnits * Math.max(0, inputs.generator28DayRate ?? inputs.genRentalRate ?? 0)),
     bessUnitsForContinuousLoad, bessUnitsForEnergy, bessRequiredUnits, bessStandbyUnits, bessFirmCapacityKw,
     bessUnits, bessUnitChargeKw, bessChargeBasis,
     bessEnergyKwh, bessUnitContinuousKw, bessUnitUsableKwh,

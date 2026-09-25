@@ -265,7 +265,7 @@ export function buildTempPowerOneLineDiagram(
 export function buildHybridOneLineDiagram(
   inputs: HybridWizardInputs,
   results: HybridWizardResults,
-  zones: { id: string; name: string; kw: number }[] = [],
+  zones: { id: string; name: string; kw?: number }[] = [],
 ): OneLineDiagram {
   const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
   const loadVoltage = inputs.loadVoltage ?? inputs.siteVoltage
@@ -276,10 +276,12 @@ export function buildHybridOneLineDiagram(
     ? zones.map((zone, index) => ({
         id: `ZONE_${index + 1}`,
         label: zone.name || `Zone ${index + 1}`,
-        detail: `${fi(zone.kw)} kW`,
-        meta: loadPhase === 'single'
-          ? `${fi((zone.kw * 1000) / (loadVoltage * powerFactor))} A branch at ${loadVoltage}V 1-phase`
-          : `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
+        detail: typeof zone.kw === 'number' && zone.kw > 0 ? `${fi(zone.kw)} kW` : 'Load nameplate required',
+        meta: typeof zone.kw !== 'number' || zone.kw <= 0
+          ? `${loadVoltage}V ${loadPhase === 'single' ? '1-phase' : '3-phase'} connection point · field verify`
+          : loadPhase === 'single'
+            ? `${fi((zone.kw * 1000) / (loadVoltage * powerFactor))} A branch at ${loadVoltage}V 1-phase`
+            : `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
         tone: 'load' as const,
       }))
     : [

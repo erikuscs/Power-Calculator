@@ -1,4 +1,5 @@
 import { SAFETY_MARGINS } from './constants'
+import { DIESEL_GENERATOR_SIZES_KW } from './dieselFuelCurve'
 
 export interface GeneratorFleetUnit {
   kw: number
@@ -60,27 +61,34 @@ export interface EquipmentRecommendationOption {
   notes: string[]
 }
 
-export const GENERATOR_FLEET: GeneratorFleetUnit[] = [
-  { kw: 20, label: '20 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 70, source: 'Sunbelt 20 kW class' },
-  { kw: 45, label: '45 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 90, source: 'Sunbelt 45-80 kW class' },
-  { kw: 80, label: '80 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 110, source: 'Sunbelt 45-80 kW class' },
-  { kw: 100, label: '100 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 135, source: 'Sunbelt 100-119 kW class' },
-  { kw: 150, label: '150 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 160, source: 'Sunbelt 150-200 kW class' },
-  { kw: 200, label: '200 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 175, source: 'Sunbelt 150-200 kW class' },
-  { kw: 300, label: '300 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 210, source: 'Sunbelt 250-350 kW class' },
-  { kw: 500, label: '500 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 260, source: 'Sunbelt 500-700 kW class' },
-  { kw: 700, label: '700 kW diesel generator', voltage: 'multi-voltage', footprintSqFt: 300, source: 'Sunbelt 500-700 kW class' },
-  { kw: 1000, label: '1000 kW diesel generator', voltage: '480 V typical', footprintSqFt: 320, source: 'Sunbelt 1000-1200 kW class' },
-  { kw: 1500, label: '1500 kW diesel generator', voltage: '480 V typical', footprintSqFt: 360, source: 'Sunbelt 1300-1500 kW class' },
-  { kw: 2000, label: '2000 kW diesel generator', voltage: '480 V typical', footprintSqFt: 390, source: 'Sunbelt 1700-2000 kW class' },
-]
+function generatorPlanningFootprintSqFt(kw: number): number {
+  if (kw <= 40) return 70
+  if (kw <= 75) return 90
+  if (kw <= 100) return 135
+  if (kw <= 150) return 160
+  if (kw <= 200) return 175
+  if (kw <= 300) return 210
+  if (kw <= 500) return 260
+  if (kw <= 750) return 300
+  if (kw <= 1250) return 320
+  if (kw <= 1750) return 360
+  return 390
+}
+
+export const GENERATOR_FLEET: GeneratorFleetUnit[] = DIESEL_GENERATOR_SIZES_KW.map((kw) => ({
+  kw,
+  label: `${kw} kW diesel generator`,
+  voltage: kw >= 1000 ? '480 V typical' : 'multi-voltage',
+  footprintSqFt: generatorPlanningFootprintSqFt(kw),
+  source: 'Generic rental-market planning class; availability and dimensions require field verification',
+}))
 
 export const BESS_FLEET: BessFleetUnit[] = [
-  { kw: 5, kwh: 7, continuousKw: 4.8, chargeKw: 2.6, chargeBasis: 'planning_assumption', peakKw: 5.8, peakDurationHours: 3 / 3600, label: 'Portable 5/7 — 4.8 kW continuous / 7 kWh nominal', voltage: '120 V', footprintSqFt: 12, source: 'Sunbelt Cat 1131000 and published equipment sheet', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/5-kilowatt-7-kilowatt-hour-portable-battery-energy-storage-system/1131000/' },
-  { kw: 24, kwh: 90, continuousKw: 24, chargeKw: 24, chargeBasis: 'planning_assumption', usableKwh: 72, label: 'Generac MBE30 — 24 kW continuous / 72 kWh usable', voltage: '208/120 V', footprintSqFt: 80, source: 'Sunbelt Cat 1131100 and Generac MBE30 manufacturer data', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/24-kilowatt-90-kilowatt-hour-battery-energy-storage-system/1131100/' },
-  { kw: 30, kwh: 146.7, continuousKw: 30, chargeKw: 30, chargeBasis: 'published', usableKwh: 132, label: 'Viridi RPS150 — 30 kW continuous / 132 kWh usable', voltage: '480/208 V', footprintSqFt: 100, source: 'Sunbelt Cat 1131123 and Viridi RPS150 manufacturer data', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/30-kilowatt-150-kilowatt-hour-parallelable-battery-energy-storage-system/1131123/' },
-  { kw: 75, kwh: 600, continuousKw: 40, chargeKw: 19.2, chargeBasis: 'published', usableKwh: 530, peakKw: 75, peakDurationHours: 1, fieldNote: 'Owner field experience reports protective shutdown near 42 kW. Use 40 kW as the planning ceiling; AC charging is 19.2 kW and is modeled after transfer of the customer load to the generator.', label: 'Moxion MP75-600 — 40 kW continuous / 530 kWh usable (75 kW for 1 hr)', voltage: '480 V 3-phase continuous rating', footprintSqFt: 180, source: 'Sunbelt Cat 1131175, Moxion MP75-600 Rev E manufacturer manual, and owner field note', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/75-kilowatt-600-kilowatt-hour-battery-energy-storage-system/1131175/' },
-  { kw: 250, kwh: 575, continuousKw: 250, chargeKw: 250, chargeBasis: 'planning_assumption', usableKwh: 518, peakKw: 275, peakDurationHours: 10 / 60, label: 'Atlas Copco ZBC 250-575 — 250 kW continuous / 518 kWh net', voltage: '480 V 3-phase', footprintSqFt: 220, source: 'Sunbelt Cat 1131190 and Atlas Copco ZBC 250-575 manufacturer sheet', sourceUrl: 'https://www.sunbeltrentals.com/equipment-rental/generators-and-accessories/250-kilowatt-575-kilowatt-hour-battery-energy-storage-system/1131190/' },
+  { kw: 5, kwh: 7, continuousKw: 4.8, chargeKw: 2.6, chargeBasis: 'planning_assumption', peakKw: 5.8, peakDurationHours: 3 / 3600, label: 'Portable 5/7 — 4.8 kW continuous / 7 kWh nominal', voltage: '120 V', footprintSqFt: 12, source: 'Published equipment data; rental availability requires field verification' },
+  { kw: 24, kwh: 90, continuousKw: 24, chargeKw: 24, chargeBasis: 'planning_assumption', usableKwh: 72, label: 'Generac MBE30 — 24 kW continuous / 72 kWh usable', voltage: '208/120 V', footprintSqFt: 80, source: 'Generac MBE30 manufacturer data; rental availability requires field verification' },
+  { kw: 30, kwh: 146.7, continuousKw: 30, chargeKw: 30, chargeBasis: 'published', usableKwh: 132, label: 'Viridi RPS150 — 30 kW continuous / 132 kWh usable', voltage: '480/208 V', footprintSqFt: 100, source: 'Viridi RPS150 manufacturer data; rental availability requires field verification' },
+  { kw: 75, kwh: 600, continuousKw: 40, chargeKw: 19.2, chargeBasis: 'published', usableKwh: 530, peakKw: 75, peakDurationHours: 1, fieldNote: 'Owner field experience reports protective shutdown near 42 kW. Use 40 kW as the planning ceiling; AC charging is 19.2 kW and is modeled after transfer of the customer load to the generator.', label: 'Moxion MP75-600 — 40 kW continuous / 530 kWh usable (75 kW for 1 hr)', voltage: '480 V 3-phase continuous rating', footprintSqFt: 180, source: 'Moxion MP75-600 Rev E manufacturer manual and owner field note; rental availability requires field verification' },
+  { kw: 250, kwh: 575, continuousKw: 250, chargeKw: 250, chargeBasis: 'planning_assumption', usableKwh: 518, peakKw: 275, peakDurationHours: 10 / 60, label: 'Atlas Copco ZBC 250-575 — 250 kW continuous / 518 kWh net', voltage: '480 V 3-phase', footprintSqFt: 220, source: 'Atlas Copco ZBC 250-575 manufacturer data; rental availability requires field verification' },
 ]
 
 export function normalizeRateToDaily(value: number, period: 'daily' | 'weekly' | 'monthly'): number {
@@ -117,7 +125,7 @@ export function recommendEquipment(inputs: EquipmentRecommendationInputs): Equip
   const preferred = hasMeaningfulPeakSwing || longRuntime ? 'hybrid' : peakKw <= 24 && bessAutonomyHours <= 4 ? 'bess' : 'generator'
 
   return {
-    sourceNote: 'Fleet classes modeled from public Sunbelt Rentals generator and BESS catalog groupings. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; footprints are planning allowances and need site verification.',
+    sourceNote: 'Generator classes use the governed diesel reference sizes. BESS quantities are sized to the stated autonomy or peak window, not unattended full-project duration; rental availability, footprints, and dimensions require site and provider verification.',
     preferred,
     generator: {
       label: 'Generator only',

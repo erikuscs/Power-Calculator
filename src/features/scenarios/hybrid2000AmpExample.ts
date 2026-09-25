@@ -11,10 +11,13 @@ export const HYBRID_2000A_PROTECTED_KW = HYBRID_2000A_SERVICE_KVA * HYBRID_2000A
 export const HYBRID_2000A_CONTINUOUS_KW = (HYBRID_2000A_CONTINUOUS_AMPS * HYBRID_2000A_VOLTAGE * Math.sqrt(3) * HYBRID_2000A_POWER_FACTOR) / 1000
 
 export const HYBRID_2000A_INPUTS: HybridWizardInputs = {
+  peakAmps: HYBRID_2000A_SERVICE_AMPS,
+  continuousAmps: HYBRID_2000A_CONTINUOUS_AMPS,
+  phase: 'three',
   peakLoadKw: HYBRID_2000A_PROTECTED_KW,
   baseLoadKw: HYBRID_2000A_CONTINUOUS_KW,
   loadSource: 'panel',
-  bessUnitSize: 30,
+  bessUnitSize: 5,
   peakHoursPerDay: 1,
   projectDurationDays: 28,
   redundancy: 'n',
@@ -39,13 +42,12 @@ export const HYBRID_2000A_INPUTS: HybridWizardInputs = {
 export const HYBRID_2000A_ZONES = Array.from({ length: 10 }, (_, index) => ({
   id: `trailer-${index + 1}`,
   name: `Job Site Trailer ${index + 1}`,
-  kw: HYBRID_2000A_PROTECTED_KW / 10,
 }))
 
 export function buildHybrid2000AmpExample() {
   const results = calculateHybridWizard(HYBRID_2000A_INPUTS)
   const diagram = buildHybridOneLineDiagram(HYBRID_2000A_INPUTS, results, HYBRID_2000A_ZONES)
-  const plan = buildHybridProjectPlan(HYBRID_2000A_INPUTS, results, HYBRID_2000A_ZONES)
+  const plan = buildHybridProjectPlan(HYBRID_2000A_INPUTS, results, [])
 
   return { inputs: HYBRID_2000A_INPUTS, results, diagram, plan, zones: HYBRID_2000A_ZONES }
 }

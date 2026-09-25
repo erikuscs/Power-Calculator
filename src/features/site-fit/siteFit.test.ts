@@ -100,4 +100,15 @@ describe('site fit planning', () => {
     expect(result.planningPowerCeilingKw).toBe(1500)
     expect(result.equipment.every((item) => item.x >= (DEFAULT_SITE_FIT_INPUTS.accessLaneWidthFt / DEFAULT_SITE_FIT_INPUTS.siteLengthFt) * 100)).toBe(true)
   })
+
+  it('does not invent a generic BESS block for an unsynced hybrid plan', () => {
+    const result = calculateSiteFit({
+      ...DEFAULT_SITE_FIT_INPUTS,
+      scenario: 'hybrid',
+      packageOverride: undefined,
+    })
+
+    expect(result.equipment.some((item) => item.kind === 'bess')).toBe(false)
+    expect(result.equipment.some((item) => item.rating.includes('300 kW / 600 kWh'))).toBe(false)
+  })
 })

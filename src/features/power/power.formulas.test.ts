@@ -119,7 +119,7 @@ describe('interpolateBSFC', () => {
 })
 
 describe('calcFuelConsumption', () => {
-  it('uses the exact Sunbelt full-load value for a 500 kW generator', () => {
+  it('uses the exact reference-curve full-load value for a 500 kW generator', () => {
     const r = calcFuelConsumption({
       actualKw: 500,
       ratedKw: 500,
@@ -136,7 +136,7 @@ describe('calcFuelConsumption', () => {
     expect(r.totalFuel).toBe(35.7)
   })
 
-  it('uses the exact Sunbelt half-load value for a 500 kW generator', () => {
+  it('uses the exact reference-curve half-load value for a 500 kW generator', () => {
     const r = calcFuelConsumption({
       actualKw: 250,
       ratedKw: 500,
@@ -163,7 +163,7 @@ describe('calcFuelConsumption', () => {
     expect(r.altitudeDerating).toBeCloseTo(1.12, 4)
     // tempDerating = 1 + max(0, (97 - 77) / 10) * 0.02 = 1 + 2 * 0.02 = 1.04
     expect(r.tempDerating).toBeCloseTo(1.04, 4)
-    // GPH = Sunbelt 35.7 gal/hr x 1.12 x 1.04.
+    // GPH = reference-curve 35.7 gal/hr x 1.12 x 1.04.
     expect(r.gallonsPerHour).toBeCloseTo(41.58336, 5)
     expect(r.totalFuel).toBeCloseTo(415.8336, 4)
   })

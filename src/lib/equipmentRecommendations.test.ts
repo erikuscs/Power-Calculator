@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeRateToDaily, recommendEquipment } from './equipmentRecommendations'
+import { DIESEL_GENERATOR_SIZES_KW } from './dieselFuelCurve'
+import { GENERATOR_FLEET, normalizeRateToDaily, recommendEquipment } from './equipmentRecommendations'
+
+describe('generator fleet catalog', () => {
+  it('uses every governed diesel reference size and no unsupported size', () => {
+    expect(GENERATOR_FLEET.map((unit) => unit.kw)).toEqual(DIESEL_GENERATOR_SIZES_KW)
+    expect(GENERATOR_FLEET).toHaveLength(25)
+    expect(GENERATOR_FLEET.map((unit) => unit.kw)).not.toContain(45)
+    expect(GENERATOR_FLEET.map((unit) => unit.kw)).not.toContain(80)
+    expect(GENERATOR_FLEET.map((unit) => unit.kw)).not.toContain(700)
+  })
+
+  it('uses supplier-neutral public metadata', () => {
+    const retiredSupplierName = ['sun', 'belt'].join('')
+    for (const unit of GENERATOR_FLEET) {
+      expect(`${unit.label} ${unit.source}`.toLowerCase()).not.toContain(retiredSupplierName)
+      expect(`${unit.label} ${unit.source}`).not.toMatch(/catalog|cat\s*\d/i)
+    }
+  })
+})
 
 describe('normalizeRateToDaily', () => {
   it('uses the 28-day rental cycle for monthly equipment rates', () => {

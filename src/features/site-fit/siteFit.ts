@@ -195,22 +195,6 @@ function buildEquipment(inputs: SiteFitInputs, architecture: TempPowerArchitectu
     })
   }
 
-  if (inputs.scenario === 'hybrid') {
-    items.push({
-      id: 'BESS-1',
-      kind: 'bess',
-      label: 'BESS',
-      rating: '300 kW / 600 kWh planning block',
-      lengthFt: 40,
-      widthFt: 8,
-      clearanceFt: 5,
-      x: 18,
-      y: 9,
-      reason: 'Included because Hybrid was selected; usable energy, PCS rating, fire access, and dispatch controls require delivered-equipment review.',
-      status: 'required',
-    })
-  }
-
   if (inputs.scenario === 'power_cooling') {
     items.push({
       id: 'COOL-1',

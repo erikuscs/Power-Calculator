@@ -4,9 +4,20 @@ import { describe, expect, it, vi } from 'vitest'
 import { calculateHybridWizard, type HybridWizardInputs } from './scenario.formulas'
 import { HybridEnergyPdfDoc } from './HybridEnergyPdf'
 
-vi.mock('@react-pdf/renderer', () => ({
-  Text: ({ children }: PropsWithChildren) => <span>{children}</span>,
-}))
+vi.mock('@react-pdf/renderer', () => {
+  const Container = ({ children }: PropsWithChildren) => <div>{children}</div>
+  const Primitive = ({ children }: PropsWithChildren) => <span>{children}</span>
+  return {
+    Text: Primitive,
+    View: Container,
+    Svg: Container,
+    G: Container,
+    Circle: Primitive,
+    Line: Primitive,
+    Path: Primitive,
+    Rect: Primitive,
+  }
+})
 
 vi.mock('../../components/pdf/PdfReportShell', () => ({
   PdfDocument: ({ children }: PropsWithChildren) => <div>{children}</div>,

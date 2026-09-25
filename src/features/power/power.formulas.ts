@@ -1,5 +1,5 @@
 import { SQRT3, NATURAL_GAS_CFH_PER_KW, LAMP_EFFICACY } from '../../lib/constants'
-import { estimateSunbeltDieselFuel } from '../../lib/dieselFuelCurve'
+import { estimateDieselFuel } from '../../lib/dieselFuelCurve'
 import { fmt, fmtPercent } from '../../lib/formatters'
 
 export interface FormulaStep {
@@ -11,7 +11,7 @@ export interface FormulaStep {
 
 // ---------------------------------------------------------------------------
 // Helper: retain the former load adjustment only for natural-gas planning.
-// Diesel calculations use the size-specific Sunbelt gallons-per-hour table.
+// Diesel calculations use the governed size-specific gallons-per-hour reference table.
 // ---------------------------------------------------------------------------
 const BSFC_POINTS = [
   { load: 0.25, bsfc: 0.105 },
@@ -381,7 +381,7 @@ export function calcFuelConsumption(i: FuelConsumptionInputs): FuelConsumptionRe
   const tempDerating = 1 + Math.max(0, (i.ambientF - 77) / 10) * 0.02
 
   if (i.fuelType === 'diesel') {
-    const sourceEstimate = estimateSunbeltDieselFuel(i.ratedKw, i.actualKw)
+    const sourceEstimate = estimateDieselFuel(i.ratedKw, i.actualKw)
     const gallonsPerHour = sourceEstimate.gallonsPerHour * altitudeDerating * tempDerating
     return {
       loadFactor,
@@ -437,7 +437,7 @@ export function describeFuelConsumption(i: FuelConsumptionInputs, r: FuelConsump
 
   if (i.fuelType === 'diesel') {
     steps.splice(1, 0, {
-      label: 'Sunbelt Diesel Table Rate',
+      label: 'Diesel Reference-Curve Rate',
       formula: 'Interpolate gallons/hour by generator rated kW and 25%, 50%, 75%, or 100% load',
       substituted: `${fmt(r.sourceRatedKw ?? i.ratedKw, 1)} kW chart basis at ${fmtPercent(r.sourceLoadFactor ?? r.loadFactor, 1)} load`,
       result: `${fmt(r.gallonsPerHour / (r.altitudeDerating * r.tempDerating), 2)} gal/hr before site derating`,
@@ -445,7 +445,7 @@ export function describeFuelConsumption(i: FuelConsumptionInputs, r: FuelConsump
     steps.push(
       {
         label: 'Gallons per Hour',
-        formula: 'GPH = Sunbelt table rate x Alt Derating x Temp Derating',
+        formula: 'GPH = reference-curve rate x Alt Derating x Temp Derating',
         substituted: `${fmt(r.gallonsPerHour / (r.altitudeDerating * r.tempDerating), 2)} x ${fmt(r.altitudeDerating, 4)} x ${fmt(r.tempDerating, 4)}`,
         result: `${fmt(r.gallonsPerHour, 2)} gal/hr`,
       },

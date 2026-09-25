@@ -1,13 +1,13 @@
-export const SUNBELT_DIESEL_LOAD_POINTS = [0.25, 0.5, 0.75, 1] as const
+export const DIESEL_FUEL_LOAD_POINTS = [0.25, 0.5, 0.75, 1] as const
 
-export interface SunbeltDieselFuelRow {
+export interface DieselFuelReferenceRow {
   ratedKw: number
   gallonsPerHour: readonly [number, number, number, number]
 }
 
-// Source: Sunbelt Rentals, "Approximate Fuel Consumption Chart" (2021).
-// The source identifies these as planning approximations, not exact engine data.
-export const SUNBELT_DIESEL_FUEL_TABLE: readonly SunbeltDieselFuelRow[] = [
+// Source: owner-provided "Approximate Fuel Consumption Chart" (2021).
+// Values are planning approximations, not manufacturer-specific engine data.
+export const DIESEL_FUEL_REFERENCE_TABLE: readonly DieselFuelReferenceRow[] = [
   { ratedKw: 20, gallonsPerHour: [0.6, 0.9, 1.3, 1.6] },
   { ratedKw: 30, gallonsPerHour: [1.3, 1.8, 2.4, 2.9] },
   { ratedKw: 40, gallonsPerHour: [1.6, 2.3, 3.2, 4] },
@@ -49,12 +49,14 @@ function interpolate(lo: number, hi: number, fraction: number): number {
   return lo + (hi - lo) * fraction
 }
 
-function rateForRow(row: SunbeltDieselFuelRow, loadFactor: number): number {
-  const boundedLoad = Math.max(SUNBELT_DIESEL_LOAD_POINTS[0], Math.min(1, loadFactor))
+export const DIESEL_GENERATOR_SIZES_KW = DIESEL_FUEL_REFERENCE_TABLE.map((row) => row.ratedKw)
 
-  for (let index = 0; index < SUNBELT_DIESEL_LOAD_POINTS.length - 1; index += 1) {
-    const lowLoad = SUNBELT_DIESEL_LOAD_POINTS[index]
-    const highLoad = SUNBELT_DIESEL_LOAD_POINTS[index + 1]
+function rateForRow(row: DieselFuelReferenceRow, loadFactor: number): number {
+  const boundedLoad = Math.max(DIESEL_FUEL_LOAD_POINTS[0], Math.min(1, loadFactor))
+
+  for (let index = 0; index < DIESEL_FUEL_LOAD_POINTS.length - 1; index += 1) {
+    const lowLoad = DIESEL_FUEL_LOAD_POINTS[index]
+    const highLoad = DIESEL_FUEL_LOAD_POINTS[index + 1]
     if (boundedLoad >= lowLoad && boundedLoad <= highLoad) {
       const fraction = (boundedLoad - lowLoad) / (highLoad - lowLoad)
       return interpolate(row.gallonsPerHour[index], row.gallonsPerHour[index + 1], fraction)
@@ -64,13 +66,13 @@ function rateForRow(row: SunbeltDieselFuelRow, loadFactor: number): number {
   return row.gallonsPerHour[row.gallonsPerHour.length - 1]
 }
 
-export function estimateSunbeltDieselFuel(ratedKw: number, actualKw: number): DieselFuelEstimate {
+export function estimateDieselFuel(ratedKw: number, actualKw: number): DieselFuelEstimate {
   const safeRatedKw = Math.max(0, ratedKw)
   const safeActualKw = Math.max(0, actualKw)
   const actualLoadFactor = safeRatedKw > 0 ? safeActualKw / safeRatedKw : 0
-  const chartLoadFactor = Math.max(SUNBELT_DIESEL_LOAD_POINTS[0], Math.min(1, actualLoadFactor))
-  const minimumRow = SUNBELT_DIESEL_FUEL_TABLE[0]
-  const maximumRow = SUNBELT_DIESEL_FUEL_TABLE[SUNBELT_DIESEL_FUEL_TABLE.length - 1]
+  const chartLoadFactor = Math.max(DIESEL_FUEL_LOAD_POINTS[0], Math.min(1, actualLoadFactor))
+  const minimumRow = DIESEL_FUEL_REFERENCE_TABLE[0]
+  const maximumRow = DIESEL_FUEL_REFERENCE_TABLE[DIESEL_FUEL_REFERENCE_TABLE.length - 1]
   const chartRatedKw = Math.max(minimumRow.ratedKw, Math.min(maximumRow.ratedKw, safeRatedKw))
 
   let gallonsPerHour: number
@@ -79,9 +81,9 @@ export function estimateSunbeltDieselFuel(ratedKw: number, actualKw: number): Di
   } else if (chartRatedKw >= maximumRow.ratedKw) {
     gallonsPerHour = rateForRow(maximumRow, chartLoadFactor)
   } else {
-    const upperIndex = SUNBELT_DIESEL_FUEL_TABLE.findIndex((row) => row.ratedKw >= chartRatedKw)
-    const lowerRow = SUNBELT_DIESEL_FUEL_TABLE[upperIndex - 1]
-    const upperRow = SUNBELT_DIESEL_FUEL_TABLE[upperIndex]
+    const upperIndex = DIESEL_FUEL_REFERENCE_TABLE.findIndex((row) => row.ratedKw >= chartRatedKw)
+    const lowerRow = DIESEL_FUEL_REFERENCE_TABLE[upperIndex - 1]
+    const upperRow = DIESEL_FUEL_REFERENCE_TABLE[upperIndex]
     const sizeFraction = (chartRatedKw - lowerRow.ratedKw) / (upperRow.ratedKw - lowerRow.ratedKw)
     gallonsPerHour = interpolate(
       rateForRow(lowerRow, chartLoadFactor),
@@ -101,14 +103,14 @@ export function estimateSunbeltDieselFuel(ratedKw: number, actualKw: number): Di
   }
 }
 
-export function estimateSunbeltDieselFleetFuel(
+export function estimateDieselFleetFuel(
   unitRatedKw: number,
   onlineUnitCount: number,
   totalActualKw: number,
 ): DieselFuelEstimate {
   const unitCount = Math.max(1, Math.ceil(onlineUnitCount))
   const perUnitActualKw = Math.max(0, totalActualKw) / unitCount
-  const unitEstimate = estimateSunbeltDieselFuel(unitRatedKw, perUnitActualKw)
+  const unitEstimate = estimateDieselFuel(unitRatedKw, perUnitActualKw)
   const gallonsPerHour = unitEstimate.gallonsPerHour * unitCount
 
   return {

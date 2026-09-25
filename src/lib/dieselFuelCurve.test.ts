@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  estimateSunbeltDieselFleetFuel,
-  estimateSunbeltDieselFuel,
-  SUNBELT_DIESEL_FUEL_TABLE,
-  SUNBELT_DIESEL_LOAD_POINTS,
+  DIESEL_FUEL_LOAD_POINTS,
+  DIESEL_FUEL_REFERENCE_TABLE,
+  DIESEL_GENERATOR_SIZES_KW,
+  estimateDieselFleetFuel,
+  estimateDieselFuel,
 } from './dieselFuelCurve'
 
 const PDF_DERIVED_EXPECTED_TABLE = [
@@ -34,26 +35,27 @@ const PDF_DERIVED_EXPECTED_TABLE = [
   [2250, 48.1, 81.1, 116.4, 159.6],
 ] as const
 
-describe('Sunbelt diesel fuel table', () => {
+describe('diesel fuel reference table', () => {
   it('locks every published generator and load-point value', () => {
-    expect(SUNBELT_DIESEL_FUEL_TABLE).toHaveLength(PDF_DERIVED_EXPECTED_TABLE.length)
+    expect(DIESEL_FUEL_REFERENCE_TABLE).toHaveLength(PDF_DERIVED_EXPECTED_TABLE.length)
+    expect(DIESEL_GENERATOR_SIZES_KW).toEqual(PDF_DERIVED_EXPECTED_TABLE.map(([ratedKw]) => ratedKw))
     PDF_DERIVED_EXPECTED_TABLE.forEach(([ratedKw, ...expectedRates], rowIndex) => {
-      expect(SUNBELT_DIESEL_FUEL_TABLE[rowIndex].ratedKw).toBe(ratedKw)
-      SUNBELT_DIESEL_LOAD_POINTS.forEach((loadFactor, index) => {
-        expect(SUNBELT_DIESEL_FUEL_TABLE[rowIndex].gallonsPerHour[index]).toBe(expectedRates[index])
-        expect(estimateSunbeltDieselFuel(ratedKw, ratedKw * loadFactor).gallonsPerHour)
+      expect(DIESEL_FUEL_REFERENCE_TABLE[rowIndex].ratedKw).toBe(ratedKw)
+      DIESEL_FUEL_LOAD_POINTS.forEach((loadFactor, index) => {
+        expect(DIESEL_FUEL_REFERENCE_TABLE[rowIndex].gallonsPerHour[index]).toBe(expectedRates[index])
+        expect(estimateDieselFuel(ratedKw, ratedKw * loadFactor).gallonsPerHour)
           .toBe(expectedRates[index])
       })
     })
   })
 
   it('interpolates by generator size and load factor', () => {
-    const estimate = estimateSunbeltDieselFuel(450, 281.25)
+    const estimate = estimateDieselFuel(450, 281.25)
     expect(estimate.gallonsPerHour).toBeCloseTo(20.275, 6)
   })
 
   it('uses the published quarter-load value below 25 percent', () => {
-    const estimate = estimateSunbeltDieselFuel(500, 50)
+    const estimate = estimateDieselFuel(500, 50)
     expect(estimate.gallonsPerHour).toBe(11)
     expect(estimate.actualLoadFactor).toBe(0.1)
     expect(estimate.chartLoadFactor).toBe(0.25)
@@ -61,7 +63,7 @@ describe('Sunbelt diesel fuel table', () => {
   })
 
   it('adds identical online-unit consumption for a generator fleet', () => {
-    const estimate = estimateSunbeltDieselFleetFuel(500, 3, 750)
+    const estimate = estimateDieselFleetFuel(500, 3, 750)
     expect(estimate.gallonsPerHour).toBe(55.5)
     expect(estimate.actualLoadFactor).toBe(0.5)
   })

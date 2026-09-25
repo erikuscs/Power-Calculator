@@ -15,38 +15,59 @@ vi.mock('@react-pdf/renderer', async (importOriginal) => {
 })
 
 describe('HybridEnergyWizard input guards', () => {
-  it('shows results with valid default inputs (base <= peak)', () => {
+  function enterValidAmpFirstInputs() {
+    fireEvent.change(screen.getByLabelText('Peak Current'), { target: { value: '2000' } })
+    fireEvent.change(screen.getByLabelText('Continuous Current'), { target: { value: '500' } })
+    fireEvent.change(screen.getByLabelText('Voltage'), { target: { value: '480' } })
+    fireEvent.change(screen.getByLabelText('Phase'), { target: { value: 'three' } })
+    fireEvent.change(screen.getByLabelText('Power Factor'), { target: { value: '0.8' } })
+  }
+
+  it('starts blank and makes no package claim before the customer inputs are complete', () => {
     render(<HybridEnergyWizard />)
-    expect(screen.getByText('Financial Comparison')).toBeInTheDocument()
-    expect(screen.queryByText('Base load cannot exceed peak load')).toBeNull()
-    expect(screen.getByLabelText('Site Voltage')).toHaveValue('480')
-    expect(screen.getByLabelText('Load Voltage')).toHaveValue('480')
-    expect(screen.getByText('Benchmark architecture check')).toBeInTheDocument()
+    expect(screen.getByLabelText('Peak Current')).toHaveValue(null)
+    expect(screen.getByLabelText('Continuous Current')).toHaveValue(null)
+    expect(screen.getByLabelText('Voltage')).toHaveValue('')
+    expect(screen.getByLabelText('Phase')).toHaveValue('')
+    expect(screen.getByLabelText('Power Factor')).toHaveValue(null)
+    expect(screen.queryByText('Automatically Selected Package')).toBeNull()
   })
 
-  it('hides results and flags the field when base load exceeds peak load', () => {
+  it('automatically selects two 250 kW BESS and three 500 kW generators for the approved example', () => {
     render(<HybridEnergyWizard />)
-    // Defaults: peak 1,200 kW, base 800 kW — invert them.
-    fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '1300' } })
-
-    expect(screen.getByText('Base load cannot exceed peak load')).toBeInTheDocument()
-    // No invalid fuel-difference or "CO2 Avoided" tables should be rendered
+    enterValidAmpFirstInputs()
+    expect(screen.getByText('Automatically Selected Package')).toBeInTheDocument()
+    expect(screen.getByText('2 × 250 kW')).toBeInTheDocument()
+    expect(screen.getByText('3 × 500 kW')).toBeInTheDocument()
     expect(screen.queryByText('Financial Comparison')).toBeNull()
-    expect(screen.queryByText('System Configuration')).toBeNull()
+    expect(screen.queryByText('Daily Fuel')).toBeNull()
   })
 
-  it('hides results when base load is negative', () => {
+  it('blocks a continuous current above peak current', () => {
     render(<HybridEnergyWizard />)
-    fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '-100' } })
-    expect(screen.queryByText('Financial Comparison')).toBeNull()
+    enterValidAmpFirstInputs()
+    fireEvent.change(screen.getByLabelText('Continuous Current'), { target: { value: '2100' } })
+    expect(screen.getByText('Continuous amps cannot exceed peak amps.')).toBeInTheDocument()
+    expect(screen.queryByText('Automatically Selected Package')).toBeNull()
   })
 
-  it('shows the maintenance-reserve warning when redundancy is disabled', () => {
+  it('returns no package when the governed inventory has no compatible voltage and phase', () => {
     render(<HybridEnergyWizard />)
-    fireEvent.change(screen.getByLabelText('Redundancy Level'), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText('Peak Current'), { target: { value: '200' } })
+    fireEvent.change(screen.getByLabelText('Continuous Current'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('Voltage'), { target: { value: '240' } })
+    fireEvent.change(screen.getByLabelText('Phase'), { target: { value: 'three' } })
+    fireEvent.change(screen.getByLabelText('Power Factor'), { target: { value: '0.8' } })
+    expect(screen.getByText(/No electrically compatible BESS/)).toBeInTheDocument()
+    expect(screen.queryByText('Automatically Selected Package')).toBeNull()
+  })
 
-    expect(screen.getByText('WARNING — modular plant has no standby unit')).toBeInTheDocument()
-    expect(screen.getByText(/no unit can be removed for maintenance/i)).toBeInTheDocument()
+  it('calculates one exact 28-day equipment total from the two quoted unit rates', () => {
+    render(<HybridEnergyWizard />)
+    enterValidAmpFirstInputs()
+    fireEvent.change(screen.getByLabelText('Selected BESS 28-Day Rate'), { target: { value: '9800' } })
+    fireEvent.change(screen.getByLabelText('Selected Generator 28-Day Rate'), { target: { value: '14000' } })
+    expect(screen.getAllByText('$61,600').length).toBeGreaterThan(0)
   })
 })
 

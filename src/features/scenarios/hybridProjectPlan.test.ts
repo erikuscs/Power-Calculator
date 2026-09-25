@@ -28,6 +28,31 @@ const inputs: HybridWizardInputs = {
 }
 
 describe('buildHybridProjectPlan', () => {
+  it('uses exactly one 28-day cycle for the automatic amp-first package', () => {
+    const ampInputs: HybridWizardInputs = {
+      ...inputs,
+      peakAmps: 2000,
+      continuousAmps: 500,
+      phase: 'three',
+      peakLoadKw: (2000 * 480 * Math.sqrt(3) * 0.8) / 1000,
+      baseLoadKw: (500 * 480 * Math.sqrt(3) * 0.8) / 1000,
+      projectDurationDays: 90,
+      redundancy: 'n1',
+      bess28DayRate: 9800,
+      generator28DayRate: 14000,
+    }
+    const results = calculateHybridWizard(ampInputs)
+    const plan = buildHybridProjectPlan(ampInputs, results, [])
+
+    expect(results.bessUnits).toBe(2)
+    expect(results.genUnits).toBe(3)
+    expect(plan.quoteItems).toHaveLength(2)
+    expect(plan.quoteItems.every((item) => item.periods === 1 && item.rateUnit === '28-day cycle')).toBe(true)
+    expect(plan.quoteItems.find((item) => item.id === 'bess-rental')?.total).toBe(19600)
+    expect(plan.quoteItems.find((item) => item.id === 'generator-rental')?.total).toBe(42000)
+    expect(plan.budgetaryTotal).toBe(61600)
+  })
+
   it('keeps equipment, branch cable, site envelope, and quote quantities on one result', () => {
     const results = calculateHybridWizard(inputs)
     const plan = buildHybridProjectPlan(inputs, results, [

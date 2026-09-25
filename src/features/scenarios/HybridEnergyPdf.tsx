@@ -4,8 +4,9 @@ import { SQRT3 } from '../../lib/constants'
 import { BESS_FLEET } from '../../lib/equipmentRecommendations'
 import type { HybridWizardInputs, HybridWizardResults } from './scenario.formulas'
 import { buildHybridProjectPlan } from './hybridProjectPlan'
-import { buildHybridOneLineDiagram, flattenDiagramRows } from './oneLineDiagram'
+import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { reviewHybridBenchmark } from './hybridBenchmark'
+import { HybridEnergyOneLinePdf } from './HybridEnergyOneLinePdf'
 
 export interface HybridEnergyPdfDocProps {
   inputs: HybridWizardInputs
@@ -35,6 +36,61 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
   } as const
   const diagram = buildHybridOneLineDiagram(inputs, results, zones ?? [])
   const projectPlan = buildHybridProjectPlan(inputs, results, zones ?? [])
+  const ampFirst = inputs.peakAmps !== undefined || inputs.continuousAmps !== undefined
+
+  if (ampFirst) {
+    const pricingComplete = results.bess28DayRate > 0 && results.generator28DayRate > 0
+    const phaseLabel = inputs.phase === 'single' ? 'Single phase' : 'Three phase'
+    return (
+      <PdfDocument title="EMaaS Hybrid 28-Day Package" clientName={clientName} projectName={projectName}>
+        <PdfSection title="Customer-Supplied Electrical Basis">
+          {clientName && <PdfKeyValue label="Client" value={clientName} />}
+          <PdfKeyValue label="Peak Current" value={`${fi(inputs.peakAmps ?? 0)} A`} />
+          <PdfKeyValue label="Continuous Current" value={`${fi(inputs.continuousAmps ?? 0)} A`} />
+          <PdfKeyValue label="Voltage" value={`${inputs.siteVoltage} V`} />
+          <PdfKeyValue label="Phase" value={phaseLabel} />
+          <PdfKeyValue label="Power Factor" value={fv(inputs.powerFactor ?? 0)} />
+          <PdfKeyValue label="Derived Peak Demand" value={`${fv(inputs.peakLoadKw)} kW`} />
+          <PdfKeyValue label="Derived Continuous Demand" value={`${fv(inputs.baseLoadKw)} kW`} />
+        </PdfSection>
+
+        <PdfSection title="Automatically Selected Compatible Package">
+          <PdfTable
+            headers={['Equipment', 'Quantity', 'Continuous Rating', 'Selection Basis']}
+            rows={[
+              [results.selectedBessLabel, `${results.bessUnits}`, `${fv(results.bessUnitContinuousKw)} kW/unit`, results.selectedBessSource],
+              [results.selectedGeneratorLabel, `${results.genUnits}`, `${fi(results.genUnitSizeKw)} kW/unit`, results.selectedGeneratorSource],
+            ]}
+          />
+          <PdfWarning>No standby unit, runtime duration, fuel consumption, fuel-reduction claim, or customer load zones were assumed. Rental availability and the delivered model/SKU require supplier confirmation.</PdfWarning>
+        </PdfSection>
+
+        <PdfSection title="One 28-Day Rental Cycle">
+          <PdfTable
+            headers={['Equipment', 'Qty', '28-Day Rate / Unit', 'Extended']}
+            rows={projectPlan.quoteItems.map((item) => [
+              item.description,
+              `${item.quantity}`,
+              item.rate > 0 ? fc(item.rate) : 'TBD',
+              item.total > 0 ? fc(item.total) : 'TBD',
+            ])}
+          />
+          <PdfKeyValue label="28-Day Equipment Total" value={pricingComplete ? fc(projectPlan.budgetaryTotal) : 'TBD — enter both quoted rates'} />
+          <PdfWarning>Pricing covers exactly one 28-day equipment rental cycle. Distribution, delivery, labor, taxes, protection, and engineering are not priced here.</PdfWarning>
+        </PdfSection>
+
+        <PdfSection title="One-Line Diagram">
+          <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 6 }}>{diagram.caption}</Text>
+          <HybridEnergyOneLinePdf diagram={diagram} />
+          <PdfWarning>Conceptual planning path only. Final protection, grounding, conductor sizing, switching, and equipment compatibility require vendor and licensed-engineer verification.</PdfWarning>
+        </PdfSection>
+
+        <PdfSection title="Disclaimer">
+          <Text style={{ fontSize: 8, color: '#C5C6C7' }}>This report is a 28-day equipment planning estimate based only on the customer-supplied electrical inputs shown above. It is not a runtime, fuel, fuel-reduction, availability, or construction claim.</Text>
+        </PdfSection>
+      </PdfDocument>
+    )
+  }
   const benchmarkReview = reviewHybridBenchmark(inputs, results)
   const selectedBess = BESS_FLEET.find((unit) => unit.kw === inputs.bessUnitSize)
   const bessOptionComparison = BESS_FLEET.map((unit) => {
@@ -168,10 +224,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 6 }}>
           {diagram.caption}
         </Text>
-        <PdfTable
-          headers={['Stage', 'Element', 'Detail']}
-          rows={flattenDiagramRows(diagram)}
-        />
+        <HybridEnergyOneLinePdf diagram={diagram} />
         <PdfWarning>The planning report shows the reviewed equipment path only. Editable Mermaid source remains inside EMaaS Pro for engineering handoff and is intentionally excluded from exported reports.</PdfWarning>
       </PdfSection>
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid } from './scenario.formulas'
+import { ampsToRealKw, calculateHybridWizard, calculateTempPower, calculateTempPowerPlanningBrief, calculateTempPowerSchedule, evaluateHybrid, selectCompatibleBessPackage, selectGeneratorPackage } from './scenario.formulas'
 import { calcGeneralPower } from '../power/power.formulas'
-import { estimateSunbeltDieselFleetFuel } from '../../lib/dieselFuelCurve'
+import { estimateDieselFleetFuel } from '../../lib/dieselFuelCurve'
 
 describe('calculateTempPower', () => {
   it('derives operating hours from rental period and schedule', () => {
@@ -235,6 +235,55 @@ describe('evaluateHybrid', () => {
 })
 
 describe('calculateHybridWizard', () => {
+  it('derives and automatically selects the exact amp-first 2,000 A package without invented scope', () => {
+    const peakLoadKw = ampsToRealKw(2000, 480, 'three', 0.8)
+    const baseLoadKw = ampsToRealKw(500, 480, 'three', 0.8)
+    const result = calculateHybridWizard({
+      peakAmps: 2000,
+      continuousAmps: 500,
+      phase: 'three',
+      bess28DayRate: 9800,
+      generator28DayRate: 14000,
+      peakLoadKw,
+      baseLoadKw,
+      loadSource: 'measured',
+      bessUnitSize: 5,
+      peakHoursPerDay: 0,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 77,
+      fuelCostPerGallon: 0,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '',
+      endDate: '',
+      motors: [],
+      powerFactor: 0.8,
+    })
+
+    expect(peakLoadKw).toBeCloseTo(1330.22, 2)
+    expect(baseLoadKw).toBeCloseTo(332.55, 2)
+    expect(result.selectedBessUnitSize).toBe(250)
+    expect(result.bessUnits).toBe(2)
+    expect(result.bessStandbyUnits).toBe(0)
+    expect(result.genUnitSizeKw).toBe(500)
+    expect(result.genUnits).toBe(3)
+    expect(result.generatorStandbyUnits).toBe(0)
+    expect(result.equipment28DayTotal).toBe(61600)
+    expect(result.allGenFuelPerDay).toBe(0)
+    expect(result.hybridFuelPerDay).toBe(0)
+  })
+
+  it('converts single- and three-phase current correctly and refuses incompatible BESS voltage', () => {
+    expect(ampsToRealKw(100, 240, 'single', 0.8)).toBeCloseTo(19.2, 6)
+    expect(ampsToRealKw(100, 480, 'three', 0.8)).toBeCloseTo(66.5108, 4)
+    expect(selectCompatibleBessPackage(332.55, 480, 'three')).toMatchObject({ units: 2, unit: { kw: 250 } })
+    expect(selectCompatibleBessPackage(50, 240, 'three')).toBeNull()
+    expect(selectGeneratorPackage(1330.22)).toMatchObject({ units: 3, unit: { kw: 500 } })
+  })
+
   it('derives the 2,000 A / 480 V N+1 benchmark from continuous ratings', () => {
     const serviceKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
     const result = calculateHybridWizard({
@@ -510,10 +559,10 @@ describe('calculateHybridWizard', () => {
     expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
     const siteDerating = 1.016
     const expectedAllGenFuel = (
-      estimateSunbeltDieselFleetFuel(500, 3, 1200).gallonsPerHour * 8
-      + estimateSunbeltDieselFleetFuel(500, 3, 800).gallonsPerHour * 16
+      estimateDieselFleetFuel(500, 3, 1200).gallonsPerHour * 8
+      + estimateDieselFleetFuel(500, 3, 800).gallonsPerHour * 16
     ) * siteDerating
-    const expectedHybridFuel = estimateSunbeltDieselFleetFuel(
+    const expectedHybridFuel = estimateDieselFleetFuel(
       500,
       result.generatorRequiredUnits,
       result.averageLoadKw + result.rechargePowerKw,

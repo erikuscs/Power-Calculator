@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { InputField } from '../../components/ui/InputField'
+import { SelectField } from '../../components/ui/SelectField'
 import { RadioGroup } from '../../components/ui/RadioGroup'
 import { ResultItem, ResultGrid } from '../../components/ui/ResultDisplay'
 import { FormulaBreakdown } from '../../components/ui/FormulaBreakdown'
@@ -8,6 +9,7 @@ import { PdfExportButton } from '../../components/pdf/PdfExportButton'
 import { useCalculator } from '../../hooks/useCalculator'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { fmt, fmtPercent } from '../../lib/formatters'
+import { DIESEL_GENERATOR_SIZES_KW } from '../../lib/dieselFuelCurve'
 import {
   calcFuelConsumption,
   describeFuelConsumption,
@@ -21,6 +23,11 @@ const FUEL_OPTIONS = [
   { value: 'diesel', label: 'Diesel' },
   { value: 'naturalGas', label: 'Natural Gas' },
 ]
+
+const GENERATOR_SIZE_OPTIONS = DIESEL_GENERATOR_SIZES_KW.map((kw) => ({
+  value: String(kw),
+  label: `${kw.toLocaleString()} kW`,
+}))
 
 export default function FuelConsumptionPage() {
   const [actualKw, setActualKw] = usePersistedState(ROUTE_KEY, 'actualKw', '375')
@@ -64,7 +71,7 @@ export default function FuelConsumptionPage() {
       <Card>
         <CardHeader
           title="Fuel Consumption Calculator"
-          subtitle="Estimate diesel from the Sunbelt reference size/load chart, or natural gas from a separate planning model"
+          subtitle="Estimate diesel from the governed reference size/load curve, or natural gas from a separate planning model"
         />
 
         <div className="mb-4">
@@ -85,13 +92,12 @@ export default function FuelConsumptionPage() {
             min={0}
             tooltip="Actual electrical load on the generator"
           />
-          <InputField
+          <SelectField
             label="Generator Rated Capacity"
-            unit="kW"
             value={ratedKw}
             onChange={setRatedKw}
-            min={0}
-            tooltip="Nameplate rated capacity. Field audit lesson: we've measured sites running 24% utilization — burning fuel around the clock for capacity that was never used"
+            options={GENERATOR_SIZE_OPTIONS}
+            tooltip="Select a governed reference size. Verify the delivered generator nameplate and manufacturer fuel curve before field release."
           />
           <InputField
             label="Runtime"
@@ -173,7 +179,7 @@ export default function FuelConsumptionPage() {
 
             {isDiesel && (
               <div className="mt-4 rounded-lg border border-sg-600 bg-sg-800 p-3 text-xs leading-relaxed text-text-dim">
-                Sunbelt Rentals reference values are approximate planning rates. Verify the selected manufacturer fuel curve before field release.
+                Reference-curve values are approximate planning rates. Verify the selected manufacturer fuel curve before field release.
                 {results.sourceRangeLimited && (
                   <span className="mt-1 block text-warning">
                     The chart covers 20-2,250 kW and 25-100% load. This estimate uses the nearest published boundary: {fmt(results.sourceRatedKw ?? inputs.ratedKw, 0)} kW at {fmtPercent(results.sourceLoadFactor ?? results.loadFactor, 0)} load.
@@ -209,8 +215,8 @@ export default function FuelConsumptionPage() {
                     ]}
                     formulaSteps={steps.map((s) => ({ label: s.label, result: s.result }))}
                     warnings={[
-                      ...(isDiesel ? ['Diesel use is an approximate planning estimate from the Sunbelt Rentals size/load chart; verify the selected manufacturer data before field release.'] : []),
-                      ...(isDiesel && results.sourceRangeLimited ? [`The Sunbelt chart covers 20-2,250 kW and 25-100% load. This result uses the nearest published boundary (${fmt(results.sourceRatedKw ?? inputs.ratedKw, 0)} kW at ${fmtPercent(results.sourceLoadFactor ?? results.loadFactor, 0)} load).`] : []),
+                      ...(isDiesel ? ['Diesel use is an approximate planning estimate from the governed size/load reference curve; verify the selected manufacturer data before field release.'] : []),
+                      ...(isDiesel && results.sourceRangeLimited ? [`The reference curve covers 20-2,250 kW and 25-100% load. This result uses the nearest published boundary (${fmt(results.sourceRatedKw ?? inputs.ratedKw, 0)} kW at ${fmtPercent(results.sourceLoadFactor ?? results.loadFactor, 0)} load).`] : []),
                       ...(!isEfficient ? ['Generator not running at optimal load factor (70-80%). Consider right-sizing.'] : []),
                     ]}
                     />
