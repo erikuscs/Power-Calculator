@@ -23,8 +23,8 @@ describe('HybridEnergyWizard input guards', () => {
 
   it('hides results and flags the field when base load exceeds peak load', () => {
     render(<HybridEnergyWizard />)
-    // Defaults: peak 800 kW, base 400 kW — invert them
-    fireEvent.change(screen.getByDisplayValue('400'), { target: { value: '900' } })
+    // Defaults: peak 1,200 kW, base 800 kW — invert them.
+    fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '1300' } })
 
     expect(screen.getByText('Base load cannot exceed peak load')).toBeInTheDocument()
     // No negative "savings" / "CO2 Avoided" tables should be rendered
@@ -34,7 +34,7 @@ describe('HybridEnergyWizard input guards', () => {
 
   it('hides results when base load is negative', () => {
     render(<HybridEnergyWizard />)
-    fireEvent.change(screen.getByDisplayValue('400'), { target: { value: '-100' } })
+    fireEvent.change(screen.getByLabelText('Base/Continuous Load'), { target: { value: '-100' } })
     expect(screen.queryByText('Financial Comparison')).toBeNull()
   })
 })

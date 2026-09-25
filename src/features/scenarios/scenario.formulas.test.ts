@@ -309,23 +309,23 @@ describe('calculateHybridWizard', () => {
 
     const dolMotor = result.motorAssignments.find((m) => m.id === 'm1')
     const vfdMotor = result.motorAssignments.find((m) => m.id === 'm2')
-    expect(dolMotor!.assignment).toBe('generator')
-    expect(vfdMotor!.assignment).toBe('bess')
+    expect(dolMotor!.assignment).toBe('review')
+    expect(vfdMotor!.assignment).toBe('review')
   })
 
   it('calculates cost savings including equipment rental', () => {
     const result = calculateHybridWizard({
-      peakLoadKw: 800,
-      baseLoadKw: 400,
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
       loadSource: 'measured',
-      bessUnitSize: 300,
+      bessUnitSize: 250,
       peakHoursPerDay: 8,
-      projectDurationDays: 30,
+      projectDurationDays: 28,
       redundancy: 'n1',
       siteVoltage: 480,
       altitude: 0,
       ambientTemp: 85,
-      fuelCostPerGallon: 4.5,
+      fuelCostPerGallon: 8.5,
       bessRentalPerDay: 350,
       genRentalPerDay: 500,
       startDate: '2026-01-01',
@@ -333,10 +333,42 @@ describe('calculateHybridWizard', () => {
       motors: [],
     })
 
-    expect(result.allGenCost30Day).toBeGreaterThan(0)
-    expect(result.hybridCost30Day).toBeGreaterThan(0)
-    expect(result.totalFuelSavingsDollars).toBeCloseTo(result.totalFuelSavingsGal * 4.5, 5)
-    expect(result.costSavings30Day).toBeCloseTo(result.allGenCost30Day - result.hybridCost30Day, 5)
+    expect(result.allGenCostProject).toBeGreaterThan(0)
+    expect(result.hybridCostProject).toBeGreaterThan(0)
+    expect(result.allGenFuelProject).toBeCloseTo(result.allGenFuelPerDay * 28, 5)
+    expect(result.hybridFuelTotal).toBeCloseTo(result.hybridFuelPerDay * 28, 5)
+    expect(result.allGenCostProject).toBeCloseTo((result.allGenFuelPerDay * 8.5 + result.allGenUnits * 500) * 28, 5)
+    expect(result.totalFuelSavingsDollars).toBeCloseTo(result.totalFuelSavingsGal * 8.5, 5)
+    expect(result.costDifferenceProject).toBeCloseTo(result.allGenCostProject - result.hybridCostProject, 5)
+    expect(result.coverage.estimatedRechargeHours).toBeCloseTo(
+      result.coverage.bessUsableKwh / (result.coverage.generatorRechargeReserveKw * 0.9),
+      5,
+    )
+  })
+
+  it('prevents negative commercial inputs from producing negative project totals', () => {
+    const result = calculateHybridWizard({
+      peakLoadKw: 1200,
+      baseLoadKw: 800,
+      loadSource: 'measured',
+      bessUnitSize: 250,
+      peakHoursPerDay: 8,
+      projectDurationDays: -28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: -8.5,
+      bessRentalPerDay: -350,
+      genRentalPerDay: -500,
+      startDate: '2026-01-01',
+      endDate: '',
+      motors: [],
+    })
+
+    expect(result.allGenCostProject).toBe(0)
+    expect(result.hybridCostProject).toBe(0)
+    expect(result.allGenFuelProject).toBeCloseTo(result.allGenFuelPerDay, 5)
   })
 
   it('handles commissioning-scale hybrid blocks without capping at small event loads', () => {

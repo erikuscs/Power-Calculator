@@ -44,6 +44,38 @@ describe('buildHybridProjectPlan', () => {
     expect(plan.quoteItems.some((item) => item.confirmation === 'vendor_required')).toBe(true)
   })
 
+  it('shows one 28-day equipment billing cycle without changing the normalized project cost', () => {
+    const cycleInputs = {
+      ...inputs,
+      projectDurationDays: 28,
+      fuelCostPerGallon: 8.5,
+      bessRentalRate: 9800,
+      bessRentalRatePeriod: 'monthly' as const,
+      genRentalRate: 14000,
+      genRentalRatePeriod: 'monthly' as const,
+    }
+    const plan = buildHybridProjectPlan(cycleInputs, calculateHybridWizard(cycleInputs), [])
+    const generator = plan.quoteItems.find((item) => item.id === 'generator-rental')
+    const bess = plan.quoteItems.find((item) => item.id === 'bess-rental')
+    expect(generator).toMatchObject({ rate: 14000, periods: 1, rateUnit: '28-day cycle' })
+    expect(bess).toMatchObject({ rate: 9800, periods: 1, rateUnit: '28-day cycle' })
+    expect(generator?.total).toBe(generator!.quantity * inputs.genRentalPerDay * 28)
+    expect(bess?.total).toBe(bess!.quantity * inputs.bessRentalPerDay * 28)
+  })
+
+  it('prorates a 30-day project across the 28-day billing cycle', () => {
+    const cycleInputs = {
+      ...inputs,
+      bessRentalRate: 9800,
+      bessRentalRatePeriod: 'monthly' as const,
+      genRentalRate: 14000,
+      genRentalRatePeriod: 'monthly' as const,
+    }
+    const plan = buildHybridProjectPlan(cycleInputs, calculateHybridWizard(cycleInputs), [])
+    expect(plan.quoteItems.find((item) => item.id === 'generator-rental')?.periods).toBeCloseTo(30 / 28, 6)
+    expect(plan.quoteItems.find((item) => item.id === 'bess-rental')?.periods).toBeCloseTo(30 / 28, 6)
+  })
+
   it('shows a cable range when neutral status is unresolved', () => {
     const unresolved = { ...inputs, neutralPlan: 'review' as const }
     const plan = buildHybridProjectPlan(unresolved, calculateHybridWizard(unresolved), [])
@@ -57,5 +89,11 @@ describe('buildHybridProjectPlan', () => {
     ])
     expect(plan.cableSchedule.find((row) => row.circuit.includes('Unassigned load'))?.loadKw).toBe(500)
     expect(plan.totalCablePieces).toBe(170)
+  })
+
+  it('rejects equipment that overhangs a narrow site even after row wrapping', () => {
+    const narrow = { ...inputs, siteLengthFt: 40, siteWidthFt: 500 }
+    const plan = buildHybridProjectPlan(narrow, calculateHybridWizard(narrow), [])
+    expect(plan.layoutFits).toBe(false)
   })
 })

@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Battery, Plug, Thermometer, Zap, Workflow, Droplets, Lightbulb, Gauge, ArrowLeftRight, Wind, Fuel, BarChart3, BookOpen, ArrowDown, ClipboardList, MapPinned } from 'lucide-react'
 import { APP_BRAND } from '../../lib/brand'
+import { HybridSiteLayout3D } from '../../components/ui/HybridSiteLayout3D'
+import { calculateHybridWizard, type HybridWizardInputs } from '../scenarios/scenario.formulas'
+import { buildHybridProjectPlan } from '../scenarios/hybridProjectPlan'
+import { normalizeRateToDaily } from '../../lib/equipmentRecommendations'
 import {
   EMAAS_FIELD_MODES,
   EMAAS_OPERATING_VARIABLES,
@@ -20,6 +24,44 @@ const scenarios = [
   { to: '/scenarios/bess-project', icon: BarChart3, title: 'BESS Project Economics', desc: 'System sizing, revenue projections, and ROI analysis', accent: true },
   { to: '/scenarios/hvac-assessment', icon: Thermometer, title: 'Cooling Load Strategy', desc: 'Cooling load, chiller sizing, and airside analysis', accent: true },
 ]
+
+const dashboardHybridInputs: HybridWizardInputs = {
+  peakLoadKw: 1200,
+  baseLoadKw: 800,
+  loadSource: 'measured',
+  bessUnitSize: 250,
+  peakHoursPerDay: 8,
+  projectDurationDays: 28,
+  redundancy: 'n1',
+  siteVoltage: 480,
+  loadVoltage: 208,
+  powerFactor: 0.8,
+  longestCableRouteFt: 100,
+  neutralPlan: 'required',
+  siteLengthFt: 200,
+  siteWidthFt: 120,
+  altitude: 0,
+  ambientTemp: 85,
+  fuelCostPerGallon: 8.5,
+  bessRentalPerDay: normalizeRateToDaily(9800, 'monthly'),
+  genRentalPerDay: normalizeRateToDaily(14000, 'monthly'),
+  bessRentalRate: 9800,
+  bessRentalRatePeriod: 'monthly',
+  genRentalRate: 14000,
+  genRentalRatePeriod: 'monthly',
+  startDate: '2026-09-24',
+  endDate: '2026-10-21',
+  motors: [],
+}
+
+const dashboardHybridPlan = buildHybridProjectPlan(
+  dashboardHybridInputs,
+  calculateHybridWizard(dashboardHybridInputs),
+  [
+    { id: 'dashboard-zone-a', name: 'Commissioning Zone A', kw: 700 },
+    { id: 'dashboard-zone-b', name: 'Commissioning Zone B', kw: 500 },
+  ],
+)
 
 const bessCalcs = [
   { to: '/bess/runtime', icon: Battery, title: 'BESS Runtime', desc: 'Battery runtime from kWh, voltage, amps, and power factor' },
@@ -138,11 +180,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-sg-600/40 bg-sg-800">
-          <img
-            src="/media/emaas-data-center-ops.webp"
-            alt="Data center energy operations model with BESS, generators, cooling, switchgear, and telemetry"
-            className="h-full min-h-72 w-full object-cover"
-          />
+          <HybridSiteLayout3D plan={dashboardHybridPlan} compact />
         </div>
       </section>
 

@@ -184,7 +184,7 @@ export function TempPowerReviewPlan({
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-accent-300">Worked Example</div>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text">
-              This 56 kW jobsite example demonstrates the planning conversation. The values are examples, and no equipment package has been selected.
+              This synthetic {projectName.toLowerCase()} example shows a 24/7 planning window across one 28-day rental cycle. Replace every illustrative load with project evidence; no equipment package has been approved.
             </p>
           </div>
           {onUseAsStartingPoint && (

@@ -369,7 +369,7 @@ export function buildHybridOneLineDiagram(
       id: 'MOTORS',
       label: 'Motor / Compressor Loads',
       detail: `${results.motorAssignments.length} inrush checks`,
-      meta: `${results.motorAssignments.filter((m) => m.assignment === 'generator').length} generator-assigned`,
+      meta: `${results.motorAssignments.length} source assignments pending vendor review`,
       tone: 'load',
     })
     edges.push({ from: 'XFMR', to: 'MOTORS', label: 'inrush-managed feeder' })

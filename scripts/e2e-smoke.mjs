@@ -203,17 +203,16 @@ async function run() {
     await expectText(page, /3 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
     await expectText(page, /2,000 kW installed \/ 1,500 kW firm generator/i, 'installed and firm generator distinction')
     await expectText(page, /Source \+ Branch Cable Schedule/i, 'source and branch cable schedule')
-    await expectText(page, /160 pieces/i, 'default protected-load cable count')
+    await expectText(page, /170 pieces/i, 'default named-zone cable count')
     await expectText(page, /Conceptual 3D Equipment Envelope/i, 'dimensioned 3D equipment envelope')
     await expectText(page, /Budgetary Estimate Basis/i, 'hybrid quote basis')
     await expectText(page, /Vendor required/i, 'unpriced vendor-required estimate lines')
     await expectText(page, /transformation from 480 V to 208 V/i, 'selected-voltage transformer explanation')
 
     await page.getByRole('button', { name: /Split into Power Zones/i }).click()
-    await page.getByRole('button', { name: 'Add Zone' }).click()
-    await page.getByRole('button', { name: 'Add Zone' }).click()
     await page.getByLabel('Zone Name').nth(0).fill('Critical commissioning')
     await page.getByLabel('Load', { exact: true }).nth(0).fill('700')
+    await page.getByLabel('Load', { exact: true }).nth(1).fill('0')
     if (await page.getByRole('button', { name: 'Generate Report' }).count()) {
       throw new Error('Hybrid report should be withheld while named power zones do not balance to peak load')
     }

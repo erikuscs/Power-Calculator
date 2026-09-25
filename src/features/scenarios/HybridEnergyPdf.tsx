@@ -16,6 +16,7 @@ export interface HybridEnergyPdfDocProps {
 export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, zones }: HybridEnergyPdfDocProps) {
   const fi = (v: number) => Math.round(v).toLocaleString('en-US')
   const fc = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const fr = (v: number, unit: string) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: unit === 'gallon' ? 2 : 0, maximumFractionDigits: unit === 'gallon' ? 2 : 0 })
   const fv = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
   const redundancyLabel = inputs.redundancy === '2n'
@@ -26,7 +27,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         ? 'Field verify (N+1 planning basis)'
         : 'N (No Redundancy)'
   const coverageStatusLabel = {
-    '24_7_ready': '24/7 ready',
+    '24_7_ready': 'Modeled 24/7 capacity',
     conditional: 'Conditional',
     not_feasible: 'Not feasible',
   } as const
@@ -40,6 +41,8 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       <PdfSection title="Project Overview">
         {clientName && <PdfKeyValue label="Client" value={clientName} />}
         <PdfKeyValue label="Project Dates" value={`${inputs.startDate || 'N/A'} to ${inputs.endDate || 'N/A'} (${inputs.projectDurationDays} days)`} />
+        <PdfKeyValue label="Operating Basis" value={`24/7 continuous service (${inputs.projectDurationDays * 24} scheduled hours)`} />
+        <PdfKeyValue label="Diesel Fuel Assumption" value={`$${inputs.fuelCostPerGallon.toFixed(2)}/gal`} />
         <PdfKeyValue label="Peak Load" value={`${fi(inputs.peakLoadKw)} kW`} />
         <PdfKeyValue label="Base Load" value={`${fi(inputs.baseLoadKw)} kW`} />
         <PdfKeyValue label="Redundancy Level" value={redundancyLabel} />
@@ -136,17 +139,18 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
 
       <PdfSection title="Budgetary Estimate Basis">
         <PdfTable
-          headers={['Item', 'Qty', 'Rate', 'Extended', 'Confirmation']}
+          headers={['Item', 'Qty', 'Periods', 'Rate', 'Extended', 'Confirmation']}
           rows={projectPlan.quoteItems.map((item) => [
             `${item.description} (${item.modelSku})`,
             fv(item.quantity),
-            item.rate > 0 ? `${fc(item.rate)}/${item.rateUnit}` : 'TBD',
+            fv(item.periods),
+            item.rate > 0 ? `${fr(item.rate, item.rateUnit)}/${item.rateUnit}` : 'TBD',
             item.total > 0 ? fc(item.total) : 'TBD',
             item.confirmation === 'entered_rate' ? 'Entered rate' : 'Vendor required',
           ])}
         />
         <PdfKeyValue label="Known-rate subtotal" value={fc(projectPlan.budgetaryTotal)} />
-        <PdfWarning>Zero-rate lines are unresolved vendor scope, not free equipment. Delivery, labor, taxes, availability, cable ampacity, protection, and final model/SKU remain outside this subtotal.</PdfWarning>
+        <PdfWarning>Equipment periods are prorated for this planning comparison. Confirm provider minimums, overtime, partial-cycle billing, delivery, labor, taxes, availability, cable ampacity, protection, and final model/SKU. Zero-rate lines are unresolved vendor scope, not free equipment.</PdfWarning>
       </PdfSection>
 
       {/* Motor Inrush Analysis */}
@@ -158,7 +162,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
               `${ma.hp}`,
               ma.method.toUpperCase(),
               fi(ma.lra),
-              ma.assignment === 'bess' ? 'BESS' : 'Generator',
+              'Review required',
               ma.reason,
             ])}
           />
@@ -171,22 +175,22 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           headers={['Metric', 'All Generator', 'Hybrid', 'Difference vs All-Gen']}
           rows={[
             ['Daily Fuel', `${fi(results.allGenFuelPerDay)} gal`, `${fi(results.hybridFuelPerDay)} gal`, difference(results.dailyFuelReduction, 'gal/day')],
-            ['30-Day Fuel', `${fi(results.allGenFuel30Day)} gal`, `${fi(results.hybridFuelPerDay * 30)} gal`, difference(results.dailyFuelReduction * 30, 'gal')],
-            ['30-Day Total Cost', fc(results.allGenCost30Day), fc(results.hybridCost30Day), `${fc(Math.abs(results.costSavings30Day))} ${results.costSavings30Day >= 0 ? 'lower' : 'higher'}`],
+            [`${inputs.projectDurationDays}-Day Fuel`, `${fi(results.allGenFuelProject)} gal`, `${fi(results.hybridFuelTotal)} gal`, difference(results.totalFuelSavingsGal, 'gal')],
+            [`${inputs.projectDurationDays}-Day Total Cost`, fc(results.allGenCostProject), fc(results.hybridCostProject), `${fc(Math.abs(results.costDifferenceProject))} ${results.costDifferenceProject >= 0 ? 'lower' : 'higher'}`],
             ['Project Fuel Difference', '-', `${fi(Math.abs(results.totalFuelSavingsGal))} gal`, `${fc(Math.abs(results.totalFuelSavingsDollars))} ${results.totalFuelSavingsDollars >= 0 ? 'lower' : 'higher'}`],
             ['CO2 Difference', '--', `${fi(Math.abs(results.co2AvoidedLbs))} lbs`, results.co2AvoidedLbs >= 0 ? 'lower' : 'higher'],
           ]}
         />
       </PdfSection>
 
-      {/* Fuel Projection — first 30 days */}
-      <PdfSection title="Fuel Projection (First 30 Days)">
+      {/* Fuel projection for the entered project window */}
+      <PdfSection title={`Fuel Projection (${inputs.projectDurationDays} Days)`}>
         <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 4 }}>
           Daily fuel consumption comparison and cumulative all-generator minus hybrid difference over the project. Negative values mean the hybrid case uses more fuel after recharge losses.
         </Text>
         <PdfTable
           headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'All-Gen Minus Hybrid (gal)']}
-          rows={results.dailyFuelData.slice(0, 30).map((d) => [
+          rows={results.dailyFuelData.map((d) => [
             `${d.day}`,
             d.date,
             fi(d.allGenGal),

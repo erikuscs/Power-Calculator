@@ -1,4 +1,4 @@
-import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize } from '../../lib/constants'
+import { SAFETY_MARGINS, BESS_UNIT_SIZES, SQRT3, CO2_LBS_PER_GALLON_DIESEL, type BessUnitSize, type RatePeriod } from '../../lib/constants'
 export type { BessUnitSize }
 
 const BESS_UNIT_ENERGY_KWH: Record<BessUnitSize, number> = {
@@ -382,6 +382,10 @@ export interface HybridWizardInputs {
   fuelCostPerGallon: number
   bessRentalPerDay: number
   genRentalPerDay: number
+  bessRentalRate?: number
+  bessRentalRatePeriod?: RatePeriod
+  genRentalRate?: number
+  genRentalRatePeriod?: RatePeriod
   startDate: string
   endDate: string
   motors: MotorEntry[]
@@ -415,7 +419,7 @@ export interface HybridWizardResults {
   totalCapacityKw: number
   redundancyFactor: number
   allGenFuelPerDay: number
-  allGenFuel30Day: number
+  allGenFuelProject: number
   hybridFuelPerDay: number
   hybridFuelTotal: number
   allGeneratorDailyEnergyKwh: number
@@ -425,16 +429,16 @@ export interface HybridWizardResults {
   dailyFuelReduction: number
   totalFuelSavingsGal: number
   totalFuelSavingsDollars: number
-  allGenCost30Day: number
-  hybridCost30Day: number
-  costSavings30Day: number
+  allGenCostProject: number
+  hybridCostProject: number
+  costDifferenceProject: number
   peakAmpsPerPhase: number
   baseAmpsPerPhase: number
   parallelRunsNeeded: boolean
   co2AvoidedLbs: number
   co2AvoidedTons: number
   coverage: HybridCoverageResults
-  motorAssignments: { id: string; hp: number; method: string; lra: number; assignment: 'bess' | 'generator'; reason: string }[]
+  motorAssignments: { id: string; hp: number; method: string; lra: number; assignment: 'review'; reason: string }[]
   dailyFuelData: { day: number; date: string; allGenGal: number; hybridGal: number; savingsGal: number; cumulativeSavingsGal: number }[]
 }
 
@@ -463,7 +467,11 @@ export interface HybridCoverageScenario {
 }
 
 export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardResults {
-  const { peakLoadKw, baseLoadKw, bessUnitSize, peakHoursPerDay, projectDurationDays, redundancy, altitude, ambientTemp, fuelCostPerGallon, bessRentalPerDay, genRentalPerDay } = inputs
+  const { peakLoadKw, baseLoadKw, bessUnitSize, peakHoursPerDay, redundancy, altitude, ambientTemp } = inputs
+  const projectDurationDays = Math.max(1, inputs.projectDurationDays)
+  const fuelCostPerGallon = Math.max(0, inputs.fuelCostPerGallon)
+  const bessRentalPerDay = Math.max(0, inputs.bessRentalPerDay)
+  const genRentalPerDay = Math.max(0, inputs.genRentalPerDay)
 
   const redundancyFactor = redundancy === '2n' ? 2.0 : redundancy === 'n1' || redundancy === 'field_verify' ? 1.25 : 1.0
   const peakDelta = Math.max(0, peakLoadKw - baseLoadKw)
@@ -517,26 +525,20 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const totalFuelSavingsGal = dailyFuelReduction * projectDurationDays
   const totalFuelSavingsDollars = totalFuelSavingsGal * fuelCostPerGallon
 
-  const allGenCost30Day = allGenFuelPerDay * 30 * fuelCostPerGallon + allGenUnits * genRentalPerDay * 30
-  const hybridCost30Day = hybridFuelPerDay * 30 * fuelCostPerGallon + genUnits * genRentalPerDay * 30 + bessUnits * bessRentalPerDay * 30
-  const costSavings30Day = allGenCost30Day - hybridCost30Day
+  const allGenCostProject = (allGenFuelPerDay * fuelCostPerGallon + allGenUnits * genRentalPerDay) * projectDurationDays
+  const hybridCostProject = (hybridFuelPerDay * fuelCostPerGallon + genUnits * genRentalPerDay + bessUnits * bessRentalPerDay) * projectDurationDays
+  const costDifferenceProject = allGenCostProject - hybridCostProject
 
   const motorAssignments = inputs.motors.map((m) => {
     const lraMultiplier = m.startMethod === 'dol' ? 7 : m.startMethod === 'soft_start' ? 3 : 1.25
     const lra = m.fla * lraMultiplier
-    const bessInverterLimit = bessUnitSize * 1000 / inputs.siteVoltage * 1.5
-    const canBessHandle = lra <= bessInverterLimit
     return {
       id: m.id,
       hp: m.hp,
       method: m.startMethod,
       lra,
-      assignment: (m.startMethod === 'vfd' || canBessHandle ? 'bess' : 'generator') as 'bess' | 'generator',
-      reason: m.startMethod === 'vfd'
-        ? 'VFD — negligible inrush, BESS compatible'
-        : canBessHandle
-          ? `LRA ${lra.toFixed(0)}A within BESS inverter limit`
-          : `LRA ${lra.toFixed(0)}A exceeds BESS inverter limit — assign to generator`,
+      assignment: 'review' as const,
+      reason: 'Planning start-current estimate only; verify three-phase voltage dip, VFD behavior, inverter surge duration, harmonics and protection with vendor submittals.',
     }
   })
 
@@ -572,11 +574,11 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessEnergyKwh,
     genCapacityKw, genUnits, genUnitSizeKw, generatorRequiredUnits, generatorStandbyUnits,
     generatorFirmCapacityKw, allGenUnits, totalCapacityKw, redundancyFactor,
-    allGenFuelPerDay, allGenFuel30Day: allGenFuelPerDay * 30,
+    allGenFuelPerDay, allGenFuelProject: allGenFuelPerDay * projectDurationDays,
     hybridFuelPerDay, hybridFuelTotal: hybridFuelPerDay * projectDurationDays,
     allGeneratorDailyEnergyKwh, hybridGeneratorDailyEnergyKwh, batteryDailyEnergyKwh, rechargeEnergyKwh,
     dailyFuelReduction, totalFuelSavingsGal, totalFuelSavingsDollars,
-    allGenCost30Day, hybridCost30Day, costSavings30Day,
+    allGenCostProject, hybridCostProject, costDifferenceProject,
     peakAmpsPerPhase, baseAmpsPerPhase, parallelRunsNeeded,
     co2AvoidedLbs, co2AvoidedTons,
     coverage,
@@ -604,7 +606,7 @@ function buildHybridCoverage(
   const peakBatteryHours = bessUsableKwh / peakLoadKw
   const peakShavingHours = peakDeltaKw > 0 ? bessUsableKwh / peakDeltaKw : Infinity
   const estimatedRechargeHours = generatorRechargeReserveKw > 0
-    ? inputs.peakHoursPerDay < 24 ? bessUsableKwh / generatorRechargeReserveKw : null
+    ? inputs.peakHoursPerDay < 24 ? bessUsableKwh / (generatorRechargeReserveKw * 0.9) : null
     : null
   const canCarryBaseWhileCharging = generatorOnlineKw >= inputs.baseLoadKw && generatorRechargeReserveKw > 0
   const canCarryPeakOnGenerator = generatorOnlineKw >= inputs.peakLoadKw

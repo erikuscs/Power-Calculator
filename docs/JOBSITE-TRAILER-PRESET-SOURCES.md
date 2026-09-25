@@ -8,7 +8,7 @@ The temporary-power workflow includes editable jobsite trailer presets so a plan
 
 - **Published service:** EMaaS calculates the connected-service ceiling from manufacturer-published voltage and amperage. This is available capacity, not measured operating demand.
 - **Planning estimate:** The manufacturer publishes the configuration or features but not enough electrical detail to calculate a defensible service ceiling. EMaaS provides a conservative, editable starting value and labels it as an estimate.
-- **Project example:** The preloaded 56 kW setup is an aggregate planning example. It is not assigned to a manufacturer model.
+- **Project examples:** The current Temporary Power workflow opens with a synthetic data-center commissioning scenario and also offers substation-construction and multi-load temporary-power scenarios. Their entered kW values are illustrations, not measured demand or manufacturer ratings. The trailer presets below remain optional components for a project-specific plan.
 
 ## Preset Register
 

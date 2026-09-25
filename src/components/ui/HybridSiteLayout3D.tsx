@@ -9,7 +9,7 @@ const tones: Record<HybridLayoutItem['kind'], { top: string; left: string; right
   fuel: { top: '#C5C6C7', left: '#5B6673', right: '#34495E' },
 }
 
-export function HybridSiteLayout3D({ plan }: { plan: HybridProjectPlan }) {
+export function HybridSiteLayout3D({ plan, compact = false }: { plan: HybridProjectPlan; compact?: boolean }) {
   const scale = Math.min(5.2, 680 / Math.max(1, plan.siteLengthFt + plan.siteWidthFt))
   const originX = 450
   const originY = 65
@@ -22,18 +22,18 @@ export function HybridSiteLayout3D({ plan }: { plan: HybridProjectPlan }) {
   const sorted = [...plan.equipment].sort((a, b) => (a.xFt + a.yFt) - (b.xFt + b.yFt))
 
   return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+    <div className={compact ? 'relative h-full' : ''}>
+      <div className={compact ? 'absolute left-4 top-4 z-10 max-w-[75%] rounded-md bg-sg-900/90 p-3 backdrop-blur' : 'mb-3 flex flex-wrap items-start justify-between gap-3'}>
         <div>
           <h3 className="text-sm font-bold text-text">Conceptual 3D equipment envelope</h3>
-          <p className="text-xs text-text-dim">Scaled width, length, and estimated height make the space commitment visible; service clearances remain planning allowances.</p>
+          {!compact && <p className="text-xs text-text-dim">Scaled width, length, and estimated height make the space commitment visible; service clearances remain planning allowances.</p>}
         </div>
-        <span className={`rounded-full border px-3 py-1 text-xs font-bold ${plan.layoutFits ? 'border-signal-blue/40 bg-signal-blue/10 text-signal-blue' : 'border-warning/40 bg-warning/10 text-warning'}`}>
+        {!compact && <span className={`rounded-full border px-3 py-1 text-xs font-bold ${plan.layoutFits ? 'border-signal-blue/40 bg-signal-blue/10 text-signal-blue' : 'border-warning/40 bg-warning/10 text-warning'}`}>
           {plan.layoutFits ? 'Fits entered envelope' : 'Envelope conflict'} · {plan.siteLengthFt} × {plan.siteWidthFt} ft
-        </span>
+        </span>}
       </div>
-      <div className="overflow-hidden rounded-lg border border-sg-600/45 bg-sg-900/70">
-        <svg viewBox="0 0 900 520" role="img" aria-labelledby="hybrid-layout-title hybrid-layout-desc" className="min-h-[360px] w-full">
+      <div className={`overflow-hidden rounded-lg border border-sg-600/45 bg-sg-900/70 ${compact ? 'h-full min-h-72' : ''}`}>
+        <svg viewBox="0 0 900 520" role="img" aria-labelledby="hybrid-layout-title hybrid-layout-desc" className={`${compact ? 'h-full min-h-72' : 'min-h-[360px]'} w-full`}>
           <title id="hybrid-layout-title">Three-dimensional hybrid equipment planning layout</title>
           <desc id="hybrid-layout-desc">An isometric equipment envelope showing each generator, battery unit, controls, switchgear, transformer when required, and the fuel service zone inside the entered site dimensions.</desc>
           <polygon points={points(...site)} fill="#141D26" stroke="#5B6673" strokeWidth="2" />
@@ -58,14 +58,14 @@ export function HybridSiteLayout3D({ plan }: { plan: HybridProjectPlan }) {
           <text x="22" y="490" fill="#C5C6C7" fontSize="11">Planning visualization only · verify delivered dimensions, clearances, access, fire separation, soil bearing, and cable paths.</text>
         </svg>
       </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {!compact && <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {plan.equipment.map((item) => (
           <div key={item.id} className="rounded-md border border-sg-600/35 bg-sg-900/45 px-3 py-2 text-xs">
             <span className="font-bold text-text">{item.id} · {item.label}</span>
             <span className="mt-1 block text-text-dim">{item.lengthFt} × {item.widthFt} × {item.heightFt} ft · {item.detail}</span>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

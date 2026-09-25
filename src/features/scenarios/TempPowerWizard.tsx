@@ -25,20 +25,39 @@ import { verifyTempPowerPlanningBrief } from './tempPowerVerification'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { addPlanningRequirement } from '../estimate/estimateDraft'
 
-function createWorkedExampleFacilities(): FacilityEntry[] {
-  return [
-    {
-      id: 'sample-jobsite-trailer-56kw',
-      type: 'jobsite_trailer',
-      label: 'Jobsite Trailer Setup',
-      quantity: 1,
-      kwPerUnit: 56,
-      structureType: 'container',
-      structureMultiplier: 1.0,
-      loadBasis: 'Worked example covering office HVAC, heat, lighting, receptacles, IT, and common jobsite support loads. Replace the aggregate with delivered-unit model and nameplate data for a live project.',
-      loadBasisType: 'user-defined',
-    },
-  ]
+type EnergyExampleId = 'data-center' | 'substation' | 'temporary-power'
+
+const ENERGY_EXAMPLES: Record<EnergyExampleId, {
+  name: string
+  siteVoltage: string
+  loadVoltage: string
+  continuity: TempPowerContinuityTarget
+  facilities: FacilityEntry[]
+}> = {
+  'data-center': {
+    name: 'Data Center Commissioning - Temporary Power',
+    siteVoltage: '480', loadVoltage: '208', continuity: 'n_plus_1',
+    facilities: [
+      { id: 'dc-zone-a', type: 'data_center', label: 'Commissioning Zone A', quantity: 1, kwPerUnit: 700, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; replace with the project load schedule and measured or nameplate demand.', loadBasisType: 'user-defined' },
+      { id: 'dc-zone-b', type: 'data_center', label: 'Commissioning Zone B', quantity: 1, kwPerUnit: 500, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; verify simultaneity, motor starts, cooling and UPS demand before equipment selection.', loadBasisType: 'user-defined' },
+    ],
+  },
+  substation: {
+    name: 'Substation Construction - Temporary Power',
+    siteVoltage: '480', loadVoltage: '480', continuity: 'standard',
+    facilities: [
+      { id: 'substation-commissioning', type: 'substation', label: 'Commissioning Equipment', quantity: 1, kwPerUnit: 250, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; verify test equipment, start current, grounding and utility interface.', loadBasisType: 'user-defined' },
+      { id: 'substation-construction', type: 'substation', label: 'Construction Services', quantity: 1, kwPerUnit: 125, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; replace with the construction load schedule and operating shifts.', loadBasisType: 'user-defined' },
+    ],
+  },
+  'temporary-power': {
+    name: 'Temporary Power - Multi-Load Site',
+    siteVoltage: '480', loadVoltage: '480', continuity: 'standard',
+    facilities: [
+      { id: 'temp-field-load', type: 'temporary_power', label: 'Field Equipment', quantity: 1, kwPerUnit: 180, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; confirm the equipment schedule and starting demand.', loadBasisType: 'user-defined' },
+      { id: 'temp-site-services', type: 'temporary_power', label: 'Site Services', quantity: 1, kwPerUnit: 80, structureType: 'container', structureMultiplier: 1, loadBasis: 'Synthetic planning load; verify lighting, offices and auxiliary services without double counting.', loadBasisType: 'user-defined' },
+    ],
+  },
 }
 
 export default function TempPowerWizard() {
@@ -53,12 +72,12 @@ export default function TempPowerWizard() {
   const [coolingDetailsOpen, setCoolingDetailsOpen] = useState(false)
   const [coolingCapacityTons, setCoolingCapacityTons] = usePersistedState(routeKey, 'coolingCapacityTons', '0')
   const [coolingElectricalKw, setCoolingElectricalKw] = usePersistedState(routeKey, 'coolingElectricalKw', '0')
-  const [siteVoltage, setSiteVoltage] = usePersistedState(routeKey, 'siteVoltage', '240')
-  const [loadVoltage, setLoadVoltage] = usePersistedState(routeKey, 'loadVoltage', '240')
-  const [continuityTarget, setContinuityTarget] = usePersistedState<TempPowerContinuityTarget>(routeKey, 'continuityTarget', 'standard')
+  const [siteVoltage, setSiteVoltage] = usePersistedState(routeKey, 'siteVoltage', '480')
+  const [loadVoltage, setLoadVoltage] = usePersistedState(routeKey, 'loadVoltage', '208')
+  const [continuityTarget, setContinuityTarget] = usePersistedState<TempPowerContinuityTarget>(routeKey, 'continuityTarget', 'n_plus_1')
   const [clientName, setClientName] = usePersistedState(routeKey, 'clientName', 'Worked Example')
-  const [projectName, setProjectName] = usePersistedState(routeKey, 'projectName', 'Jobsite Trailer Planning Brief')
-  const [facilities, setFacilities] = usePersistedState<FacilityEntry[]>(routeKey, 'facilities', createWorkedExampleFacilities())
+  const [projectName, setProjectName] = usePersistedState(routeKey, 'projectName', ENERGY_EXAMPLES['data-center'].name)
+  const [facilities, setFacilities] = usePersistedState<FacilityEntry[]>(routeKey, 'facilities', ENERGY_EXAMPLES['data-center'].facilities)
   const [riskInputs, setRiskInputs] = usePersistedState<TempPowerRiskInputs>(routeKey, 'riskInputs', { ...defaultTempPowerRiskInputs })
   const [requirementsOpen, setRequirementsOpen] = useState(false)
   const [isWorkedExample, setIsWorkedExample] = usePersistedState(routeKey, 'isWorkedExample', true)
@@ -160,7 +179,8 @@ export default function TempPowerWizard() {
     setRiskInputs((prev) => ({ ...prev, [field]: value }))
   }
 
-  const loadJobsiteTrailerScenario = () => {
+  const loadEnergyExample = (exampleId: EnergyExampleId) => {
+    const example = ENERGY_EXAMPLES[exampleId]
     setMode('basecamp')
     setLoadKw('0')
     setRentalPeriod('monthly')
@@ -169,17 +189,36 @@ export default function TempPowerWizard() {
     setIncludeCooling(false)
     setCoolingCapacityTons('0')
     setCoolingElectricalKw('0')
-    setSiteVoltage('240')
-    setLoadVoltage('240')
-    setContinuityTarget('standard')
+    setSiteVoltage(example.siteVoltage)
+    setLoadVoltage(example.loadVoltage)
+    setContinuityTarget(example.continuity)
     setClientName('Worked Example')
-    setProjectName('Jobsite Trailer Planning Brief')
-    setFacilities(createWorkedExampleFacilities())
+    setProjectName(example.name)
+    setFacilities(example.facilities.map((facility) => ({ ...facility })))
     setRiskInputs({ ...defaultTempPowerRiskInputs })
     setCoolingDetailsOpen(false)
     setIsWorkedExample(true)
     setRequirementsOpen(false)
   }
+
+  useEffect(() => {
+    if (!isWorkedExample || facilities.length !== 1 || facilities[0].id !== 'sample-jobsite-trailer-56kw') return
+    const example = ENERGY_EXAMPLES['data-center']
+    setMode('basecamp')
+    setLoadKw('0')
+    setRentalPeriod('monthly')
+    setRentalPeriodCount('1')
+    setRuntimeSchedule('continuous_24_7')
+    setIncludeCooling(false)
+    setCoolingCapacityTons('0')
+    setCoolingElectricalKw('0')
+    setSiteVoltage(example.siteVoltage)
+    setLoadVoltage(example.loadVoltage)
+    setContinuityTarget(example.continuity)
+    setProjectName(example.name)
+    setFacilities(example.facilities.map((facility) => ({ ...facility })))
+    setRiskInputs({ ...defaultTempPowerRiskInputs })
+  }, [isWorkedExample, facilities, setMode, setLoadKw, setRentalPeriod, setRentalPeriodCount, setRuntimeSchedule, setIncludeCooling, setCoolingCapacityTons, setCoolingElectricalKw, setSiteVoltage, setLoadVoltage, setContinuityTarget, setProjectName, setFacilities, setRiskInputs])
 
   const useWorkedExampleAsStartingPoint = () => {
     setIsWorkedExample(false)
@@ -338,12 +377,11 @@ export default function TempPowerWizard() {
         <CardHeader
           title="Temporary Power Requirements"
           subtitle="Capture the demand, operating schedule, voltage need, and continuity expectation before discussing equipment"
-          action={!isWorkedExample ? (
-            <Button type="button" variant="secondary" size="sm" onClick={loadJobsiteTrailerScenario}>
-              <ClipboardList size={14} />
-              Reload 56 kW Example
-            </Button>
-          ) : undefined}
+          action={<div className="flex flex-wrap gap-2" aria-label="Illustrative energy project examples">
+            <Button type="button" variant="secondary" size="sm" onClick={() => loadEnergyExample('data-center')}><ClipboardList size={14} />Data center</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => loadEnergyExample('substation')}>Substation construction</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => loadEnergyExample('temporary-power')}>Temporary power</Button>
+          </div>}
         />
 
         <ReportContextFields

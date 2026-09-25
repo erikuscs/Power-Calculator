@@ -24,12 +24,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, AreaChart, Area,
 } from 'recharts'
-import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Shield, Fuel, DollarSign, Leaf, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, AlertCircle, AlertTriangle, Info, Fuel, DollarSign, Leaf, ChevronDown, ChevronRight } from 'lucide-react'
 
 let nextMotorId = 1
 
 const coverageStatusLabel = {
-  '24_7_ready': '24/7 ready',
+  '24_7_ready': 'Modeled 24/7 capacity',
   conditional: 'Conditional',
   not_feasible: 'Not feasible',
 } as const
@@ -41,32 +41,35 @@ const coverageStatusClass = {
 } as const
 
 export default function HybridEnergyWizard() {
-  const [peakLoadKw, setPeakLoadKw] = useState('800')
-  const [baseLoadKw, setBaseLoadKw] = useState('400')
+  const [peakLoadKw, setPeakLoadKw] = useState('1200')
+  const [baseLoadKw, setBaseLoadKw] = useState('800')
   const [loadSource, setLoadSource] = useState<'panel' | 'measured'>('measured')
-  const [bessUnitSize, setBessUnitSize] = useState<string>('300')
+  const [bessUnitSize, setBessUnitSize] = useState<string>('250')
   const [peakHoursPerDay, setPeakHoursPerDay] = useState('8')
-  const [projectDays, setProjectDays] = useState('30')
+  const [projectDays, setProjectDays] = useState('28')
   const [redundancy, setRedundancy] = useState('n1')
   const [siteVoltage, setSiteVoltage] = useState('480')
   const [altitude, setAltitude] = useState('0')
   const [ambientTemp, setAmbientTemp] = useState('85')
-  const [fuelCost, setFuelCost] = useState('4.50')
-  const [bessRental, setBessRental] = useState('350')
-  const [bessRatePeriod, setBessRatePeriod] = useState<RatePeriod>('daily')
-  const [genRental, setGenRental] = useState('500')
-  const [genRatePeriod, setGenRatePeriod] = useState<RatePeriod>('daily')
+  const [fuelCost, setFuelCost] = useState('8.50')
+  const [bessRental, setBessRental] = useState('9800')
+  const [bessRatePeriod, setBessRatePeriod] = useState<RatePeriod>('monthly')
+  const [genRental, setGenRental] = useState('14000')
+  const [genRatePeriod, setGenRatePeriod] = useState<RatePeriod>('monthly')
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
   const [motors, setMotors] = useState<MotorEntry[]>([])
-  const [zones, setZones] = useState<{id: string, name: string, kw: number}[]>([])
+  const [zones, setZones] = useState<{id: string, name: string, kw: number}[]>([
+    { id: 'dc-zone-a', name: 'Commissioning Zone A', kw: 700 },
+    { id: 'dc-zone-b', name: 'Commissioning Zone B', kw: 500 },
+  ])
   const [zonesExpanded, setZonesExpanded] = useState(false)
-  const [clientName, setClientName] = useState('')
-  const [projectName, setProjectName] = useState('')
+  const [clientName, setClientName] = useState('Synthetic example')
+  const [projectName, setProjectName] = useState('Data Center Commissioning - 28-day rental cycle')
   const [powerFactor, setPowerFactor] = useState('0.8')
   const [loadVoltage, setLoadVoltage] = useState('208')
   const [longestCableRouteFt, setLongestCableRouteFt] = useState('100')
-  const [neutralPlan, setNeutralPlan] = useState<'required' | 'not_carried' | 'review'>('review')
+  const [neutralPlan, setNeutralPlan] = useState<'required' | 'not_carried' | 'review'>('required')
   const [siteLengthFt, setSiteLengthFt] = useState('200')
   const [siteWidthFt, setSiteWidthFt] = useState('120')
 
@@ -92,20 +95,33 @@ export default function HybridEnergyWizard() {
 
   const removeMotor = (id: string) => setMotors((prev) => prev.filter((m) => m.id !== id))
 
+  const defaultBessRentalRate = bessRatePeriod === 'monthly' ? 9800 : bessRatePeriod === 'weekly' ? 2450 : 350
+  const defaultGenRentalRate = genRatePeriod === 'monthly' ? 14000 : genRatePeriod === 'weekly' ? 3500 : 500
+  const parsedProjectDays = parseFloat(projectDays)
+  const parsedFuelCost = parseFloat(fuelCost)
+  const parsedBessRentalRate = parseFloat(bessRental)
+  const parsedGenRentalRate = parseFloat(genRental)
+  const enteredBessRentalRate = Number.isFinite(parsedBessRentalRate) ? parsedBessRentalRate : defaultBessRentalRate
+  const enteredGenRentalRate = Number.isFinite(parsedGenRentalRate) ? parsedGenRentalRate : defaultGenRentalRate
+
   const inputs: HybridWizardInputs = {
     peakLoadKw: parseFloat(peakLoadKw) || 0,
     baseLoadKw: parseFloat(baseLoadKw) || 0,
     loadSource,
     bessUnitSize: parseInt(bessUnitSize) as BessUnitSize,
     peakHoursPerDay: parseFloat(peakHoursPerDay) || 8,
-    projectDurationDays: parseFloat(projectDays) || 30,
+    projectDurationDays: Number.isFinite(parsedProjectDays) ? parsedProjectDays : 28,
     redundancy: redundancy as 'field_verify' | 'n' | 'n1' | '2n',
     siteVoltage: parseInt(siteVoltage) || 480,
     altitude: parseFloat(altitude) || 0,
     ambientTemp: parseFloat(ambientTemp) || 85,
-    fuelCostPerGallon: parseFloat(fuelCost) || 4.5,
-    bessRentalPerDay: normalizeRateToDaily(parseFloat(bessRental) || 350, bessRatePeriod),
-    genRentalPerDay: normalizeRateToDaily(parseFloat(genRental) || 500, genRatePeriod),
+    fuelCostPerGallon: Number.isFinite(parsedFuelCost) ? parsedFuelCost : 8.5,
+    bessRentalPerDay: normalizeRateToDaily(enteredBessRentalRate, bessRatePeriod),
+    genRentalPerDay: normalizeRateToDaily(enteredGenRentalRate, genRatePeriod),
+    bessRentalRate: enteredBessRentalRate,
+    bessRentalRatePeriod: bessRatePeriod,
+    genRentalRate: enteredGenRentalRate,
+    genRentalRatePeriod: genRatePeriod,
     startDate,
     endDate,
     motors,
@@ -120,6 +136,7 @@ export default function HybridEnergyWizard() {
   const calculate = useCallback((inp: HybridWizardInputs) => {
     // Inverted or negative loads produce nonsense (negative "savings", BESS sized beyond peak)
     if (inp.baseLoadKw < 0 || inp.baseLoadKw > inp.peakLoadKw) return null
+    if (inp.projectDurationDays < 1 || inp.fuelCostPerGallon < 0 || inp.bessRentalPerDay < 0 || inp.genRentalPerDay < 0) return null
     return calculateHybridWizard(inp)
   }, [])
   const results = useCalculator(inputs, calculate)
@@ -127,14 +144,17 @@ export default function HybridEnergyWizard() {
   const projectPlan = results ? buildHybridProjectPlan(inputs, results, zones) : null
   const zonesTotalKw = zones.reduce((sum, zone) => sum + zone.kw, 0)
   const zonesBalanced = zones.length === 0 || (zones.every((zone) => zone.kw > 0) && Math.abs(zonesTotalKw - inputs.peakLoadKw) <= 1)
+  const formatQuoteRate = (rate: number, rateUnit: string) => rateUnit === 'gallon'
+    ? rate.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : fmtCurrency(rate)
 
   const fuelComparisonData = useMemo(() => {
     if (!results) return []
     return [
       { metric: 'Daily Fuel (gal)', allGen: Math.round(results.allGenFuelPerDay), hybrid: Math.round(results.hybridFuelPerDay) },
-      { metric: '30-Day Fuel (gal)', allGen: Math.round(results.allGenFuel30Day), hybrid: Math.round(results.hybridFuelTotal > 0 ? results.hybridFuelPerDay * 30 : 0) },
+      { metric: `${inputs.projectDurationDays}-Day Fuel (gal)`, allGen: Math.round(results.allGenFuelProject), hybrid: Math.round(results.hybridFuelTotal) },
     ]
-  }, [results])
+  }, [results, inputs.projectDurationDays])
 
   const cumulativeSavingsData = useMemo(() => {
     if (!results) return []
@@ -160,7 +180,7 @@ export default function HybridEnergyWizard() {
           ? 'info'
           : primaryScenario.status === 'conditional' ? 'warning' : 'warning'
         const statusLabel = primaryScenario.status === '24_7_ready'
-          ? fallbackScenario?.status === '24_7_ready' ? 'Full 24/7 fallback ready' : '24/7 hybrid ready'
+          ? fallbackScenario?.status === '24_7_ready' ? 'Modeled 24/7 fallback capacity' : 'Modeled 24/7 hybrid capacity'
           : primaryScenario.status === 'conditional' ? 'Conditional hybrid coverage' : 'Needs redesign'
 
         return {
@@ -408,10 +428,11 @@ export default function HybridEnergyWizard() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Peak Hours/Day" unit="hrs" value={peakHoursPerDay} onChange={setPeakHoursPerDay} min={0} max={24} />
-            <InputField label="Project Duration" unit="days" value={projectDays} onChange={setProjectDays} />
+            <InputField label="Project Duration" unit="days" value={projectDays} onChange={setProjectDays} min={1} />
             <InputField label="Start Date" type="date" value={startDate} onChange={setStartDate} />
             <InputField label="End Date" type="date" value={endDate} onChange={setEndDate} tooltip="Or use duration" />
           </div>
+          <p className="text-xs leading-relaxed text-text-dim">The worked case is a 24/7 jobsite over one 28-day rental cycle (672 operating hours). The 8 peak hours occur within each 24-hour day. Generator fuel includes the energy used to serve the base load and recharge the BESS, including modeled recharge losses. The $8.50/gal fuel price is an editable example assumption, not a supplier quote.</p>
           {inputs.peakHoursPerDay >= 24 && inputs.peakLoadKw > inputs.baseLoadKw && (
             <div className="flex items-start gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -422,8 +443,8 @@ export default function HybridEnergyWizard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <InputField label="Altitude" unit="ft ASL" value={altitude} onChange={setAltitude} />
             <InputField label="Ambient Temperature" unit="°F" value={ambientTemp} onChange={setAmbientTemp} />
-            <InputField label="Fuel Cost" unit="$/gal" value={fuelCost} onChange={setFuelCost} />
-            <InputField label="BESS Rental" unit={`$/${bessRatePeriod}/unit`} value={bessRental} onChange={setBessRental} />
+            <InputField label="Fuel Cost" unit="$/gal" value={fuelCost} onChange={setFuelCost} min={0} />
+            <InputField label="BESS Rental" unit={`$/${bessRatePeriod}/unit`} value={bessRental} onChange={setBessRental} min={0} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -433,7 +454,7 @@ export default function HybridEnergyWizard() {
               onChange={(v) => setBessRatePeriod(v as RatePeriod)}
               options={RATE_PERIOD_OPTIONS.map((option) => ({ ...option }))}
             />
-            <InputField label="Generator Rental" unit={`$/${genRatePeriod}/unit`} value={genRental} onChange={setGenRental} />
+            <InputField label="Generator Rental" unit={`$/${genRatePeriod}/unit`} value={genRental} onChange={setGenRental} min={0} />
             <SelectField
               label="Generator Rate Period"
               value={genRatePeriod}
@@ -441,6 +462,7 @@ export default function HybridEnergyWizard() {
               options={RATE_PERIOD_OPTIONS.map((option) => ({ ...option }))}
             />
           </div>
+          <p className="text-xs leading-relaxed text-text-dim">The worked example uses one 28-day equipment billing cycle. Changing the project duration prorates the planning comparison; confirm minimum charges, overtime, partial-cycle rules, delivery, and taxes with the rental provider.</p>
         </div>
       </Card>
 
@@ -474,7 +496,7 @@ export default function HybridEnergyWizard() {
           action={<Button size="sm" variant="secondary" onClick={addMotor}><Plus size={14} /> Add Motor</Button>}
         />
         {motors.length === 0 && (
-          <p className="text-sm text-text-dim text-center py-3">No motor loads — BESS can handle all loads. Add motors if present.</p>
+          <p className="text-sm text-text-dim text-center py-3">No motor starts entered. BESS compatibility remains unverified; add the project motor and compressor schedule.</p>
         )}
         <div className="space-y-3">
           {motors.map((m) => (
@@ -656,8 +678,8 @@ export default function HybridEnergyWizard() {
           {projectPlan && (
             <Card>
               <CardHeader title="Budgetary Estimate Basis" subtitle="Calculated from the rates entered above; zero-rate lines identify required vendor selections, not free equipment." />
-              <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-sg-600"><th className="py-2 text-left text-text-muted">Item</th><th className="py-2 text-right text-text-muted">Qty</th><th className="py-2 text-right text-text-muted">Rate</th><th className="py-2 text-right text-text-muted">Extended</th><th className="py-2 text-right text-text-muted">Status</th></tr></thead><tbody>
-                {projectPlan.quoteItems.map((item) => <tr key={item.id} className="border-b border-sg-700"><td className="py-2 text-text">{item.description}<span className="block text-xs text-text-dim">{item.modelSku}</span></td><td className="text-right text-text">{fmt(item.quantity, item.quantity < 10 ? 1 : 0)}</td><td className="text-right text-text">{item.rate > 0 ? `${fmtCurrency(item.rate)}/${item.rateUnit}` : 'TBD'}</td><td className="text-right font-bold text-text">{item.total > 0 ? fmtCurrency(item.total) : 'TBD'}</td><td className="text-right text-xs text-text-dim">{item.confirmation === 'entered_rate' ? 'Entered rate' : 'Vendor required'}</td></tr>)}
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-sg-600"><th className="py-2 text-left text-text-muted">Item</th><th className="py-2 text-right text-text-muted">Qty</th><th className="py-2 text-right text-text-muted">Billing periods</th><th className="py-2 text-right text-text-muted">Rate</th><th className="py-2 text-right text-text-muted">Extended</th><th className="py-2 text-right text-text-muted">Status</th></tr></thead><tbody>
+                {projectPlan.quoteItems.map((item) => <tr key={item.id} className="border-b border-sg-700"><td className="py-2 text-text">{item.description}<span className="block text-xs text-text-dim">{item.modelSku}</span></td><td className="text-right text-text">{fmt(item.quantity, item.quantity < 10 ? 1 : 0)}</td><td className="text-right text-text">{fmt(item.periods, item.periods < 10 ? 2 : 0)}</td><td className="text-right text-text">{item.rate > 0 ? `${formatQuoteRate(item.rate, item.rateUnit)}/${item.rateUnit}` : 'TBD'}</td><td className="text-right font-bold text-text">{item.total > 0 ? fmtCurrency(item.total) : 'TBD'}</td><td className="text-right text-xs text-text-dim">{item.confirmation === 'entered_rate' ? 'Entered rate' : 'Vendor required'}</td></tr>)}
               </tbody></table></div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent-500/35 bg-accent-500/10 p-4"><div><div className="text-xs font-bold uppercase tracking-wider text-accent-300">Known-rate subtotal</div><div className="mt-1 text-2xl font-bold text-text">{fmtCurrency(projectPlan.budgetaryTotal)}</div><p className="mt-1 text-xs text-text-muted">Excludes every TBD distribution, logistics, labor, tax, and vendor-confirmation line.</p></div><Button type="button" onClick={addPackageToEstimate} disabled={!zonesBalanced} className="disabled:cursor-not-allowed disabled:opacity-50">Add Package to Estimate</Button></div>
             </Card>
@@ -666,25 +688,19 @@ export default function HybridEnergyWizard() {
           {/* Motor Assignments */}
           {results.motorAssignments.length > 0 && (
             <Card>
-              <CardHeader title="Motor Inrush Analysis" subtitle="Auto-assignment based on locked rotor amps vs BESS inverter limits" />
+              <CardHeader title="Motor Starting Review" subtitle="Estimated start current only; source assignment requires manufacturer and engineering checks" />
               <div className="space-y-2">
                 {results.motorAssignments.map((ma) => (
                   <div
                     key={ma.id}
-                    className={`flex items-center justify-between p-3 rounded-lg text-sm ${
-                      ma.assignment === 'generator' ? 'bg-error/10 border border-error/30' : 'bg-signal-blue/10 border border-signal-blue/30'
-                    }`}
+                    className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm"
                   >
                     <div>
                       <span className="font-medium text-text">{ma.hp} HP — {ma.method.toUpperCase()}</span>
                       <span className="text-text-muted ml-2">LRA: {fmt(ma.lra, 0)}A</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {ma.assignment === 'generator' ? (
-                        <><AlertCircle size={14} className="text-error" /><span className="text-error font-medium">Generator Circuit</span></>
-                      ) : (
-                        <><Shield size={14} className="text-signal-blue" /><span className="text-signal-blue font-medium">BESS Compatible</span></>
-                      )}
+                      <AlertCircle size={14} className="text-warning" /><span className="font-medium text-warning">Source review required</span>
                     </div>
                   </div>
                 ))}
@@ -714,16 +730,16 @@ export default function HybridEnergyWizard() {
                     <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.dailyFuelReduction))} gal/day {results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />30-Day Fuel</td>
-                    <td className="text-right text-text">{fmtInt(results.allGenFuel30Day)} gal</td>
-                    <td className="text-right text-accent-300">{fmtInt(results.hybridFuelPerDay * 30)} gal</td>
-                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.dailyFuelReduction * 30))} gal {results.dailyFuelReduction >= 0 ? 'lower' : 'higher'}</td>
+                    <td className="py-2 text-text"><Fuel size={14} className="inline mr-1" />{inputs.projectDurationDays}-Day Fuel</td>
+                    <td className="text-right text-text">{fmtInt(results.allGenFuelProject)} gal</td>
+                    <td className="text-right text-accent-300">{fmtInt(results.hybridFuelTotal)} gal</td>
+                    <td className="text-right text-signal-blue">{fmtInt(Math.abs(results.totalFuelSavingsGal))} gal {results.totalFuelSavingsGal >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
-                    <td className="py-2 text-text"><DollarSign size={14} className="inline mr-1" />30-Day Total Cost</td>
-                    <td className="text-right text-text">{fmtCurrency(results.allGenCost30Day)}</td>
-                    <td className="text-right text-accent-300">{fmtCurrency(results.hybridCost30Day)}</td>
-                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.costSavings30Day))} {results.costSavings30Day >= 0 ? 'lower' : 'higher'}</td>
+                    <td className="py-2 text-text"><DollarSign size={14} className="inline mr-1" />{inputs.projectDurationDays}-Day Total Cost</td>
+                    <td className="text-right text-text">{fmtCurrency(results.allGenCostProject)}</td>
+                    <td className="text-right text-accent-300">{fmtCurrency(results.hybridCostProject)}</td>
+                    <td className="text-right text-signal-blue font-semibold">{fmtCurrency(Math.abs(results.costDifferenceProject))} {results.costDifferenceProject >= 0 ? 'lower' : 'higher'}</td>
                   </tr>
                   <tr className="border-b border-sg-700">
                     <td className="py-2 text-text font-semibold">Project Fuel Difference</td>

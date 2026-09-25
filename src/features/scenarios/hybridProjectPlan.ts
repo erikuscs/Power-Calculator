@@ -94,6 +94,20 @@ function dimensions(footprintSqFt: number, minLength: number, minWidth: number) 
   return { lengthFt, widthFt: Math.max(minWidth, Math.ceil(footprintSqFt / lengthFt)) }
 }
 
+function rentalDisplay(
+  projectDays: number,
+  dailyRate: number,
+  enteredRate?: number,
+  period: HybridWizardInputs['bessRentalRatePeriod'] = 'daily',
+) {
+  const daysPerPeriod = period === 'monthly' ? 28 : period === 'weekly' ? 7 : 1
+  return {
+    rate: enteredRate ?? dailyRate,
+    periods: projectDays / daysPerPeriod,
+    rateUnit: period === 'monthly' ? '28-day cycle' : period === 'weekly' ? 'week' : 'day',
+  }
+}
+
 export function buildHybridProjectPlan(
   inputs: HybridWizardInputs,
   results: HybridWizardResults,
@@ -164,7 +178,7 @@ export function buildHybridProjectPlan(
       yFt += rowWidthFt + 6
       rowWidthFt = 0
     }
-    if (yFt + envelopeWidth > siteWidthFt) layoutFits = false
+    if (xFt + envelopeLength > siteLengthFt || yFt + envelopeWidth > siteWidthFt) layoutFits = false
     const placed = { ...item, xFt, yFt }
     xFt += envelopeLength + 4
     rowWidthFt = Math.max(rowWidthFt, envelopeWidth)
@@ -174,9 +188,11 @@ export function buildHybridProjectPlan(
 
   const projectDays = Math.max(1, inputs.projectDurationDays)
   const fuelGallons = results.hybridFuelPerDay * projectDays
+  const generatorRental = rentalDisplay(projectDays, inputs.genRentalPerDay, inputs.genRentalRate, inputs.genRentalRatePeriod)
+  const bessRental = rentalDisplay(projectDays, inputs.bessRentalPerDay, inputs.bessRentalRate, inputs.bessRentalRatePeriod)
   const quoteItems: HybridQuoteItem[] = [
-    { id: 'generator-rental', category: 'equipment', description: `${results.genUnitSizeKw} kW generator rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.genUnits, rate: inputs.genRentalPerDay, periods: projectDays, rateUnit: 'day', total: results.genUnits * inputs.genRentalPerDay * projectDays, confirmation: 'entered_rate' },
-    { id: 'bess-rental', category: 'equipment', description: `${inputs.bessUnitSize} kW / ${bessFleet.kwh} kWh BESS rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.bessUnits, rate: inputs.bessRentalPerDay, periods: projectDays, rateUnit: 'day', total: results.bessUnits * inputs.bessRentalPerDay * projectDays, confirmation: 'entered_rate' },
+    { id: 'generator-rental', category: 'equipment', description: `${results.genUnitSizeKw} kW generator rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.genUnits, ...generatorRental, total: results.genUnits * inputs.genRentalPerDay * projectDays, confirmation: 'entered_rate' },
+    { id: 'bess-rental', category: 'equipment', description: `${inputs.bessUnitSize} kW / ${bessFleet.kwh} kWh BESS rental`, modelSku: 'FLEET-CLASS-VERIFY', quantity: results.bessUnits, ...bessRental, total: results.bessUnits * inputs.bessRentalPerDay * projectDays, confirmation: 'entered_rate' },
     { id: 'diesel-fuel', category: 'fuel', description: 'Estimated diesel consumption', modelSku: 'FUEL-ALLOWANCE', quantity: fuelGallons, rate: inputs.fuelCostPerGallon, periods: 1, rateUnit: 'gallon', total: fuelGallons * inputs.fuelCostPerGallon, confirmation: 'entered_rate' },
     { id: 'distribution', category: 'accessory', description: 'ATS/paralleling controls, switchgear, transformer and protection package', modelSku: 'VENDOR-SELECTION-REQUIRED', quantity: 1, rate: 0, periods: 1, rateUnit: 'lot', total: 0, confirmation: 'vendor_required' },
     { id: 'cable', category: 'accessory', description: `4/0 planning cable schedule — ${totalCablePieces ?? `${totalCablePieceRange?.[0]}-${totalCablePieceRange?.[1]}`} pieces`, modelSku: 'CABLE-GAUGE-VENDOR-VERIFY', quantity: totalCablePieces ?? totalCablePieceRange?.[1] ?? 0, rate: 0, periods: 1, rateUnit: '50-ft piece', total: 0, confirmation: 'vendor_required' },
