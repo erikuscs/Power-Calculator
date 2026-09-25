@@ -35,10 +35,10 @@ describe('EMaaS workflow field smoke tests', () => {
     expect(screen.getByText('Data center centric')).toBeInTheDocument()
     expect(screen.getByText('Operating Variables Covered')).toBeInTheDocument()
     expect(screen.getByText('Service Cadence')).toBeInTheDocument()
-    expect(screen.getByText('2,000 A peak · 500 A continuous · 480 V three-phase')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open linked plan + one-line' })).toHaveAttribute('href', '/examples/2000a-hybrid')
-    expect(screen.getByRole('img', { name: /^Three-dimensional hybrid equipment planning layout/ })).toBeInTheDocument()
-    expect(screen.queryByAltText(/data center energy operations model/i)).not.toBeInTheDocument()
+    expect(screen.getByAltText(/data center energy operations model/i)).toHaveAttribute('src', '/media/emaas-data-center-ops.webp')
+    expect(screen.queryByText('2,000 A peak · 500 A continuous · 480 V three-phase')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open linked plan + one-line' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /^Three-dimensional hybrid equipment planning layout/ })).not.toBeInTheDocument()
   })
 
   it('renders temporary power commercial fields used in EMaaS reports', () => {
