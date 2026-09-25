@@ -1,8 +1,8 @@
 # EMaaS Pro Quality Assurance
 
-Status: `WEB/PWA RELEASE LIVE VERIFIED 2026-09-13`
+Status: `WEB/PWA RELEASE LIVE VERIFIED 2026-09-25`
 
-## Calculation and estimator correction candidate — 2026-09-25
+## Calculation and estimator correction release — 2026-09-25
 
 - BESS runtime now uses `delivered kWh / continuous kW`; DC bus current and AC power factor are no longer mixed into the energy calculation.
 - Multi-unit sizing applies depth of discharge and losses once, in usable energy per unit. ROI charging cost includes round-trip losses and degradation begins after Year 1.
@@ -14,6 +14,7 @@ Status: `WEB/PWA RELEASE LIVE VERIFIED 2026-09-13`
 - Verification before independent review: 31 test files / 205 tests, TypeScript, lint, production PWA build, and the isolated browser smoke suite passed.
 - Three independent read-only rechecks found no remaining release blocker in the corrected calculations, persistence boundaries, cable logic, or public artifacts. The controlled two-page A3 example passed visual review with a legible one-line, explicit one-28-day-cycle basis, no invented trailer loads, and no generic fuel tank.
 - Approved example hashes: PDF `dda9c7ca2d49355b3e32f8fd4ae04a9dd1ea75db729e1c6843a2a2b93cd75e35`; PNG `55a3ad2622a59d3171b822b79bb010c5f44454ab8f8e2e6506bcd52dcf1babeb`.
+- PR #5 merged to `main` as `e4ee9887543d26fae1fdb36777cf0e9e7c9b2db9`. Production Azure Actions run `36109173052` passed. Cache-busted browser verification returned HTTP 200 on `emaas.pro` and `www.emaas.pro`, passed the worked example and four critical route checks, and matched the deployed PDF byte-for-byte to the approved hash.
 
 ## Required automated gates
 

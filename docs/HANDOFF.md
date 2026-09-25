@@ -1,7 +1,7 @@
 # EMaaS Pro Current Handoff
 
 Updated: 2026-09-25
-Status: `CALCULATION-CORRECTION CANDIDATE VERIFIED / PRODUCTION RELEASE PENDING`
+Status: `CALCULATION CORRECTION LIVE / PRODUCTION VERIFIED`
 
 ## Current product scope
 
@@ -38,7 +38,7 @@ The 2026-09-13 independent brand review matched the current logo, all 14 V3 brow
 
 ## Release boundary
 
-The 2026-09-25 release candidate corrects BESS runtime and sizing, the 30%-to-80% coverage readout for automatically selected equipment, cooling envelope geometry, psychrometric validation, modular large-generator selection, 200 A-and-below banded cable planning, 28-day rental defaults, and removal of invented generic fuel/BESS scope. It passed 31 test files / 205 tests, TypeScript, lint, a production PWA build, and the isolated browser smoke suite before independent review. It has not yet been pushed or deployed.
+The 2026-09-25 release corrects BESS runtime and sizing, the 30%-to-80% coverage readout for automatically selected equipment, cooling envelope geometry, psychrometric validation, modular large-generator selection, 200 A-and-below banded cable planning, 28-day rental defaults, and removal of invented generic fuel/BESS scope. It passed 31 test files / 205 tests, TypeScript, lint, a production PWA build, the isolated browser smoke suite, and three independent read-only reviews. PR #5 was squash-merged as `e4ee9887543d26fae1fdb36777cf0e9e7c9b2db9`; Azure Actions run `36109173052` completed successfully. Both production domains, the critical calculator routes, the 2,000 A worked example, and the controlled PDF checksum were verified on the live target.
 
 Erik Herring authorized correction of the older live `emaas.pro` build on 2026-09-13 after the exact version mismatch was demonstrated. The existing Azure target is `emaas-power-calculator` in `rg-sg-bess-platform`, with `emaas.pro` and `www.emaas.pro` both reporting Ready. Native signing, App Store submission, and physical-device acceptance are outside this web release.
 
