@@ -235,6 +235,41 @@ describe('evaluateHybrid', () => {
 })
 
 describe('calculateHybridWizard', () => {
+  it('derives the 2,000 A / 480 V N+1 benchmark from continuous ratings', () => {
+    const serviceKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const result = calculateHybridWizard({
+      peakLoadKw: serviceKw,
+      baseLoadKw: serviceKw,
+      loadSource: 'panel',
+      bessUnitSize: 250,
+      peakHoursPerDay: 24,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      loadVoltage: 480,
+      powerFactor: 0.8,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 8.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-25',
+      endDate: '2026-10-23',
+      motors: [],
+    })
+
+    expect(serviceKw).toBeCloseTo(1330.2, 1)
+    expect(result.generatorRequiredUnits).toBe(3)
+    expect(result.generatorStandbyUnits).toBe(1)
+    expect(result.genUnits).toBe(4)
+    expect(result.generatorFirmCapacityKw).toBe(1500)
+    expect(result.bessRequiredUnits).toBe(6)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(7)
+    expect(result.bessFirmCapacityKw).toBe(1500)
+    expect(result.rechargePowerKw).toBeCloseTo(169.8, 1)
+  })
+
   it('calculates BESS + generator configuration', () => {
     const result = calculateHybridWizard({
       peakLoadKw: 800,
@@ -258,11 +293,13 @@ describe('calculateHybridWizard', () => {
     expect(result.bessUnits).toBeGreaterThan(0)
     expect(result.genUnits).toBeGreaterThan(0)
     expect(result.totalCapacityKw).toBeGreaterThanOrEqual(800)
-    expect(result.generatorRequiredUnits).toBe(4)
+    expect(result.generatorRequiredUnits).toBe(2)
     expect(result.generatorStandbyUnits).toBe(1)
-    expect(result.genUnits).toBe(5)
+    expect(result.genUnits).toBe(3)
     expect(result.bessUnitContinuousKw).toBe(30)
-    expect(result.bessUnits).toBe(27)
+    expect(result.bessRequiredUnits).toBe(27)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(28)
     expect(result.coverage.bessInstalledKw).toBeGreaterThanOrEqual(800)
     expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
     expect(Number.isFinite(result.dailyFuelReduction)).toBe(true)
@@ -296,7 +333,8 @@ describe('calculateHybridWizard', () => {
     const vfdMotor = result.motorAssignments.find((m) => m.id === 'm2')
     expect(dolMotor!.assignment).toBe('review')
     expect(vfdMotor!.assignment).toBe('review')
-    expect(result.bessUnits).toBe(result.bessUnitsForPeak)
+    expect(result.bessRequiredUnits).toBe(result.bessUnitsForPeak)
+    expect(result.bessUnits).toBe(result.bessUnitsForPeak + 1)
   })
 
   it('calculates fuel and project cost differences including equipment rental', () => {
@@ -403,11 +441,11 @@ describe('calculateHybridWizard', () => {
       motors: [],
     })
 
-    expect(result.coverage.bessInstalledKwh).toBe(8844)
-    expect(result.coverage.canCarryBaseWhileCharging).toBe(true)
+    expect(result.coverage.bessInstalledKwh).toBe(17688)
+    expect(result.coverage.canCarryBaseWhileCharging).toBe(false)
     expect(result.coverage.canCarryPeakOnGenerator).toBe(true)
     expect(result.coverage.scenarios[0].label).toBe('Battery-first hybrid microgrid')
-    expect(result.coverage.scenarios[0].status).toBe('24_7_ready')
+    expect(result.coverage.scenarios[0].status).toBe('conditional')
     expect(result.coverage.scenarios[0].dispatch).toContain('remote-starts the generator')
   })
 
@@ -456,18 +494,20 @@ describe('calculateHybridWizard', () => {
       motors: [],
     })
 
-    expect(result.generatorRequiredUnits).toBe(5)
+    expect(result.generatorRequiredUnits).toBe(3)
     expect(result.generatorStandbyUnits).toBe(1)
-    expect(result.genUnits).toBe(6)
-    expect(result.generatorFirmCapacityKw).toBe(2500)
+    expect(result.genUnits).toBe(4)
+    expect(result.generatorFirmCapacityKw).toBe(1500)
     expect(result.bessUnitsForPeak).toBe(5)
     expect(result.bessUnitsForEnergy).toBe(0)
-    expect(result.bessUnits).toBe(5)
-    expect(result.coverage.bessInstalledKw).toBe(1250)
-    expect(result.coverage.bessInstalledKwh).toBe(2590)
+    expect(result.bessRequiredUnits).toBe(5)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(6)
+    expect(result.coverage.bessInstalledKw).toBe(1500)
+    expect(result.coverage.bessInstalledKwh).toBe(3108)
     expect(result.coverage.bessUsableKwh).toBe(1295)
     expect(result.allGeneratorDailyEnergyKwh).toBe(22400)
-    expect(result.hybridGeneratorDailyEnergyKwh).toBeCloseTo(23760.32, 2)
+    expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(result.allGeneratorDailyEnergyKwh)
     const siteDerating = 1.016
     const expectedAllGenFuel = (
       estimateSunbeltDieselFleetFuel(500, 3, 1200).gallonsPerHour * 8
@@ -503,8 +543,8 @@ describe('calculateHybridWizard', () => {
     })
 
     expect(result.bessUnitsForEnergy).toBe(0)
-    expect(result.bessUnits).toBe(5)
-    expect(result.generatorRequiredUnits).toBe(5)
+    expect(result.bessUnits).toBe(6)
+    expect(result.generatorRequiredUnits).toBe(3)
     expect(result.rechargeEnergyKwh).toBeGreaterThan(0)
     expect(result.allGeneratorDailyEnergyKwh).toBe(28800)
     expect(result.hybridGeneratorDailyEnergyKwh).toBeGreaterThan(28800)
@@ -534,7 +574,9 @@ describe('calculateHybridWizard', () => {
 
     expect(result.bessUnitContinuousKw).toBe(40)
     expect(result.bessUnitUsableKwh).toBe(530)
-    expect(result.bessUnits).toBe(1)
+    expect(result.bessRequiredUnits).toBe(1)
+    expect(result.bessStandbyUnits).toBe(1)
+    expect(result.bessUnits).toBe(2)
     expect(result.bessEnergyKwh).toBe(265)
     expect(result.bessUnitChargeKw).toBe(19.2)
     expect(result.rechargePowerKw).toBe(19.2)

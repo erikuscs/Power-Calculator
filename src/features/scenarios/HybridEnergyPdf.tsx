@@ -62,7 +62,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         <PdfTable
           headers={['Parameter', 'Value']}
           rows={[
-            ['BESS Units', `${results.bessUnits} x ${fi(results.bessUnitContinuousKw)} kW continuous`],
+            ['BESS Units', `${results.bessUnits} x ${fi(results.bessUnitContinuousKw)} kW continuous (${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby)`],
             ['Continuous-power minimum', `${results.bessUnitsForPeak} unit(s)`],
             ['Recharge input per BESS', `${fv(results.bessUnitChargeKw)} kW (${results.bessChargeBasis === 'published' ? 'published' : 'planning assumption - verify'})`],
             ['Generator Units', `${results.genUnits} x ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`],
@@ -147,9 +147,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           headers={['Stage', 'Element', 'Detail']}
           rows={flattenDiagramRows(diagram)}
         />
-        <Text style={{ fontSize: 7, color: '#5B6673', marginTop: 6, fontFamily: 'Courier' }}>
-          {diagram.mermaid}
-        </Text>
+        <PdfWarning>The customer report shows the reviewed equipment path only. Editable Mermaid source remains inside EMaaS Pro for internal engineering handoff and is intentionally excluded from exported reports.</PdfWarning>
       </PdfSection>
 
       <PdfSection title="Source and Branch Cable Schedule">

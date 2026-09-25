@@ -184,15 +184,23 @@ async function run() {
 
     await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.evaluate(() => window.localStorage.removeItem('power-calc:/estimate:draft'))
-    const workedExampleLink = page.getByRole('link', { name: 'View PDF Example' })
+    const workedExampleLink = page.getByRole('link', { name: 'View Live Example' })
     if (await workedExampleLink.count() !== 1) {
-      throw new Error('2,000 A hybrid worked-example PDF link is missing')
+      throw new Error('2,000 A hybrid live-example link is missing')
     }
     const workedExampleHref = await workedExampleLink.getAttribute('href')
-    if (workedExampleHref !== '/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf') {
-      throw new Error(`Unexpected worked-example PDF path: ${workedExampleHref}`)
+    if (workedExampleHref !== '/examples/2000a-hybrid') {
+      throw new Error(`Unexpected worked-example route: ${workedExampleHref}`)
     }
-    const workedExampleResponse = await page.request.get(`${baseUrl}${workedExampleHref}`)
+    await page.goto(`${baseUrl}${workedExampleHref}`, { waitUntil: 'networkidle' })
+    await expectText(page, /2,000 A Hybrid Service/i, 'worked-example heading')
+    await expectText(page, /4 × 500 kW/i, 'worked-example generator package')
+    await expectText(page, /7 × 250 kW/i, 'worked-example BESS package')
+    await expectText(page, /169\.8 kW firm/i, 'worked-example firm recharge ceiling')
+    await expectText(page, /DEIF Energy Controller/i, 'worked-example DEIF one-line control')
+
+    const workedExamplePdfPath = '/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf'
+    const workedExampleResponse = await page.request.get(`${baseUrl}${workedExamplePdfPath}`)
     if (!workedExampleResponse.ok()) {
       throw new Error(`Worked-example PDF request failed: ${workedExampleResponse.status()}`)
     }
@@ -204,6 +212,7 @@ async function run() {
     if (!servedWorkedExample.equals(expectedWorkedExample)) {
       throw new Error('Served worked-example PDF does not match the controlled public asset')
     }
+    await page.goto(`${baseUrl}/scenarios/hybrid-energy`, { waitUntil: 'networkidle' })
     await page.getByLabel('Client / Account').fill('Data Center Construction')
     await page.getByLabel('Project / Phase').fill('Commissioning Block A')
     await page.getByLabel('Peak Load Demand').fill('1200')
@@ -227,9 +236,9 @@ async function run() {
     await expectText(page, /Battery-first hybrid microgrid/i, 'battery-first hybrid dispatch scenario')
     await expectText(page, /Printable Electrical One-Line/i, 'printable electrical one-line diagram')
     await expectText(page, /Print One-Line/i, 'one-line print action')
-    await expectText(page, /6 × 500 kW gen \+ 5 × 250 kW-continuous BESS/i, 'continuous-power hybrid package')
-    await expectText(page, /5 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
-    await expectText(page, /3,000 kW installed \/ 2,500 kW firm generator/i, 'installed and firm generator distinction')
+    await expectText(page, /4 × 500 kW gen \+ 6 × 250 kW-continuous BESS/i, 'continuous-power hybrid package')
+    await expectText(page, /3 duty \+ 1 standby generator unit/i, 'N+1 generator topology')
+    await expectText(page, /2,000 kW installed \/ 1,500 kW firm generator/i, 'installed and firm generator distinction')
     await expectText(page, /Source \+ Branch Cable Schedule/i, 'source and branch cable schedule')
     await expectText(page, /170 pieces/i, 'default named-zone cable count')
     await expectText(page, /Conceptual 3D Equipment Envelope/i, 'dimensioned 3D equipment envelope')
@@ -276,7 +285,7 @@ async function run() {
     await page.getByRole('button', { name: 'Add Package to Estimate' }).click()
     await page.getByRole('button', { name: 'Open Synced Site Fit' }).click()
     await page.getByRole('heading', { name: /Site Fit/i }).waitFor()
-    await expectText(page, /Synced hybrid package: 6 × 500 kW generators and 5 × 250 kW \/ 518 kWh BESS units/i, 'hybrid package handoff to site fit')
+    await expectText(page, /Synced hybrid package: 4 × 500 kW generators and 6 × 250 kW \/ 518 kWh BESS units/i, 'hybrid package handoff to site fit')
     await expectText(page, /Planning ceiling/i, 'synced site-fit planning ceiling')
     await expectText(page, /Package fits the entered planning area/i, 'reconciled hybrid site-fit status')
     await expectText(page, /synced source \+ branch schedule requires 170 pieces/i, 'reconciled site-fit cable total')

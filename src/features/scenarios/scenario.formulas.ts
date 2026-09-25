@@ -407,6 +407,9 @@ export interface MotorEntry {
 export interface HybridWizardResults {
   bessUnitsForPeak: number
   bessUnitsForEnergy: number
+  bessRequiredUnits: number
+  bessStandbyUnits: number
+  bessFirmCapacityKw: number
   bessUnits: number
   bessUnitChargeKw: number
   bessChargeBasis: 'published' | 'planning_assumption'
@@ -508,21 +511,27 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const bessUnitUsableKwh = BESS_UNIT_ENERGY_KWH[bessUnitSize]
   const bessUnitsForPeak = Math.ceil(peakLoadKw / bessUnitContinuousKw)
   const bessUnitsForEnergy = 0
-  const bessUnits = Math.max(bessUnitsForPeak, bessUnitsForEnergy)
+  const bessRequiredUnits = Math.max(bessUnitsForPeak, bessUnitsForEnergy)
+  const bessStandbyUnits = redundancy === '2n'
+    ? bessRequiredUnits
+    : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0
+  const bessUnits = bessRequiredUnits + bessStandbyUnits
+  const bessFirmCapacityKw = bessRequiredUnits * bessUnitContinuousKw
   // The operating SOC band is 80% down to the 30% generator-start threshold.
   // That 50% nameplate swing is the energy delivered during each BESS-only leg.
-  const bessEnergyKwh = bessUnits * bessUnitUsableKwh * 0.5
+  const bessEnergyKwh = bessRequiredUnits * bessUnitUsableKwh * 0.5
 
   const genUnitSizeKw = 500
   const rechargeEfficiency = 0.9
-  // The generator must carry the protected peak and the verified aggregate
-  // continuous charge capability of the selected parallel BESS plant.
+  // Size generator duty capacity to carry the protected customer load. BESS
+  // recharge is staged by the controller inside actual generator headroom;
+  // requiring every PCS to charge at full input simultaneously would
+  // incorrectly inflate the source plant.
   const chargeRating = BESS_UNIT_CHARGE_KW[bessUnitSize]
   const bessUnitChargeKw = chargeRating.kw
   const bessChargeBasis = chargeRating.basis
-  const targetRechargePowerKw = bessUnits * bessUnitChargeKw
-  const generatorDutyBasisKw = peakLoadKw + targetRechargePowerKw
-  const generatorRequiredUnits = Math.max(1, Math.ceil(generatorDutyBasisKw / genUnitSizeKw))
+  const targetRechargePowerKw = bessRequiredUnits * bessUnitChargeKw
+  const generatorRequiredUnits = Math.max(1, Math.ceil(peakLoadKw / genUnitSizeKw))
   const generatorStandbyUnits = redundancy === '2n'
     ? generatorRequiredUnits
     : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0
@@ -594,12 +603,14 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const co2AvoidedTons = co2AvoidedLbs / 2000
   const coverage = buildHybridCoverage(inputs, {
     bessUnits,
+    bessRequiredUnits,
     genUnits,
     genUnitSizeKw,
   })
 
   return {
-    bessUnitsForPeak, bessUnitsForEnergy, bessUnits, bessUnitChargeKw, bessChargeBasis,
+    bessUnitsForPeak, bessUnitsForEnergy, bessRequiredUnits, bessStandbyUnits, bessFirmCapacityKw,
+    bessUnits, bessUnitChargeKw, bessChargeBasis,
     bessEnergyKwh, bessUnitContinuousKw, bessUnitUsableKwh,
     genCapacityKw, genUnits, genUnitSizeKw, generatorRequiredUnits, generatorStandbyUnits,
     generatorFirmCapacityKw, allGenUnits, totalCapacityKw, redundancyFactor,
@@ -619,12 +630,12 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
 
 function buildHybridCoverage(
   inputs: HybridWizardInputs,
-  sizing: { bessUnits: number; genUnits: number; genUnitSizeKw: number },
+  sizing: { bessUnits: number; bessRequiredUnits: number; genUnits: number; genUnitSizeKw: number },
 ): HybridCoverageResults {
   const unitKwh = BESS_UNIT_ENERGY_KWH[inputs.bessUnitSize]
   const bessInstalledKw = sizing.bessUnits * BESS_UNIT_CONTINUOUS_KW[inputs.bessUnitSize]
   const bessInstalledKwh = sizing.bessUnits * unitKwh
-  const bessUsableKwh = bessInstalledKwh * 0.5
+  const bessUsableKwh = sizing.bessRequiredUnits * unitKwh * 0.5
   const unavailableUnits = inputs.redundancy === '2n'
     ? sizing.genUnits / 2
     : inputs.redundancy === 'n1' || inputs.redundancy === 'field_verify' ? 1 : 0
@@ -633,7 +644,8 @@ function buildHybridCoverage(
   const peakLoadKw = Math.max(1, inputs.peakLoadKw)
   const peakDeltaKw = Math.max(0, inputs.peakLoadKw - inputs.baseLoadKw)
   const generatorRechargeReserveKw = Math.max(0, generatorOnlineKw - inputs.peakLoadKw)
-  const modeledRechargePowerKw = Math.min(generatorRechargeReserveKw, bessInstalledKw)
+  const aggregateChargeTargetKw = sizing.bessRequiredUnits * BESS_UNIT_CHARGE_KW[inputs.bessUnitSize].kw
+  const modeledRechargePowerKw = Math.min(generatorRechargeReserveKw, aggregateChargeTargetKw)
   const baseBatteryHours = bessUsableKwh / baseLoadKw
   const peakBatteryHours = bessUsableKwh / peakLoadKw
   const peakShavingHours = peakDeltaKw > 0 ? bessUsableKwh / peakDeltaKw : Infinity

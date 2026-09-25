@@ -85,9 +85,43 @@ describe('one-line diagram builders', () => {
 
     expect(diagram.title).toBe('Hybrid Energy One-Line Diagram')
     expect(diagram.mermaid).toContain('BESS Plant')
-    expect(diagram.mermaid).toContain('EMaaS Controller')
+    expect(diagram.mermaid).toContain('DEIF Energy Controller')
+    expect(diagram.mermaid).toContain('52G source protection')
+    expect(diagram.mermaid).toContain('Customer Service Main')
     expect(diagram.mermaid).toContain('Commissioning Block A')
     expect(diagram.mermaid).toContain('Motor / Compressor Loads')
     expect(flattenDiagramRows(diagram).length).toBeGreaterThan(7)
+  })
+
+  it('keeps the 2,000 A / 480 V benchmark transformer-free and explicitly protected', () => {
+    const serviceKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const inputs: HybridWizardInputs = {
+      peakLoadKw: serviceKw,
+      baseLoadKw: serviceKw,
+      loadSource: 'panel',
+      bessUnitSize: 250,
+      peakHoursPerDay: 24,
+      projectDurationDays: 28,
+      redundancy: 'n1',
+      siteVoltage: 480,
+      loadVoltage: 480,
+      powerFactor: 0.8,
+      altitude: 0,
+      ambientTemp: 85,
+      fuelCostPerGallon: 8.5,
+      bessRentalPerDay: 350,
+      genRentalPerDay: 500,
+      startDate: '2026-09-25',
+      endDate: '2026-10-23',
+      motors: [],
+    }
+    const diagram = buildHybridOneLineDiagram(inputs, calculateHybridWizard(inputs))
+
+    expect(diagram.mermaid).toContain('Generator Breaker')
+    expect(diagram.mermaid).toContain('BESS Breaker')
+    expect(diagram.mermaid).toContain('DEIF Energy Controller')
+    expect(diagram.mermaid).toContain('Customer Service Main')
+    expect(diagram.mermaid).not.toContain('Step-Down Transformer')
+    expect(diagram.edges.some((edge) => edge.from === 'SWGR' && edge.to === 'PANEL')).toBe(true)
   })
 })

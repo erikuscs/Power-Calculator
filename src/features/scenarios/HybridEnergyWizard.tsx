@@ -354,12 +354,10 @@ export default function HybridEnergyWizard() {
             <p className="mt-1 text-xs leading-relaxed text-text-muted">Four modular 500 kW generators, seven 250 kW-continuous BESS units, DEIF controls, one-line, and a scaled site layout. Historical telemetry is intentionally excluded.</p>
           </div>
           <a
-            href="/examples/EMAAS-Pro-2000A-Hybrid-Linked-Plan.pdf"
-            target="_blank"
-            rel="noreferrer"
+            href="/examples/2000a-hybrid"
             className="inline-flex shrink-0 items-center justify-center rounded-lg border border-signal-blue/50 bg-sg-900 px-4 py-2 text-sm font-bold text-signal-blue transition-colors hover:bg-sg-800"
           >
-            View PDF Example
+            View Live Example
           </a>
         </div>
 

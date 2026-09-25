@@ -9,17 +9,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-sg-900 flex flex-col">
-      <Header
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        menuOpen={sidebarOpen}
-      />
+      <div className="app-header">
+        <Header
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          menuOpen={sidebarOpen}
+        />
+      </div>
       <div className="flex flex-1">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 p-5 md:p-8 lg:p-10 overflow-auto">
+        <div className="app-sidebar">
+          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        </div>
+        <main className="app-main flex-1 p-5 md:p-8 lg:p-10 overflow-auto">
           {children}
         </main>
       </div>
-      <footer className="border-t border-sg-600/50 bg-sg-900 px-6 py-4 text-center text-xs text-text-dim leading-relaxed">
+      <footer className="app-footer border-t border-sg-600/50 bg-sg-900 px-6 py-4 text-center text-xs text-text-dim leading-relaxed">
         {APP_BRAND.productName} outputs are planning estimates for reference only. Always verify with a licensed professional engineer before making design decisions.
         <br className="sm:hidden" />
         <span className="sm:ml-2">© {new Date().getFullYear()} {APP_BRAND.reportBrand}</span>

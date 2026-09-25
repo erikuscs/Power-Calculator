@@ -304,8 +304,27 @@ export function buildHybridOneLineDiagram(
           id: 'BESS',
           label: 'BESS Plant',
           detail: `${results.bessUnits} x ${results.bessUnitContinuousKw} kW continuous`,
-          meta: `${fi(results.coverage.bessInstalledKwh)} kWh usable capacity / ${fi(results.coverage.bessUsableKwh)} kWh in 80%-to-30% dispatch band`,
+          meta: `${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby · ${fi(results.bessFirmCapacityKw)} kW firm`,
           tone: 'storage',
+        },
+      ],
+    },
+    {
+      label: 'Protection',
+      nodes: [
+        {
+          id: 'GEN_CB',
+          label: 'Generator Breaker',
+          detail: '52G source protection',
+          meta: 'rating and settings by engineer',
+          tone: 'distribution',
+        },
+        {
+          id: 'BESS_CB',
+          label: 'BESS Breaker',
+          detail: '52B PCS protection',
+          meta: 'bidirectional duty · verify',
+          tone: 'distribution',
         },
       ],
     },
@@ -314,14 +333,14 @@ export function buildHybridOneLineDiagram(
       nodes: [
         {
           id: 'EMS',
-          label: 'EMaaS Controller',
-          detail: 'SOC threshold / remote start / recharge dispatch',
+          label: 'DEIF Energy Controller',
+          detail: 'SOC threshold / remote start / staged recharge',
           meta: inputs.redundancy === '2n' ? '2N topology' : inputs.redundancy === 'n1' ? 'N+1 topology' : 'N topology',
           tone: 'control',
         },
         {
           id: 'ATS',
-          label: 'ATS / Parallel Gear',
+          label: 'Paralleling Gear',
           detail: `${fi(results.peakAmpsPerPhase)} A/phase`,
           meta: `${Math.ceil(results.peakAmpsPerPhase / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
           tone: 'control',
@@ -334,18 +353,33 @@ export function buildHybridOneLineDiagram(
         {
           id: 'SWGR',
           label: `${inputs.siteVoltage}V Switchgear`,
-          detail: `${fi(results.totalCapacityKw)} kW system capacity`,
-          meta: 'main protected bus',
-          tone: 'distribution',
-        },
-        {
-          id: 'XFMR',
-          label: 'Transformer / Panels',
-          detail: inputs.siteVoltage === loadVoltage ? `${loadVoltage}V branch distribution` : `${inputs.siteVoltage}V to ${loadVoltage}V`,
-          meta: 'site distribution interface',
+          detail: `${fi(results.peakAmpsPerPhase)} A protected bus`,
+          meta: `${fi(inputs.peakLoadKw)} kW customer-load basis`,
           tone: 'distribution',
         },
       ],
+    },
+    ...(inputs.siteVoltage !== loadVoltage
+      ? [{
+          label: 'Transformation',
+          nodes: [{
+            id: 'XFMR',
+            label: 'Step-Down Transformer',
+            detail: `${inputs.siteVoltage}V to ${loadVoltage}V`,
+            meta: 'grounding and protection require engineering',
+            tone: 'distribution' as const,
+          }],
+        }]
+      : []),
+    {
+      label: 'Service',
+      nodes: [{
+        id: 'PANEL',
+        label: 'Customer Service Main',
+        detail: `${fi(results.peakAmpsPerPhase)} A at ${loadVoltage}V, 3-phase`,
+        meta: 'protected load handoff',
+        tone: 'distribution',
+      }],
     },
     {
       label: 'Loads',
@@ -354,25 +388,32 @@ export function buildHybridOneLineDiagram(
   ]
 
   const edges: OneLineEdge[] = [
-    { from: 'GEN', to: 'ATS', label: 'generator feeder' },
-    { from: 'BESS', to: 'ATS', label: 'PCS AC output' },
+    { from: 'GEN', to: 'GEN_CB', label: 'generator feeder' },
+    { from: 'BESS', to: 'BESS_CB', label: 'PCS AC output' },
+    { from: 'GEN_CB', to: 'ATS', label: 'protected source' },
+    { from: 'BESS_CB', to: 'ATS', label: 'bidirectional source' },
     { from: 'EMS', to: 'GEN', label: 'remote start', kind: 'control' },
     { from: 'EMS', to: 'BESS', label: 'SOC telemetry', kind: 'control' },
     { from: 'EMS', to: 'ATS', label: 'dispatch control', kind: 'control' },
     { from: 'ATS', to: 'SWGR', label: `${inputs.siteVoltage}V 3-phase` },
-    { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
-    ...zoneNodes.map((node) => ({ from: 'XFMR', to: node.id, label: 'branch feeder' })),
+    ...(inputs.siteVoltage !== loadVoltage
+      ? [
+          { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
+          { from: 'XFMR', to: 'PANEL', label: `${loadVoltage}V secondary` },
+        ] as OneLineEdge[]
+      : [{ from: 'SWGR', to: 'PANEL', label: `${routeSections} x 50 ft protected feeders` }]),
+    ...zoneNodes.map((node) => ({ from: 'PANEL', to: node.id, label: 'branch feeder' })),
   ]
 
   if (results.motorAssignments.length > 0) {
-    stages[3].nodes.push({
+    stages[stages.length - 1].nodes.push({
       id: 'MOTORS',
       label: 'Motor / Compressor Loads',
       detail: `${results.motorAssignments.length} motor note(s)`,
       meta: 'Starting and protection remain vendor/engineering verification',
       tone: 'load',
     })
-    edges.push({ from: 'XFMR', to: 'MOTORS', label: 'motor feeder - verify' })
+    edges.push({ from: 'PANEL', to: 'MOTORS', label: 'motor feeder - verify' })
   }
 
   return finishDiagram({
