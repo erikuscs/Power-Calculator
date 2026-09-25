@@ -269,14 +269,17 @@ export function buildHybridOneLineDiagram(
 ): OneLineDiagram {
   const powerFactor = Math.max(0.1, Math.min(1, inputs.powerFactor ?? 0.8))
   const loadVoltage = inputs.loadVoltage ?? inputs.siteVoltage
+  const loadPhase = inputs.loadPhase ?? 'three'
   const routeSections = Math.max(1, Math.ceil((inputs.longestCableRouteFt ?? 100) / 50))
   const neutralConductors = inputs.neutralPlan === 'not_carried' ? 4 : inputs.neutralPlan === 'required' ? 5 : null
   const zoneNodes: OneLineNode[] = zones.length > 0
-    ? zones.slice(0, 4).map((zone, index) => ({
+    ? zones.map((zone, index) => ({
         id: `ZONE_${index + 1}`,
         label: zone.name || `Zone ${index + 1}`,
         detail: `${fi(zone.kw)} kW`,
-        meta: `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
+        meta: loadPhase === 'single'
+          ? `${fi((zone.kw * 1000) / (loadVoltage * powerFactor))} A branch at ${loadVoltage}V 1-phase`
+          : `${fi((zone.kw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V`,
         tone: 'load' as const,
       }))
     : [
@@ -342,7 +345,7 @@ export function buildHybridOneLineDiagram(
           id: 'ATS',
           label: 'Paralleling Gear',
           detail: `${fi(results.peakAmpsPerPhase)} A/phase`,
-          meta: `${Math.ceil(results.peakAmpsPerPhase / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
+          meta: `${Math.ceil(Math.round(results.peakAmpsPerPhase) / 400)} legs/phase · ${routeSections} x 50 ft · ${neutralConductors ?? '4-5'} conductors/set`,
           tone: 'control',
         },
       ],
@@ -376,8 +379,12 @@ export function buildHybridOneLineDiagram(
       nodes: [{
         id: 'PANEL',
         label: 'Customer Service Main',
-        detail: `${fi(results.peakAmpsPerPhase)} A at ${loadVoltage}V, 3-phase`,
-        meta: 'protected load handoff',
+        detail: loadPhase === 'single'
+          ? `Balanced ${loadVoltage}V single-phase feeder distribution`
+          : `${fi((inputs.peakLoadKw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase at ${loadVoltage}V, 3-phase`,
+        meta: loadPhase === 'single'
+          ? `${fi((inputs.peakLoadKw * 1000) / (Math.sqrt(3) * loadVoltage * powerFactor))} A/phase equivalent · branch nameplates verify`
+          : 'protected load handoff',
         tone: 'distribution',
       }],
     },
@@ -399,7 +406,7 @@ export function buildHybridOneLineDiagram(
     ...(inputs.siteVoltage !== loadVoltage
       ? [
           { from: 'SWGR', to: 'XFMR', label: `${routeSections} x 50 ft protected feeders` },
-          { from: 'XFMR', to: 'PANEL', label: `${loadVoltage}V secondary` },
+          { from: 'XFMR', to: 'PANEL', label: loadPhase === 'single' ? `${loadVoltage}V balanced 1-phase feeders` : `${loadVoltage}V secondary` },
         ] as OneLineEdge[]
       : [{ from: 'SWGR', to: 'PANEL', label: `${routeSections} x 50 ft protected feeders` }]),
     ...zoneNodes.map((node) => ({ from: 'PANEL', to: node.id, label: 'branch feeder' })),
@@ -427,6 +434,9 @@ export function buildHybridOneLineDiagram(
       zones.length > 0
         ? 'Zone nodes reflect the optional power-zone schedule entered in the workflow.'
         : 'Critical-load bus is shown when no power zones are entered.',
+      loadPhase === 'single'
+        ? 'Single-phase branch loads must be balanced across the three-phase source; final feeder ratings require the trailer nameplates.'
+        : 'Downstream loads are represented as three-phase distribution.',
     ],
   })
 }

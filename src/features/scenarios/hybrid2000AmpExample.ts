@@ -3,39 +3,44 @@ import { buildHybridOneLineDiagram } from './oneLineDiagram'
 import { buildHybridProjectPlan } from './hybridProjectPlan'
 
 export const HYBRID_2000A_SERVICE_AMPS = 2000
+export const HYBRID_2000A_CONTINUOUS_AMPS = 500
 export const HYBRID_2000A_VOLTAGE = 480
 export const HYBRID_2000A_POWER_FACTOR = 0.8
 export const HYBRID_2000A_SERVICE_KVA = (HYBRID_2000A_SERVICE_AMPS * HYBRID_2000A_VOLTAGE * Math.sqrt(3)) / 1000
 export const HYBRID_2000A_PROTECTED_KW = HYBRID_2000A_SERVICE_KVA * HYBRID_2000A_POWER_FACTOR
+export const HYBRID_2000A_CONTINUOUS_KW = (HYBRID_2000A_CONTINUOUS_AMPS * HYBRID_2000A_VOLTAGE * Math.sqrt(3) * HYBRID_2000A_POWER_FACTOR) / 1000
 
 export const HYBRID_2000A_INPUTS: HybridWizardInputs = {
   peakLoadKw: HYBRID_2000A_PROTECTED_KW,
-  baseLoadKw: HYBRID_2000A_PROTECTED_KW,
+  baseLoadKw: HYBRID_2000A_CONTINUOUS_KW,
   loadSource: 'panel',
-  bessUnitSize: 250,
-  peakHoursPerDay: 24,
+  bessUnitSize: 30,
+  peakHoursPerDay: 1,
   projectDurationDays: 28,
-  redundancy: 'n1',
+  redundancy: 'n',
   siteVoltage: HYBRID_2000A_VOLTAGE,
-  loadVoltage: HYBRID_2000A_VOLTAGE,
+  loadVoltage: 240,
+  loadPhase: 'single',
   powerFactor: HYBRID_2000A_POWER_FACTOR,
   altitude: 0,
   ambientTemp: 85,
   fuelCostPerGallon: 8.5,
-  bessRentalPerDay: 350,
-  genRentalPerDay: 500,
+  bessRentalPerDay: 0,
+  genRentalPerDay: 0,
   startDate: '2026-09-25',
   endDate: '2026-10-23',
   motors: [],
   longestCableRouteFt: 100,
-  neutralPlan: 'review',
+  neutralPlan: 'required',
   siteLengthFt: 220,
   siteWidthFt: 120,
 }
 
-export const HYBRID_2000A_ZONES = [
-  { id: 'customer-service', name: '2,000 A Customer Service', kw: HYBRID_2000A_PROTECTED_KW },
-]
+export const HYBRID_2000A_ZONES = Array.from({ length: 10 }, (_, index) => ({
+  id: `trailer-${index + 1}`,
+  name: `Job Site Trailer ${index + 1}`,
+  kw: HYBRID_2000A_PROTECTED_KW / 10,
+}))
 
 export function buildHybrid2000AmpExample() {
   const results = calculateHybridWizard(HYBRID_2000A_INPUTS)

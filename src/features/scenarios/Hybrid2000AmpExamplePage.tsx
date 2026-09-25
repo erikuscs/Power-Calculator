@@ -2,7 +2,7 @@ import { Download, ShieldCheck, Zap } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { PrintableOneLine } from '../../components/ui/OneLineDiagramPanel'
 import { HybridSiteLayout3D } from '../../components/ui/HybridSiteLayout3D'
-import { buildHybrid2000AmpExample, HYBRID_2000A_PROTECTED_KW, HYBRID_2000A_SERVICE_KVA } from './hybrid2000AmpExample'
+import { buildHybrid2000AmpExample, HYBRID_2000A_CONTINUOUS_AMPS, HYBRID_2000A_CONTINUOUS_KW, HYBRID_2000A_PROTECTED_KW, HYBRID_2000A_SERVICE_KVA } from './hybrid2000AmpExample'
 
 const example = buildHybrid2000AmpExample()
 
@@ -18,8 +18,7 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
 
 export default function Hybrid2000AmpExamplePage() {
   const { results, diagram, plan } = example
-  const allOnlineHeadroom = results.genCapacityKw - HYBRID_2000A_PROTECTED_KW
-  const firmHeadroom = results.generatorFirmCapacityKw - HYBRID_2000A_PROTECTED_KW
+  const rechargeHeadroom = results.generatorFirmCapacityKw - HYBRID_2000A_PROTECTED_KW
 
   return (
     <div className="hybrid-example-report mx-auto max-w-[1500px] space-y-4">
@@ -28,7 +27,7 @@ export default function Hybrid2000AmpExamplePage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent-400">Verified worked example</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-text">2,000 A Hybrid Service — Linked Plan + One-Line</h1>
           <p className="mt-2 max-w-4xl text-sm leading-relaxed text-text-muted">
-            480 V, three-phase temporary-power architecture sized from the service rating at 0.80 power factor. The service basis is deliberately conservative until measured load is available.
+            Construction base-camp hybrid sized from a 2,000 A peak and 500 A continuous request at 480 V, three-phase. Ten 240 V single-phase trailer feeders are balanced downstream.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
@@ -47,7 +46,7 @@ export default function Hybrid2000AmpExamplePage() {
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
               <div>
                 <h2 className="text-base font-bold text-text">Electrical One-Line Diagram</h2>
-                <p className="text-xs text-text-muted">Recognized one-line symbols; no transformer is shown because source and service are both 480 V.</p>
+                <p className="text-xs text-text-muted">Recognized one-line symbols with 480 V generation, DEIF controls, step-down transformation, and balanced 240 V single-phase trailer feeders.</p>
               </div>
               <span className="rounded border border-sg-600/45 bg-sg-900 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">Conceptual · not for construction</span>
             </div>
@@ -66,19 +65,20 @@ export default function Hybrid2000AmpExamplePage() {
               <h2 className="text-base font-bold text-text">Sizing Summary</h2>
             </div>
             <Metric label="Service basis" value="2,000 A" detail={`${HYBRID_2000A_SERVICE_KVA.toFixed(1)} kVA at 480 V, 3-phase`} />
-            <Metric label="Protected real-power basis" value={`${HYBRID_2000A_PROTECTED_KW.toFixed(1)} kW`} detail="0.80 planning power factor; replace with measured demand when available" />
+            <Metric label="Continuous basis" value={`${HYBRID_2000A_CONTINUOUS_AMPS} A / ${HYBRID_2000A_CONTINUOUS_KW.toFixed(1)} kW`} detail="0.80 generator rating basis" />
+            <Metric label="Protected peak basis" value={`${HYBRID_2000A_PROTECTED_KW.toFixed(1)} kW`} detail="Generator and BESS ratings are not added as customer demand" />
             <Metric label="Generation" value={`${results.genUnits} × ${results.genUnitSizeKw} kW`} detail={`${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby · ${results.generatorFirmCapacityKw.toLocaleString()} kW firm`} />
             <Metric label="BESS" value={`${results.bessUnits} × ${results.bessUnitContinuousKw} kW`} detail={`${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby · ${results.bessFirmCapacityKw.toLocaleString()} kW firm continuous`} />
-            <Metric label="DEIF recharge ceiling" value={`${firmHeadroom.toFixed(1)} kW firm`} detail={`${allOnlineHeadroom.toFixed(1)} kW with all four generators online; staged charging only`} />
+            <Metric label="DEIF recharge ceiling" value={`${rechargeHeadroom.toFixed(1)} kW`} detail="Available while the generator plant carries the full requested peak; staged charging only" />
           </Card>
 
           <div className="rounded-lg border border-signal-blue/35 bg-signal-blue/10 p-4 text-xs leading-relaxed text-text-muted">
-            <div className="font-bold text-signal-blue">Why this is modular</div>
-            <p className="mt-2">One generator or one BESS unit may be unavailable while the remaining source plant still carries the 1,330.2 kW protected service basis. DEIF dispatch limits recharge to headroom after customer load.</p>
+            <div className="font-bold text-signal-blue">Why this is the obtainable package</div>
+            <p className="mt-2">The supplying rental-house constraint is the Viridi RPS150 at 30 kW continuous. Twelve units cover the 332.6 kW continuous request; three 500 kW generators carry the 1,330.2 kW peak and provide controlled recharge from remaining headroom.</p>
           </div>
           <div className="rounded-lg border border-warning/35 bg-warning/10 p-4 text-xs leading-relaxed text-text-muted">
             <div className="font-bold text-warning">Known boundary</div>
-            <p className="mt-2">A 2,000 A breaker is not proof of actual demand. This example sizes the requested service conservatively and does not claim fuel reduction without measured load telemetry.</p>
+            <p className="mt-2">Individual trailer nameplates were not provided. Equal branch allocations are planning placeholders only; field verification must balance the ten 240 V single-phase feeders before release.</p>
           </div>
         </aside>
       </div>

@@ -391,6 +391,7 @@ export interface HybridWizardInputs {
   motors: MotorEntry[]
   powerFactor?: number
   loadVoltage?: number
+  loadPhase?: 'single' | 'three'
   longestCableRouteFt?: number
   neutralPlan?: 'required' | 'not_carried' | 'review'
   siteLengthFt?: number
@@ -405,7 +406,7 @@ export interface MotorEntry {
 }
 
 export interface HybridWizardResults {
-  bessUnitsForPeak: number
+  bessUnitsForContinuousLoad: number
   bessUnitsForEnergy: number
   bessRequiredUnits: number
   bessStandbyUnits: number
@@ -423,7 +424,7 @@ export interface HybridWizardResults {
   generatorStandbyUnits: number
   generatorFirmCapacityKw: number
   allGenUnits: number
-  totalCapacityKw: number
+  protectedPeakLoadKw: number
   redundancyFactor: number
   allGenFuelPerDay: number
   allGenFuelProject: number
@@ -505,13 +506,14 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
     }
   })
 
-  // Battery-first dispatch requires the BESS inverter plant to carry the full
-  // protected peak while the generator is off.
+  // The BESS inverter plant is sized to the entered continuous/base load. A
+  // demand rise above that operating level starts and parallels the generator
+  // plant; the customer peak is not used to oversize the battery plant.
   const bessUnitContinuousKw = BESS_UNIT_CONTINUOUS_KW[bessUnitSize]
   const bessUnitUsableKwh = BESS_UNIT_ENERGY_KWH[bessUnitSize]
-  const bessUnitsForPeak = Math.ceil(peakLoadKw / bessUnitContinuousKw)
+  const bessUnitsForContinuousLoad = Math.max(1, Math.ceil(baseLoadKw / bessUnitContinuousKw))
   const bessUnitsForEnergy = 0
-  const bessRequiredUnits = Math.max(bessUnitsForPeak, bessUnitsForEnergy)
+  const bessRequiredUnits = Math.max(bessUnitsForContinuousLoad, bessUnitsForEnergy)
   const bessStandbyUnits = redundancy === '2n'
     ? bessRequiredUnits
     : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0
@@ -540,7 +542,9 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   const generatorFirmCapacityKw = generatorRequiredUnits * genUnitSizeKw
   const allGenRequiredUnits = Math.max(1, Math.ceil(peakLoadKw / genUnitSizeKw))
   const allGenUnits = allGenRequiredUnits + (redundancy === '2n' ? allGenRequiredUnits : redundancy === 'n1' || redundancy === 'field_verify' ? 1 : 0)
-  const totalCapacityKw = (bessUnits * bessUnitContinuousKw) + (genUnits * genUnitSizeKw)
+  // Generator and BESS ratings describe two controlled sources on the same
+  // load bus. They must not be added and presented as customer demand.
+  const protectedPeakLoadKw = peakLoadKw
 
   const altDerate = 1 + Math.max(0, (altitude - 1000) / 1000) * 0.03
   const tempDerate = 1 + Math.max(0, (ambientTemp - 77) / 10) * 0.02
@@ -609,11 +613,11 @@ export function calculateHybridWizard(inputs: HybridWizardInputs): HybridWizardR
   })
 
   return {
-    bessUnitsForPeak, bessUnitsForEnergy, bessRequiredUnits, bessStandbyUnits, bessFirmCapacityKw,
+    bessUnitsForContinuousLoad, bessUnitsForEnergy, bessRequiredUnits, bessStandbyUnits, bessFirmCapacityKw,
     bessUnits, bessUnitChargeKw, bessChargeBasis,
     bessEnergyKwh, bessUnitContinuousKw, bessUnitUsableKwh,
     genCapacityKw, genUnits, genUnitSizeKw, generatorRequiredUnits, generatorStandbyUnits,
-    generatorFirmCapacityKw, allGenUnits, totalCapacityKw, redundancyFactor,
+    generatorFirmCapacityKw, allGenUnits, protectedPeakLoadKw, redundancyFactor,
     allGenFuelPerDay, allGenFuelProject: allGenFuelPerDay * projectDurationDays,
     hybridFuelPerDay, hybridFuelTotal: hybridFuelPerDay * projectDurationDays,
     averageLoadKw, batteryRuntimeHoursPerCycle, generatorRuntimeHoursPerCycle,
@@ -665,7 +669,7 @@ function buildHybridCoverage(
         : canCoverPeakWithHybrid || canCarryPeakOnGenerator
           ? 'conditional'
           : 'not_feasible',
-      dispatch: 'Run BESS first. EMS remote-starts the generator at the low-SOC threshold, carries the customer load, and recharges the BESS.',
+      dispatch: 'Run BESS at the entered continuous load. EMS remote-starts the generator at the low-SOC or high-load threshold; the generator carries customer load and recharges the BESS from available headroom.',
       coverage: canCarryBaseWhileCharging
         ? `Generator has ${Math.round(generatorRechargeReserveKw)} kW reserve above protected peak; modeled charging is capped at ${Math.round(modeledRechargePowerKw)} kW.`
         : 'Generator cannot both serve the protected peak and recharge BESS without reducing customer load.',

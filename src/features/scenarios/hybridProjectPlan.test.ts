@@ -96,4 +96,36 @@ describe('buildHybridProjectPlan', () => {
     const plan = buildHybridProjectPlan(narrow, calculateHybridWizard(narrow), [])
     expect(plan.layoutFits).toBe(false)
   })
+
+  it('calculates the ten balanced 240 V single-phase trailer feeders independently of the 480 V source', () => {
+    const peakLoadKw = (2000 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const baseLoadKw = (500 * 480 * Math.sqrt(3) * 0.8) / 1000
+    const trailerInputs: HybridWizardInputs = {
+      ...inputs,
+      peakLoadKw,
+      baseLoadKw,
+      projectDurationDays: 28,
+      redundancy: 'n',
+      bessUnitSize: 30,
+      loadVoltage: 240,
+      loadPhase: 'single',
+      longestCableRouteFt: 100,
+      neutralPlan: 'required',
+    }
+    const zones = Array.from({ length: 10 }, (_, index) => ({
+      id: `trailer-${index + 1}`,
+      name: `Job Site Trailer ${index + 1}`,
+      kw: peakLoadKw / 10,
+    }))
+    const plan = buildHybridProjectPlan(trailerInputs, calculateHybridWizard(trailerInputs), zones)
+    const branchRows = plan.cableSchedule.filter((row) => row.id.startsWith('BR-'))
+
+    expect(branchRows).toHaveLength(10)
+    expect(plan.equipment.filter((item) => item.kind === 'bess')).toHaveLength(12)
+    expect(plan.equipment.filter((item) => item.kind === 'generator')).toHaveLength(3)
+    expect(branchRows[0].ampsPerPhase).toBeCloseTo(692.82, 2)
+    expect(branchRows[0]).toMatchObject({ runsPerPhase: 2, routeSections: 2, pieces: 16 })
+    expect(plan.cableSchedule.find((row) => row.id === 'MAIN')?.pieces).toBe(50)
+    expect(plan.totalCablePieces).toBe(210)
+  })
 })

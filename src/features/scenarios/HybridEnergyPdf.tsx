@@ -37,6 +37,17 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
   const projectPlan = buildHybridProjectPlan(inputs, results, zones ?? [])
   const benchmarkReview = reviewHybridBenchmark(inputs, results)
   const selectedBess = BESS_FLEET.find((unit) => unit.kw === inputs.bessUnitSize)
+  const bessOptionComparison = BESS_FLEET.map((unit) => {
+    const continuousKw = unit.continuousKw ?? unit.kw
+    const units = Math.max(1, Math.ceil(inputs.baseLoadKw / continuousKw))
+    return {
+      label: unit.label,
+      continuousKw,
+      units,
+      installedKw: units * continuousKw,
+      selected: unit.kw === inputs.bessUnitSize,
+    }
+  })
   const difference = (value: number, unit = '') => `${fi(Math.abs(value))}${unit ? ` ${unit}` : ''} ${value >= 0 ? 'lower' : 'higher'}`
 
   return (
@@ -63,10 +74,10 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           headers={['Parameter', 'Value']}
           rows={[
             ['BESS Units', `${results.bessUnits} x ${fi(results.bessUnitContinuousKw)} kW continuous (${results.bessRequiredUnits} duty + ${results.bessStandbyUnits} standby)`],
-            ['Continuous-power minimum', `${results.bessUnitsForPeak} unit(s)`],
+            ['Continuous-load BESS minimum', `${results.bessUnitsForContinuousLoad} unit(s)`],
             ['Recharge input per BESS', `${fv(results.bessUnitChargeKw)} kW (${results.bessChargeBasis === 'published' ? 'published' : 'planning assumption - verify'})`],
             ['Generator Units', `${results.genUnits} x ${results.genUnitSizeKw} kW (${results.generatorRequiredUnits} duty + ${results.generatorStandbyUnits} standby)`],
-            ['Total System Capacity', `${fi(results.totalCapacityKw)} kW`],
+            ['Protected Customer Peak', `${fi(results.protectedPeakLoadKw)} kW`],
             ['Firm Generator Capacity', `${fi(results.generatorFirmCapacityKw)} kW`],
             ['Energy in 80%-to-30% Dispatch Band', `${fi(results.bessEnergyKwh)} kWh`],
             ['Generator Capacity', `${fi(results.genCapacityKw)} kW`],
@@ -75,15 +86,29 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           ]}
         />
         <PdfWarning>
-          {`${fi(inputs.peakLoadKw)} kW protected load / ${fv(results.bessUnitContinuousKw)} kW continuous per BESS = ${results.bessUnitsForPeak} unit(s). Continuous power governs this estimate; peak/model ratings and nominal energy do not replace it.${selectedBess?.peakKw ? ` ${selectedBess.peakKw} kW is time-limited.` : ''}${selectedBess?.fieldNote ? ` Field note: ${selectedBess.fieldNote}` : ''}`}
+          {`${fi(inputs.baseLoadKw)} kW continuous load / ${fv(results.bessUnitContinuousKw)} kW continuous per BESS = ${results.bessUnitsForContinuousLoad} unit(s). The ${fi(inputs.peakLoadKw)} kW customer peak starts/parallels the generator plant; generator and BESS nameplates are not added together as project demand.${selectedBess?.peakKw ? ` ${selectedBess.peakKw} kW is time-limited.` : ''}${selectedBess?.fieldNote ? ` Field note: ${selectedBess.fieldNote}` : ''}`}
         </PdfWarning>
         <PdfWarning>A BESS has no operator-usable red zone. Continuous power governs this estimate; motor starting, protection, transformers, and load-bank methods remain later vendor/engineering verification.</PdfWarning>
         {results.motorAssignments.length > 0 && <PdfWarning>Motor-start entries are informational handoff notes only. They do not change this continuous-power planning quantity; final starting and protection methods require vendor/engineering verification.</PdfWarning>}
         {results.parallelRunsNeeded && (
           <PdfWarning>
-            {`${fi(results.peakAmpsPerPhase)}A per phase — ${Math.ceil(results.peakAmpsPerPhase / 400)} legs per phase required (generator power cable rated 400A per leg).`}
+            {`${fi(results.peakAmpsPerPhase)}A per phase — ${Math.ceil(Math.round(results.peakAmpsPerPhase) / 400)} legs per phase required (generator power cable rated 400A per leg).`}
           </PdfWarning>
         )}
+      </PdfSection>
+
+      <PdfSection title="BESS Option Comparison — Continuous Output Basis">
+        <PdfTable
+          headers={['Model', 'Continuous / Unit', 'Units for Base Load', 'Installed Continuous', 'Quote Status']}
+          rows={bessOptionComparison.map((option) => [
+            option.label,
+            `${fv(option.continuousKw)} kW`,
+            `${option.units}`,
+            `${fi(option.installedKw)} kW`,
+            option.selected ? 'Selected inventory basis' : 'Evaluated alternative',
+          ])}
+        />
+        <PdfWarning>All five EMaaS Pro dropdown models were compared using continuous output. The selected row controls the quote and must match the supplying rental house; time-limited peak labels are not used to reduce unit count.</PdfWarning>
       </PdfSection>
 
       <PdfSection title="Benchmark Architecture Review">
@@ -98,7 +123,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         {benchmarkReview.warnings.map((warning) => <PdfWarning key={warning}>{`RED FLAG: ${warning}`}</PdfWarning>)}
       </PdfSection>
 
-      <PdfSection title="24/7 Hybrid Coverage Scenarios">
+      <PdfSection title="24/7 Hybrid Operating Sequence">
         <PdfTable
           headers={['Metric', 'Value']}
           rows={[
@@ -117,7 +142,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         />
         <PdfTable
           headers={['Scenario', 'Status', 'Coverage Logic', 'Requirement']}
-          rows={results.coverage.scenarios.map((scenario) => [
+          rows={results.coverage.scenarios.filter((scenario) => inputs.redundancy !== 'n' || !scenario.label.includes('fallback')).map((scenario) => [
             scenario.label,
             coverageStatusLabel[scenario.status],
             `${scenario.dispatch} ${scenario.coverage}`,
@@ -147,7 +172,7 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
           headers={['Stage', 'Element', 'Detail']}
           rows={flattenDiagramRows(diagram)}
         />
-        <PdfWarning>The customer report shows the reviewed equipment path only. Editable Mermaid source remains inside EMaaS Pro for internal engineering handoff and is intentionally excluded from exported reports.</PdfWarning>
+        <PdfWarning>The planning report shows the reviewed equipment path only. Editable Mermaid source remains inside EMaaS Pro for engineering handoff and is intentionally excluded from exported reports.</PdfWarning>
       </PdfSection>
 
       <PdfSection title="Source and Branch Cable Schedule">
@@ -201,29 +226,11 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
         <PdfTable
           headers={['Metric', 'All Generator', 'Hybrid', 'Difference vs All-Gen']}
           rows={[
-            ['Daily Fuel', `${fi(results.allGenFuelPerDay)} gal`, `${fi(results.hybridFuelPerDay)} gal`, difference(results.dailyFuelReduction, 'gal/day')],
             [`${inputs.projectDurationDays}-Day Fuel`, `${fi(results.allGenFuelProject)} gal`, `${fi(results.hybridFuelTotal)} gal`, difference(results.totalFuelReductionGal, 'gal')],
-            [`${inputs.projectDurationDays}-Day Total Cost`, fc(results.allGenCostProject), fc(results.hybridCostProject), `${fc(Math.abs(results.costDifferenceProject))} ${results.costDifferenceProject >= 0 ? 'lower' : 'higher'}`],
+            [`${inputs.projectDurationDays}-Day Known-Rate Cost (Fuel Only)`, fc(results.allGenCostProject), fc(results.hybridCostProject), `${fc(Math.abs(results.costDifferenceProject))} ${results.costDifferenceProject >= 0 ? 'lower' : 'higher'}`],
             ['Project Fuel Reduction / Increase', '-', `${fi(Math.abs(results.totalFuelReductionGal))} gal ${results.totalFuelReductionGal >= 0 ? 'reduction' : 'increase'}`, `${fc(Math.abs(results.totalFuelCostDifferenceDollars))} ${results.totalFuelCostDifferenceDollars >= 0 ? 'lower' : 'higher'}`],
             ['CO2 Difference', '--', `${fi(Math.abs(results.co2AvoidedLbs))} lbs`, results.co2AvoidedLbs >= 0 ? 'lower' : 'higher'],
           ]}
-        />
-      </PdfSection>
-
-      {/* Fuel projection for the entered project window */}
-      <PdfSection title={`Fuel Projection (${inputs.projectDurationDays} Days)`}>
-        <Text style={{ fontSize: 8, color: '#C5C6C7', marginBottom: 4 }}>
-          Daily fuel consumption comparison and cumulative all-generator minus hybrid difference over the project. Negative values mean the hybrid case uses more fuel after recharge losses.
-        </Text>
-        <PdfTable
-          headers={['Day', 'Date', 'All-Gen (gal)', 'Hybrid (gal)', 'All-Gen Minus Hybrid (gal)']}
-          rows={results.dailyFuelData.map((d) => [
-            `${d.day}`,
-            d.date,
-            fi(d.allGenGal),
-            fi(d.hybridGal),
-            fi(d.cumulativeReductionGal),
-          ])}
         />
       </PdfSection>
 
@@ -231,11 +238,11 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
       {zones && zones.length > 0 && (
         <PdfSection title="Power Zone Breakdown">
           <PdfTable
-            headers={['Zone Name', 'kW', `Amps/Phase (${inputs.loadVoltage ?? inputs.siteVoltage}V)`, 'Legs/Phase']}
+            headers={['Zone Name', 'kW', `${inputs.loadPhase === 'single' ? 'Branch Amps' : 'Amps/Phase'} (${inputs.loadVoltage ?? inputs.siteVoltage}V)`, inputs.loadPhase === 'single' ? 'Parallel Runs' : 'Legs/Phase']}
             rows={zones.map((z) => {
               const branchVoltage = inputs.loadVoltage ?? inputs.siteVoltage
-              const ampsPerPhase = (z.kw * 1000) / (SQRT3 * branchVoltage * (inputs.powerFactor ?? 0.8))
-              const legs = Math.ceil(ampsPerPhase / 400)
+              const ampsPerPhase = (z.kw * 1000) / ((inputs.loadPhase === 'single' ? 1 : SQRT3) * branchVoltage * (inputs.powerFactor ?? 0.8))
+              const legs = Math.ceil(Math.round(ampsPerPhase) / 400)
               return [z.name, fi(z.kw), fi(ampsPerPhase), `${legs}`]
             })}
           />
@@ -249,9 +256,16 @@ export function HybridEnergyPdfDoc({ inputs, results, clientName, projectName, z
             ? `Source and load voltage are both ${inputs.siteVoltage} V; no step-down transformer is shown in this planning package.`
             : `The planning package includes transformation from ${inputs.siteVoltage} V to ${inputs.loadVoltage ?? inputs.siteVoltage} V. Confirm the delivered transformer, grounding, and protection with the engineer and vendor.`}
         </PdfWarning>
-        <PdfWarning>
-          N+1/2N redundancy requires Automatic Transfer Switch(es) — include in your equipment order.
-        </PdfWarning>
+        {inputs.redundancy !== 'n' && (
+          <PdfWarning>
+            N+1/2N redundancy requires Automatic Transfer Switch(es) — include in your equipment order.
+          </PdfWarning>
+        )}
+        {inputs.loadPhase === 'single' && (
+          <PdfWarning>
+            The ten 240 V single-phase trailer feeders are shown as equal planning allocations because individual trailer nameplates were not provided. Balance the feeders across the three-phase source and verify each branch rating, transformer secondary, neutral, and overcurrent protection before release.
+          </PdfWarning>
+        )}
         <PdfWarning>
           Cable sizing depends on distance. Voltage drop over long runs may require upsizing wire gauge — consult NEC tables.
         </PdfWarning>
